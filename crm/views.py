@@ -79,13 +79,13 @@ class ProspectViewSet(viewsets.ModelViewSet):
 class QuoteViewSet(viewsets.ModelViewSet):
     queryset = Quote.objects.all().order_by("-created_at")
     serializer_class = QuoteSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminUser]
 
 
 class NoteViewSet(viewsets.ModelViewSet):
     queryset = Note.objects.all().order_by("-created_at")
     serializer_class = NoteSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminUser]
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)

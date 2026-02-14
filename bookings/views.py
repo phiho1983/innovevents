@@ -1,5 +1,5 @@
 from rest_framework.viewsets import ModelViewSet
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status as http_status
@@ -13,11 +13,12 @@ class BookingViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # l'utilisateur ne voit que ses bookings
-        return Booking.objects.filter(user=self.request.user).order_by("-created_at")
+        qs = Booking.objects.all().order_by("-created_at")
+        if self.request.user.is_staff:
+            return qs
+        return qs.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        # on force user + statut à la création
         serializer.save(user=self.request.user, status=Booking.Status.PENDING)
 
     @action(detail=True, methods=["post"])
@@ -35,3 +36,17 @@ class BookingViewSet(ModelViewSet):
 
         return Response({"detail": "Réservation annulée."}, status=http_status.HTTP_200_OK)
 
+    @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
+    def confirm(self, request, pk=None):
+        booking = self.get_object()
+
+        if booking.status == Booking.Status.CANCELLED:
+            return Response(
+                {"detail": "Impossible de confirmer une réservation annulée."},
+                status=http_status.HTTP_400_BAD_REQUEST,
+            )
+
+        booking.status = Booking.Status.CONFIRMED
+        booking.save(update_fields=["status"])
+
+        return Response({"detail": "Réservation confirmée."}, status=http_status.HTTP_200_OK)

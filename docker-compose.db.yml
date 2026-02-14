@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16
+    container_name: innovevents_db
+    environment:
+      POSTGRES_DB: innovevents
+      POSTGRES_USER: innovevents
+      POSTGRES_PASSWORD: innovevents_pwd
+    ports:
+      - "5432:5432"
+    volumes:
+      - innovevents_pgdata:/var/lib/postgresql/data
+
+volumes:
+  innovevents_pgdata:
