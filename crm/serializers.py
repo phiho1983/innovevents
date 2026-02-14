@@ -2,12 +2,76 @@ from rest_framework import serializers
 from .models import Prospect, Quote, QuoteItem, Note, ClientProfile
 
 
-class ProspectSerializer(serializers.ModelSerializer):
+# -------------------------
+# PROSPECT (Jour 11)
+# -------------------------
+
+class ProspectPublicCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer utilisé uniquement pour le formulaire public (POST /prospects/).
+    -> Tous les champs obligatoires + pas de champs admin modifiables.
+    """
+
+    class Meta:
+        model = Prospect
+        # ⚠️ adapte cette liste EXACTEMENT à tes champs Prospect
+        fields = (
+            "id",
+            "first_name",
+            "last_name",
+            "email",
+            "phone",
+            "company",
+            "city",
+            "message",
+            "status",
+            "created_at",
+        )
+        read_only_fields = ("id", "status", "created_at")
+
+    def validate(self, attrs):
+        # Tous champs obligatoires (même si ton modèle autorise blank=True)
+        required_fields = ["first_name", "last_name", "email", "phone", "company", "city", "message"]
+        errors = {}
+
+        for f in required_fields:
+            val = attrs.get(f)
+            if val is None or (isinstance(val, str) and not val.strip()):
+                errors[f] = "Ce champ est obligatoire."
+
+        if errors:
+            raise serializers.ValidationError(errors)
+
+        return attrs
+
+    def create(self, validated_data):
+        # sécurité : on ignore "status" si envoyé, et le modèle mettra le défaut
+        validated_data.pop("status", None)
+        return Prospect.objects.create(**validated_data)
+
+
+class ProspectAdminSerializer(serializers.ModelSerializer):
+    """
+    Serializer admin (GET /prospects/, GET /prospects/{id}/) : tout voir.
+    """
     class Meta:
         model = Prospect
         fields = "__all__"
-        read_only_fields = ("status", "created_at")
+        read_only_fields = ("created_at",)
 
+
+class ProspectStatusSerializer(serializers.ModelSerializer):
+    """
+    PATCH admin-only (PATCH /prospects/{id}/status/) : ne modifie que le statut.
+    """
+    class Meta:
+        model = Prospect
+        fields = ("status",)
+
+
+# -------------------------
+# EXISTANT (tu gardes)
+# -------------------------
 
 class ClientProfileSerializer(serializers.ModelSerializer):
     class Meta:
