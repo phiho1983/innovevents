@@ -1,12 +1,7 @@
-import { useEffect, useState } from "react";
-
-const API_BASE = "";
+import { useState } from "react";
+import { Link } from "react-router-dom";
 
 export default function QuoteRequestPage() {
-  const [thankYouMessage, setThankYouMessage] = useState("Merci !");
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
-
   const [form, setForm] = useState({
     first_name: "",
     last_name: "",
@@ -17,114 +12,99 @@ export default function QuoteRequestPage() {
     message: "",
   });
 
-  const [errors, setErrors] = useState({});
-
-  useEffect(() => {
-    fetch(`${API_BASE}/api/public-config/`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data?.thank_you_message) setThankYouMessage(data.thank_you_message);
-      })
-      .catch(() => {});
-  }, []);
-
   function onChange(e) {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setForm((p) => ({ ...p, [name]: value }));
   }
 
-  async function onSubmit(e) {
+  function onSubmit(e) {
     e.preventDefault();
-    setLoading(true);
-    setErrors({});
-
-    try {
-      const res = await fetch(`${API_BASE}/api/prospects/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        setErrors(data || { global: "Erreur inconnue." });
-        setLoading(false);
-        return;
-      }
-
-      setSubmitted(true);
-      setLoading(false);
-    } catch (err) {
-        console.error("FETCH ERROR:", err);
-        setErrors({ global: `Erreur réseau: ${err?.message || err}` });
-        setLoading(false);
-    }
-  }
-
-  if (submitted) {
-    return (
-      <div style={{ marginTop: 24, padding: 16, border: "1px solid #ddd", borderRadius: 12 }}>
-        <h3>Demande envoyée ✅</h3>
-        <p>{thankYouMessage}</p>
-      </div>
-    );
+    // TODO: brancher API (POST /api/prospects/)
+    console.log("submit", form);
+    alert("Demande envoyée (mock)");
   }
 
   return (
-    <div style={{ marginTop: 24 }}>
-      <h3>Demande de devis</h3>
+    <div className="min-h-screen bg-white text-black">
+      {/* Header */}
+      <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-8">
+        <h1 className="text-2xl font-bold">Innov&apos;Events</h1>
 
-      {errors.global && (
-        <div style={{ padding: 12, background: "#ffecec", border: "1px solid #ffb3b3", borderRadius: 10, marginBottom: 12 }}>
-          {errors.global}
-        </div>
-      )}
+        <nav className="flex items-center gap-4 text-sm">
+          <Link className="text-purple-700 underline" to="/demande-de-devis">
+            Demande de devis
+          </Link>
+          <Link className="text-purple-700 underline" to="/login">
+            Connexion
+          </Link>
+        </nav>
+      </header>
 
-      <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
-        <Field label="Prénom" name="first_name" value={form.first_name} onChange={onChange} error={errors.first_name} />
-        <Field label="Nom" name="last_name" value={form.last_name} onChange={onChange} error={errors.last_name} />
-        <Field label="Email" name="email" value={form.email} onChange={onChange} error={errors.email} type="email" />
-        <Field label="Téléphone" name="phone" value={form.phone} onChange={onChange} error={errors.phone} />
-        <Field label="Société" name="company" value={form.company} onChange={onChange} error={errors.company} />
-        <Field label="Ville" name="city" value={form.city} onChange={onChange} error={errors.city} />
+      {/* Form */}
+      <main className="mx-auto max-w-3xl px-6 pb-16">
+        <h2 className="mb-6 text-lg font-bold">Demande de devis</h2>
 
-        <div>
-          <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }}>Message</label>
-          <textarea
-            name="message"
-            value={form.message}
-            onChange={onChange}
-            rows={5}
-            style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #ddd" }}
-          />
-          {errors.message && <ErrorText error={errors.message} />}
-        </div>
+        <form onSubmit={onSubmit} className="space-y-5">
+          <Field label="Prénom">
+            <Input name="first_name" value={form.first_name} onChange={onChange} />
+          </Field>
 
-        <button type="submit" disabled={loading} style={{ padding: "12px 14px", borderRadius: 12, border: "none", cursor: "pointer" }}>
-          {loading ? "Envoi..." : "Envoyer ma demande"}
-        </button>
-      </form>
+          <Field label="Nom">
+            <Input name="last_name" value={form.last_name} onChange={onChange} />
+          </Field>
+
+          <Field label="Email">
+            <Input name="email" type="email" value={form.email} onChange={onChange} />
+          </Field>
+
+          <Field label="Téléphone">
+            <Input name="phone" value={form.phone} onChange={onChange} />
+          </Field>
+
+          <Field label="Société">
+            <Input name="company" value={form.company} onChange={onChange} />
+          </Field>
+
+          <Field label="Ville">
+            <Input name="city" value={form.city} onChange={onChange} />
+          </Field>
+
+          <Field label="Message">
+            <textarea
+              name="message"
+              value={form.message}
+              onChange={onChange}
+              className="h-28 w-full resize-none rounded-lg border border-black/10 bg-white px-4 py-3 text-sm outline-none focus:border-black/20"
+            />
+          </Field>
+
+          <button
+            type="submit"
+            className="mt-2 w-full rounded-xl bg-black/10 py-3 text-sm font-medium text-black transition hover:bg-black/15"
+          >
+            Envoyer ma demande
+          </button>
+        </form>
+      </main>
     </div>
   );
 }
 
-function Field({ label, name, value, onChange, error, type = "text" }) {
+/** Petits composants pour garder le JSX propre */
+function Field({ label, children }) {
   return (
     <div>
-      <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }}>{label}</label>
-      <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #ddd" }}
-      />
-      {error && <ErrorText error={error} />}
+      <label className="mb-2 block text-sm font-bold">{label}</label>
+      {children}
     </div>
   );
 }
 
-function ErrorText({ error }) {
-  const msg = Array.isArray(error) ? error[0] : error;
-  return <div style={{ marginTop: 6, color: "#b00020" }}>{msg}</div>;
+function Input(props) {
+  return (
+    <input
+      {...props}
+      className="w-full rounded-lg border border-black/10 bg-white px-4 py-3 text-sm outline-none focus:border-black/20"
+    />
+  );
 }

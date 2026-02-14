@@ -1,68 +1,311 @@
+/* =============== */
+/* Base / Variables */
+/* =============== */
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --violet: #7b5fae;
+  --violet2: #b8a3e6;
+  --bg: #ffffff;
+  --text: #111;
+  --muted: #666;
+  --max: 1280px;
+  --radius: 18px;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+* {
+  box-sizing: border-box;
 }
-a:hover {
-  color: #535bf2;
+
+html,
+body {
+  height: 100%;
 }
 
 body {
   margin: 0;
+  font-family: Arial, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+/* Utilitaires simples */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+a.underline,
+.navlinks a {
+  text-decoration: underline;
+  color: #6a46b4;
+}
+a:hover {
+  opacity: 0.9;
+}
+
+/* Layout */
+.container {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* =============== */
+/* Navbar          */
+/* =============== */
+.navbar {
   display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 26px 0;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+.brand {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
+.navlinks {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  font-size: 14px;
+}
+
+/* Boutons */
+.btn {
+  display: inline-block;
+  background: var(--violet);
+  color: white;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-weight: 700;
+  border: none;
   cursor: pointer;
-  transition: border-color 0.25s;
 }
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+.btn:hover {
+  filter: brightness(0.95);
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+.btn-soft {
+  display: inline-block;
+  background: #eee;
+  color: #111;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-weight: 700;
+  border: 1px solid #e3e3e3;
+}
+.navlinks .btn {
+  color: #fff !important;
+}
+
+/* =============== */
+/* Hero            */
+/* =============== */
+.hero {
+  display: grid;
+  grid-template-columns: 1.05fr 1.35fr;
+  gap: 36px;
+  align-items: center;
+  padding: 10px 0 28px;
+  margin-top: 150px; /* essaye 24, 32, 40 */
+  padding-top: 30px;
+}
+
+.hero-title {
+  font-size: 52px;
+  line-height: 1.03;
+  font-weight: 900;
+  margin: 0 0 14px;
+  
+}
+
+.hero-sub {
+  margin: 0 0 18px;
+  color: var(--muted);
+  line-height: 1.8;
+  max-width: 360px;
+  text-align: center; /* comme ton wireframe */
+  margin-top: 50px;
+  margin-left: 150px;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 50px;
+}
+
+.hero-image {
+  width: 100%;
+  border-radius: 26px;
+  overflow: hidden;
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.14);
+}
+.hero-image img {
+  width: 100%;
+  height: 360px;
+  object-fit: cover;
+  display: block;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: 1fr;
   }
-  a:hover {
-    color: #747bff;
+  .hero-title {
+    font-size: 42px;
   }
-  button {
-    background-color: #f9f9f9;
+  .hero-image img {
+    height: 280px;
   }
+}
+
+/* =============== */
+/* Galerie / Mosaic */
+/* =============== */
+.mosaic {
+  margin-top: 46px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+
+.card-img {
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.14);
+  background: #000;
+}
+.card-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.m1 {
+  grid-column: 2 / 4;
+  height: 220px;
+}
+.m2 {
+  height: 190px;
+  align-self: end;
+}
+.m3 {
+  height: 150px;
+  align-self: end;
+}
+.m4 {
+  height: 170px;
+  align-self: end;
+}
+.m5 {
+  grid-column: 2 / 4;
+  height: 220px;
+}
+
+@media (max-width: 900px) {
+  .mosaic {
+    grid-template-columns: 1fr;
+  }
+  .m1,
+  .m5 {
+    grid-column: auto;
+    height: 220px;
+  }
+  .m2,
+  .m3,
+  .m4 {
+    height: 200px;
+  }
+}
+
+/* =============== */
+/* Footer (violet en bas) */
+/* =============== */
+/* Le violet "part du bas" vers le haut */
+.footer-bg {
+  margin-top: 70px;
+  background: linear-gradient(to top, var(--violet), var(--violet2), #ffffff);
+  padding: 44px 0 26px;
+}
+
+/* Carte blanche semi-transparente dans le footer (propre) */
+.footer-card {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(6px);
+  border-radius: 18px;
+  padding: 26px;
+}
+
+/* Grille footer */
+.footer-grid {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
+}
+
+.footer-cols {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+}
+
+.footer-title {
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: #6f55a4;
+  margin: 0 0 10px;
+}
+
+.footer-link {
+  display: block;
+  font-size: 12px;
+  color: #444;
+  margin: 0 0 8px;
+  text-decoration: none;
+}
+.footer-link:hover {
+  text-decoration: underline;
+}
+
+.footer-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: #555;
+  margin-top: 18px;
+}
+
+@media (max-width: 900px) {
+  .footer-grid {
+    grid-template-columns: 1fr;
+  }
+  .footer-cols {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.container {
+  max-width: 1300px;   /* élargis si tu veux: 1360px */
+  margin: 0 auto;
+  padding: 0 20px;     /* marges gauche/droite */
+}
+
+.hero-placeholder {
+  width: 100%;
+  height: 500px;
+  border-radius: 26px;
+  background: #a68dd7; /* beige/violet pastel */
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 0 25px 60px rgba(0,0,0,0.12);
 }
