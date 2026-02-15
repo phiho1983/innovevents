@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 /**
  * AuthForm — composant réutilisable
  * props:
- * - title, subtitle
+ * - title, subtitle, subtitleColor
  * - fields: [{ name, label, type?, required?, autoComplete?, placeholder? }]
  * - submitLabel
  * - onSubmit: async (values) => void
@@ -14,6 +14,7 @@ import { useEffect, useMemo, useState } from "react";
 export default function AuthForm({
   title,
   subtitle,
+  subtitleColor,
   fields,
   submitLabel = "Valider",
   onSubmit,
@@ -73,9 +74,16 @@ export default function AuthForm({
   return (
     <div style={{ padding: 24, maxWidth: 520, margin: "0 auto" }}>
       {title && <h2 style={{ margin: 0 }}>{title}</h2>}
-      {subtitle && <p style={{ marginTop: 8, color: "#555" }}>{subtitle}</p>}
+      {subtitle && (
+        <p style={{ marginTop: 8, color: subtitleColor || "#555" }}>
+          {subtitle}
+        </p>
+      )}
 
-      <form onSubmit={handleSubmit} style={{ display: "grid", gap: 10, marginTop: 16 }}>
+      <form
+        onSubmit={handleSubmit}
+        style={{ display: "grid", gap: 10, marginTop: 16 }}
+      >
         {fields.map((f) => (
           <div key={f.name} style={{ display: "grid", gap: 6 }}>
             <label htmlFor={f.name} style={{ fontWeight: 700, fontSize: 12 }}>

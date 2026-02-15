@@ -8,7 +8,8 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const isAuthenticated = !!getAccessToken();
+  // IMPORTANT: on considère "auth" seulement si le profil user est chargé
+  const isAuthenticated = !!user;
   const isStaff = !!user?.is_staff;
 
   async function refreshMe() {
@@ -16,9 +17,15 @@ export function AuthProvider({ children }) {
       setUser(null);
       return null;
     }
-    const data = await apiMe();
-    setUser(data);
-    return data;
+    try {
+      const data = await apiMe();
+      setUser(data);
+      return data;
+    } catch (e) {
+      clearTokens();
+      setUser(null);
+      return null;
+    }
   }
 
   async function login(username, password) {
@@ -37,9 +44,6 @@ export function AuthProvider({ children }) {
     (async () => {
       try {
         await refreshMe();
-      } catch {
-        clearTokens();
-        setUser(null);
       } finally {
         setLoading(false);
       }

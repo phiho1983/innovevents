@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import AuthForm from "../components/auth/AuthForm";
 import Navbar from "../components/Navbar";
+import { signup as apiSignup } from "../api/auth";
 
 export default function SignupPage() {
   const nav = useNavigate();
@@ -21,11 +22,14 @@ export default function SignupPage() {
             { name: "password2", label: "Confirmer le mot de passe", type: "password", autoComplete: "new-password" },
           ]}
           validate={(v) => {
+            if (!v.username?.trim()) return "Username requis.";
+            if (!v.email?.trim()) return "Email requis.";
+            if (!v.password) return "Mot de passe requis.";
             if (v.password !== v.password2) return "Les mots de passe ne correspondent pas.";
             return null;
           }}
           onSubmit={async (v) => {
-            console.log("SIGNUP mock:", v);
+            await apiSignup(v.username.trim(), v.email.trim(), v.password);
             nav("/login", { replace: true });
           }}
           footer={

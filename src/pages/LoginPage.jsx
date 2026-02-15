@@ -13,7 +13,7 @@ export default function LoginPage() {
 
       <AuthForm
         title="Connexion"
-        subtitle="Connectez-vous à votre compte."
+        subtitle={<span style={{ color: "red" }}>Connectez-vous à votre compte.</span>}
         submitLabel="Se connecter"
         fields={[
           { name: "username", label: "Username", autoComplete: "username" },
