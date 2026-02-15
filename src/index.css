@@ -15,18 +15,27 @@
   box-sizing: border-box;
 }
 
-html,
-body {
-  height: 100%;
+
+html, body {
+  height: auto;        /* ✅ pas 100% */
+  min-height: 100%;
+}
+
+#root {
+  min-height: 100vh;   /* ✅ l’app prend au moins l’écran */
 }
 
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
-  color: var(--text);
-  background: var(--bg);
-}
 
+  /* ✅ fond accroché à la page (scroll) */
+  background: linear-gradient(to top, #7a1b8f 0%, #ffffff 70%);
+  background-repeat: no-repeat;
+  background-attachment: scroll;
+
+  /* ✅ très important: que le dégradé couvre toute la hauteur de la page */
+  background-size: 100% 100%;
+}
 /* Utilitaires simples */
 a {
   color: inherit;
@@ -43,10 +52,11 @@ a:hover {
 
 /* Layout */
 .container {
-  max-width: var(--max);
+  width: min(1100px, 100%);
   margin: 0 auto;
-  padding: 24px;
+  padding: 0 24px;
 }
+
 
 /* =============== */
 /* Navbar          */
@@ -113,6 +123,7 @@ a:hover {
   padding: 10px 0 28px;
   margin-top: 150px; /* essaye 24, 32, 40 */
   padding-top: 30px;
+  margin-bottom: 100px;
 }
 
 .hero-title {
