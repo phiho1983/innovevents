@@ -1,18 +1,22 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from django.conf import settings
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 
 class MeView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        u = request.user
         return Response({
-            "id": request.user.id,
-            "username": request.user.username,
-            "email": request.user.email,
+            "id": u.id,
+            "username": u.username,
+            "email": u.email,
+            "is_staff": u.is_staff,
+            "is_superuser": u.is_superuser,
         })
+
 
 class PublicConfigView(APIView):
     permission_classes = [AllowAny]
