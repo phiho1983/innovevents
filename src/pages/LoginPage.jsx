@@ -1,40 +1,48 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
+import AuthForm from "../components/auth/AuthForm";
+import Navbar from "../components/Navbar";
 
 export default function LoginPage() {
   const { login } = useAuth();
   const nav = useNavigate();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [err, setErr] = useState(null);
-
-  async function onSubmit(e) {
-    e.preventDefault();
-    setErr(null);
-    try {
-      // login() renvoie l'user (grâce à /api/me)
-      const user = await login(username, password);
-      nav(user?.is_staff ? "/admin" : "/client", { replace: true });
-    } catch (e) {
-      setErr(e?.message || "Erreur de connexion");
-    }
-  }
 
   return (
-    <div style={{ marginTop: 24 }}>
-      <h3>Connexion</h3>
-      <form onSubmit={onSubmit} style={{ display: "grid", gap: 8, maxWidth: 320 }}>
-        <label>Username</label>
-        <input value={username} onChange={(e) => setUsername(e.target.value)} />
+    <>
+      <Navbar />
 
-        <label>Mot de passe</label>
-        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-
-        {err && <p style={{ color: "crimson" }}>{err}</p>}
-
-        <button type="submit">Se connecter</button>
-      </form>
-    </div>
+      <AuthForm
+        title="Connexion"
+        subtitle="Connectez-vous à votre compte."
+        submitLabel="Se connecter"
+        fields={[
+          { name: "username", label: "Username", autoComplete: "username" },
+          {
+            name: "password",
+            label: "Mot de passe",
+            type: "password",
+            autoComplete: "current-password",
+          },
+        ]}
+        validate={(v) => {
+          if (!v.username?.trim() || !v.password) {
+            return "Veuillez saisir votre username et votre mot de passe.";
+          }
+          return null;
+        }}
+        onSubmit={async (v) => {
+          const user = await login(v.username.trim(), v.password);
+          nav(user?.is_staff ? "/admin" : "/client", { replace: true });
+        }}
+        footer={
+          <p style={{ fontSize: 12, margin: 0 }}>
+            Pas de compte ?{" "}
+            <Link to="/signup" style={{ fontWeight: 700 }}>
+              Créer un compte
+            </Link>
+          </p>
+        }
+      />
+    </>
   );
 }

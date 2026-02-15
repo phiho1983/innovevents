@@ -29,7 +29,7 @@
   margin: 0 0 14px;
   font-size: 12px;
   letter-spacing: 0.8px;
-  color: #4a3a76;
+  color: #430c40;
   font-weight: 800;
   text-transform: uppercase;
 }
@@ -37,7 +37,7 @@
 .footerCol a {
   display: block;
   text-decoration: none;
-  color: #4a3a76;
+  color: #5f0f65;
   font-size: 13px;
   padding: 8px 0;
   opacity: 0.9;
@@ -62,7 +62,7 @@
   display: grid;
   place-items: center;
   background: rgba(74, 58, 118, 0.12);
-  color: #4a3a76;
+  color: #790985;
   font-size: 12px;
   font-weight: 800;
 }
@@ -76,7 +76,7 @@
   flex-direction: column;
   gap: 10px;
   align-items: center;
-  color: #4a3a76;
+  color: #520c54;
 }
 
 .footerLinks {

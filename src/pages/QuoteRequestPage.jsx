@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import Navbar from "../components/Navbar";
 
 export default function QuoteRequestPage() {
   const [form, setForm] = useState({
@@ -19,92 +19,81 @@ export default function QuoteRequestPage() {
 
   function onSubmit(e) {
     e.preventDefault();
-    // TODO: brancher API (POST /api/prospects/)
     console.log("submit", form);
     alert("Demande envoyée (mock)");
   }
 
   return (
-    <div className="min-h-screen bg-white text-black">
-      {/* Header */}
-      <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-8">
-        <h1 className="text-2xl font-bold">Innov&apos;Events</h1>
+    <>
+      <Navbar />
 
-        <nav className="flex items-center gap-4 text-sm">
-          <Link className="text-purple-700 underline" to="/demande-de-devis">
-            Demande de devis
-          </Link>
-          <Link className="text-purple-700 underline" to="/login">
-            Connexion
-          </Link>
-        </nav>
-      </header>
+      <main className="container">
+        <div className="quoteWrap">
+          <h2 className="quoteTitle">Demande de devis</h2>
+          <p className="quoteSub">
+            Remplissez ce formulaire, nous revenons vers vous rapidement.
+          </p>
 
-      {/* Form */}
-      <main className="mx-auto max-w-3xl px-6 pb-16">
-        <h2 className="mb-6 text-lg font-bold">Demande de devis</h2>
+          <form onSubmit={onSubmit} className="quoteForm">
+            <div className="quoteGrid2">
+              <Field label="Prénom">
+                <Input name="first_name" value={form.first_name} onChange={onChange} />
+              </Field>
 
-        <form onSubmit={onSubmit} className="space-y-5">
-          <Field label="Prénom">
-            <Input name="first_name" value={form.first_name} onChange={onChange} />
-          </Field>
+              <Field label="Nom">
+                <Input name="last_name" value={form.last_name} onChange={onChange} />
+              </Field>
+            </div>
 
-          <Field label="Nom">
-            <Input name="last_name" value={form.last_name} onChange={onChange} />
-          </Field>
+            <div className="quoteGrid2">
+              <Field label="Email">
+                <Input name="email" type="email" value={form.email} onChange={onChange} />
+              </Field>
 
-          <Field label="Email">
-            <Input name="email" type="email" value={form.email} onChange={onChange} />
-          </Field>
+              <Field label="Téléphone">
+                <Input name="phone" value={form.phone} onChange={onChange} />
+              </Field>
+            </div>
 
-          <Field label="Téléphone">
-            <Input name="phone" value={form.phone} onChange={onChange} />
-          </Field>
+            <div className="quoteGrid2">
+              <Field label="Société">
+                <Input name="company" value={form.company} onChange={onChange} />
+              </Field>
 
-          <Field label="Société">
-            <Input name="company" value={form.company} onChange={onChange} />
-          </Field>
+              <Field label="Ville">
+                <Input name="city" value={form.city} onChange={onChange} />
+              </Field>
+            </div>
 
-          <Field label="Ville">
-            <Input name="city" value={form.city} onChange={onChange} />
-          </Field>
+            <Field label="Message">
+              <textarea
+                name="message"
+                value={form.message}
+                onChange={onChange}
+                className="quoteTextarea"
+                placeholder="Décrivez votre besoin (date, lieu, nombre de personnes, type d’événement...)"
+              />
+            </Field>
 
-          <Field label="Message">
-            <textarea
-              name="message"
-              value={form.message}
-              onChange={onChange}
-              className="h-28 w-full resize-none rounded-lg border border-black/10 bg-white px-4 py-3 text-sm outline-none focus:border-black/20"
-            />
-          </Field>
-
-          <button
-            type="submit"
-            className="mt-2 w-full rounded-xl bg-black/10 py-3 text-sm font-medium text-black transition hover:bg-black/15"
-          >
-            Envoyer ma demande
-          </button>
-        </form>
+            <button type="submit" className="btn quoteBtn">
+              Envoyer ma demande
+            </button>
+          </form>
+        </div>
       </main>
-    </div>
+    </>
   );
 }
 
-/** Petits composants pour garder le JSX propre */
 function Field({ label, children }) {
   return (
-    <div>
-      <label className="mb-2 block text-sm font-bold">{label}</label>
+    <div className="quoteField">
+      <label className="quoteLabel">{label}</label>
       {children}
     </div>
   );
 }
 
 function Input(props) {
-  return (
-    <input
-      {...props}
-      className="w-full rounded-lg border border-black/10 bg-white px-4 py-3 text-sm outline-none focus:border-black/20"
-    />
-  );
+  return <input {...props} className="quoteInput" />;
 }
