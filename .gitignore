@@ -1,0 +1,20 @@
+# Environnement
+.env
+.env.*
+
+# Logs
+*.log
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Node / Python (au cas où)
+node_modules/
+__pycache__/
+*.pyc
+
+# Docker volumes locaux éventuels
+**/pgdata/
