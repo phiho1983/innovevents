@@ -42,3 +42,24 @@ docker compose exec backend python manage.py createsuperuser
 docker compose exec backend python manage.py makemigrations
 docker compose exec backend python manage.py migrate
 ```
+# Innovevents — Lancement local avec Docker (Front + Back + PostgreSQL)
+
+Ce dépôt sert d’**orchestrateur Docker** pour lancer en local :
+- **Frontend** (dépôt séparé)
+- **Backend** (dépôt séparé)
+- **PostgreSQL** (conteneur Docker)
+
+✅ Objectif : démarrer tout le projet avec **une seule commande** `docker compose up --build`.
+
+---
+
+## Prérequis
+
+- Docker Desktop (Windows/Mac) ou Docker Engine + Docker Compose (Linux)
+- Git
+
+Vérifier :
+```bash
+docker --version
+docker compose version
+git --version
