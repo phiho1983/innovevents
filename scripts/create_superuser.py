@@ -1,19 +1,29 @@
 import os
-import django
-
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
-django.setup()
-
-from django.contrib.auth import get_user_model
-
-User = get_user_model()
+import subprocess
 
 username = os.getenv("DJANGO_SUPERUSER_USERNAME", "admin")
 email = os.getenv("DJANGO_SUPERUSER_EMAIL", "admin@innovevents.local")
-password = os.getenv("DJANGO_SUPERUSER_PASSWORD", "1234")
+password = os.getenv("DJANGO_SUPERUSER_PASSWORD", "admin1234")
 
-if not User.objects.filter(username=username).exists():
-    User.objects.create_superuser(username=username, email=email, password=password)
-    print(f"✅ Superuser créé : {username}")
+code = f"""
+from django.contrib.auth import get_user_model
+User = get_user_model()
+
+u, created = User.objects.get_or_create(username="{username}", defaults={{"email": "{email}"}})
+if created:
+    u.set_password("{password}")
+    u.is_staff = True
+    u.is_superuser = True
+    u.save()
+    print("✅ Superuser créé : {username}")
 else:
-    print(f"ℹ️ Superuser déjà présent : {username}")
+    # On force les droits + mdp au cas où
+    u.email = "{email}"
+    u.set_password("{password}")
+    u.is_staff = True
+    u.is_superuser = True
+    u.save()
+    print("ℹ️ Superuser déjà présent (mdp/droits remis) : {username}")
+"""
+
+subprocess.check_call(["python", "manage.py", "shell", "-c", code])
