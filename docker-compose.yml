@@ -1,7 +1,7 @@
 services:
   db:
     image: postgres:16
-    container_name: innovevents_db
+   
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-innovevents}
       POSTGRES_USER: ${POSTGRES_USER:-innovevents}
@@ -20,7 +20,7 @@ services:
     build:
       context: ../innovevents-back
       dockerfile: ../innovevents-docker/docker/Dockerfile-backend
-    container_name: innovevents_backend
+    
     environment:
       DEBUG: "${DJANGO_DEBUG:-1}"
       SECRET_KEY: "${DJANGO_SECRET_KEY:-dev-only-change-me}"
@@ -50,7 +50,7 @@ services:
     build:
       context: ../innovevents-front
       dockerfile: ../innovevents-docker/docker/Dockerfile-frontend
-    container_name: innovevents_frontend
+    
     environment:
       VITE_HOST: "0.0.0.0"
       VITE_PORT: "${FRONTEND_PORT:-5173}"
