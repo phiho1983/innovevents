@@ -1,7 +1,3 @@
-import os
-import dj_database_url
-
-
 # innovevents-back/config/settings.py
 """
 Django settings for config project.
@@ -22,7 +18,8 @@ SECRET_KEY = os.getenv(
     "dev-only-change-me",
 )
 
-DEBUG = os.getenv("DEBUG", "0") == "1"
+DEBUG = os.getenv("DEBUG", "1") == "1"
+
 
 allowed_hosts = os.getenv("ALLOWED_HOSTS", "")
 ALLOWED_HOSTS = [h.strip() for h in allowed_hosts.split(",") if h.strip()] or [
@@ -77,12 +74,19 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-# Neon via DATABASE_URL (fallback sqlite en local)
+# -------------------------
+# DATABASE
+# -------------------------
+# Local: Postgres Docker (souvent sans SSL) -> REQUIRE_DB_SSL=0 (par défaut)
+# Prod: Render + Neon (souvent SSL requis)  -> REQUIRE_DB_SSL=1 dans Render
+DATABASE_URL = os.getenv("DATABASE_URL", "")
+REQUIRE_DB_SSL = os.getenv("REQUIRE_DB_SSL", "0") == "1"
+
 DATABASES = {
     "default": dj_database_url.config(
-        default=os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
+        default=DATABASE_URL or f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
         conn_max_age=600,
-        ssl_require=bool(os.getenv("DATABASE_URL")),
+        ssl_require=REQUIRE_DB_SSL,
     )
 }
 
@@ -100,7 +104,9 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
-# Static files (Render needs STATIC_ROOT for collectstatic)
+# -------------------------
+# STATIC FILES (Render needs STATIC_ROOT for collectstatic)
+# -------------------------
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
@@ -109,6 +115,9 @@ STORAGES = {
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
 
+# -------------------------
+# DRF / JWT
+# -------------------------
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -124,12 +133,21 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
 }
 
+# -------------------------
+# EMAIL
+# -------------------------
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 DEFAULT_FROM_EMAIL = "no-reply@innovevents.com"
 QUOTE_CONTACT_EMAIL = "contact@innovevents.com"
 THANK_YOU_MESSAGE = "Merci ! Votre demande de devis a bien été envoyée. Nous revenons vers vous rapidement."
 
-cors_origins = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
+# -------------------------
+# CORS / CSRF
+# -------------------------
+cors_origins = os.getenv(
+    "CORS_ALLOWED_ORIGINS",
+    "http://localhost:5173,http://127.0.0.1:5173",
+)
 CORS_ALLOWED_ORIGINS = [o.strip() for o in cors_origins.split(",") if o.strip()]
 
 csrf_trusted = os.getenv("CSRF_TRUSTED_ORIGINS", "")
