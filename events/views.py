@@ -1,36 +1,27 @@
-from rest_framework.viewsets import ModelViewSet
-from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
-from rest_framework.decorators import action
-from rest_framework.response import Response
-
+from rest_framework import viewsets,filters
+from rest_framework.permissions import AllowAny,IsAuthenticated,IsAdminUser
 from .models import Event
 from .serializers import EventSerializer
-from bookings.models import Booking
 
+class EventViewSet(viewsets.ModelViewSet):
+    serializer_class=EventSerializer
 
-class EventViewSet(ModelViewSet):
-    queryset = Event.objects.all().order_by("-start_at")
-    serializer_class = EventSerializer
+    def get_queryset(self):
+        qs=Event.objects.all().order_by("start_at")
+        if self.request.query_params.get("public"):
+            qs=qs.filter(visible=True,client_agreed=True).exclude(status="DRAFT")
+        t=self.request.query_params.get("event_type")
+        if t: qs=qs.filter(event_type=t)
+        th=self.request.query_params.get("theme")
+        if th: qs=qs.filter(theme__icontains=th)
+        sa=self.request.query_params.get("start_after")
+        if sa: qs=qs.filter(start_at__date__gte=sa)
+        sb=self.request.query_params.get("start_before")
+        if sb: qs=qs.filter(start_at__date__lte=sb)
+        upcoming=self.request.query_params.get("upcoming")
+        if upcoming: qs=qs.order_by("start_at")[:int(upcoming)]
+        return qs
 
     def get_permissions(self):
-        if self.action in ["list", "retrieve"]:
-            return [AllowAny()]
-
-        if self.action == "my_events":
-            return [IsAuthenticated()]
-
+        if self.action in ["list","retrieve"]: return [AllowAny()]
         return [IsAdminUser()]
-
-    def perform_create(self, serializer):
-        serializer.save(organizer=self.request.user)
-
-    @action(detail=False, methods=["get"], url_path="my")
-    def my_events(self, request):
-        event_ids = (
-            Booking.objects
-            .filter(user=request.user)
-            .values_list("event_id", flat=True)
-            .distinct()
-        )
-        qs = Event.objects.filter(id__in=event_ids).order_by("-start_at")
-        return Response(EventSerializer(qs, many=True).data)
