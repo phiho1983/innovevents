@@ -20,6 +20,9 @@ class Prospect(models.Model):
     company = models.CharField(max_length=120, blank=True)
     city = models.CharField(max_length=120)
     message = models.TextField()
+    event_type=models.CharField(max_length=50,blank=True)
+    desired_date=models.DateField(null=True,blank=True)
+    participant_count=models.PositiveIntegerField(null=True,blank=True)
 
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.TO_CONTACT)
     created_at = models.DateTimeField(auto_now_add=True)
