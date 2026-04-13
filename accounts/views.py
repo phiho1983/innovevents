@@ -5,6 +5,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 from config.mongo import log_action
+from django.utils.crypto import get_random_string
+from django.core.mail import send_mail
 
 User = get_user_model()
 
@@ -49,3 +51,31 @@ def signup(request):
     user = User.objects.create_user(username=username,email=email,password=password)
     user.is_staff = False; user.save(update_fields=["is_staff"])
     return Response({"id":user.id,"username":user.username,"email":user.email}, status=201)
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def forgot_password(request):
+    email=(request.data.get("email") or "").strip()
+    user=User.objects.filter(email=email).first()
+    if not user:
+        return Response({"detail":"Si cet email existe, un mail a été envoyé."},status=200)
+    tmp=get_random_string(16)
+    user.set_password(tmp)
+    user.must_change_password=True
+    user.save()
+    send_mail("Réinitialisation de votre mot de passe Innov'Events",
+        f"Votre nouveau mot de passe temporaire : {tmp}\n\nVous devrez le modifier à la prochaine connexion.",
+        None,[email],fail_silently=True)
+    return Response({"detail":"Si cet email existe, un mail a été envoyé."},status=200)
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def change_password(request):
+    new_pwd=request.data.get("password","")
+    if len(new_pwd)<8:
+        return Response({"password":["8 caractères minimum."]},status=400)
+    request.user.set_password(new_pwd)
+    request.user.must_change_password=False
+    request.user.save()
+    return Response({"detail":"Mot de passe mis à jour."})

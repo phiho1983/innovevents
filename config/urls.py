@@ -17,4 +17,6 @@ urlpatterns = [
     path("api/me/",        MeView.as_view()),
     path("api/public-config/", PublicConfigView.as_view()),
     path("api/signup/",    signup),
+    path("api/forgot-password/", forgot_password),
+    path("api/change-password/",  change_password),
 ]
