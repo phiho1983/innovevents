@@ -4,6 +4,7 @@ from django.http import JsonResponse
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views import MeView, PublicConfigView
 from accounts.views import signup, LoggedTokenObtainPairView
+from accounts.views import forgot_password, change_password
 
 def health(request):
     return JsonResponse({"status": "ok"})
