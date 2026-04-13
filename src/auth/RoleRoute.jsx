@@ -17,3 +17,11 @@ export function ClientOnlyRoute() {
   if (isStaff) return <Navigate to="/admin" replace />;
   return <Outlet />;
 }
+
+
+export function EmployeeOnlyRoute(){
+  const{user}=useAuth()
+  if(!user) return <Navigate to="/login" replace/>
+  if(user.role!=="EMPLOYEE"&&!user.is_staff) return <Navigate to="/" replace/>
+  return <Outlet/>
+}
