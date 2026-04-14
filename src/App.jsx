@@ -10,7 +10,7 @@ import ClientAccountPage from "./pages/ClientAccountPage";
 
 import { StaffOnlyRoute, ClientOnlyRoute } from "./auth/RoleRoute";
 import EventsPage       from "./pages/EventsPage"
-
+import ContactPage      from "./pages/ContactPage"
 import ReviewsPage      from "./pages/ReviewsPage"
 import LegalPage        from "./pages/LegalPage"
 

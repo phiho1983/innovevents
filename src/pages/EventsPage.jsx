@@ -83,7 +83,7 @@ export default function EventsPage(){
               <p style={{color:"#666",fontSize:13,margin:"0 0 4px"}}>{ev.city} — {new Date(ev.start_at).toLocaleDateString("fr-FR")}</p>
               {ev.theme&&<p style={{fontSize:12,color:"#888",margin:"0 0 8px"}}>Thème : {ev.theme}</p>}
               <p style={{fontSize:13,color:"#555",margin:"0 0 12px",lineHeight:1.5}}>{ev.description?.substring(0,100)}{ev.description?.length>100?"...":""}</p>
-              <div style={{display:"flex",gap:8"}}>
+              <div style={{display:"flex",gap:8}}>
                 <Link to={`/evenements/${ev.id}`} style={{fontSize:13,color:"#333",textDecoration:"underline"}}>Voir détails</Link>
                 <Link to="/demande-de-devis" style={{fontSize:13,color:"#333",fontWeight:"600"}}>Prestations et Devis →</Link>
               </div>
