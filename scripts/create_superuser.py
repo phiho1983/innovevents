@@ -14,6 +14,7 @@ if created:
     u.set_password("{password}")
     u.is_staff = True
     u.is_superuser = True
+    u.is_active = True 
     u.save()
     print("✅ Superuser créé : {username}")
 else:
@@ -22,6 +23,7 @@ else:
     u.set_password("{password}")
     u.is_staff = True
     u.is_superuser = True
+    u.is_active = True
     u.save()
     print("ℹ️ Superuser déjà présent (mdp/droits remis) : {username}")
 """
