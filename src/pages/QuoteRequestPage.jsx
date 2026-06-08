@@ -1,6 +1,8 @@
 import { useState } from "react";
 import Navbar from "../components/Navbar";
 
+const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 export default function QuoteRequestPage() {
   const [form, setForm] = useState({
     first_name: "",
@@ -17,10 +19,29 @@ export default function QuoteRequestPage() {
     setForm((p) => ({ ...p, [name]: value }));
   }
 
-  function onSubmit(e) {
+  async function onSubmit(e) {
     e.preventDefault();
-    console.log("submit", form);
-    alert("Demande envoyée (mock)");
+
+    try {
+      const response = await fetch(`${API}/api/prospects/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(form),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw data;
+      }
+
+      alert("Demande envoyée avec succès");
+    } catch (error) {
+      console.error("Erreur envoi demande :", error);
+      alert(error?.detail || error?.message || "Erreur lors de l'envoi");
+    }
   }
 
   return (
