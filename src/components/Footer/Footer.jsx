@@ -13,16 +13,16 @@ export default function Footer() {
           <h4>INFORMATIONS</h4>
           <Link to="/presentations">Présentations</Link>
           <Link to="/realisations">Nos réalisations</Link>
-          <Link to="/aide">Besoin d’aide ?</Link>
-          <Link to="/devis">Demande de devis</Link>
+          <Link to="/contact">Besoin d’aide ?</Link>
+          <Link to="/demande-de-devis">Demande de devis</Link>
         </div>
 
         <div className="footerCol">
           <h4>SERVICES</h4>
-          <Link to="/services/organisation">Organisation d’évènements</Link>
+          <Link to="/contact">Organisation d’évènements</Link>
           <Link to="/services/animations">Animations</Link>
           <Link to="/services/team-building">Team Building</Link>
-          <Link to="/services/devis">Devis gratuit</Link>
+          <Link to="/services/demande-de-devis">Devis gratuit</Link>
         </div>
 
         <div className="footerCol">
