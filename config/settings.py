@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "crm",
     "corsheaders",
     "accounts",
+    "reviews"
 ]
 
 MIDDLEWARE = [
