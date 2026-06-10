@@ -22,13 +22,14 @@ export default function AdminPage(){
         <button className="btn" onClick={()=>{logout();nav("/")}}>Déconnexion</button>
       </div>
       <div style={{display:"flex",gap:4,marginBottom:20,borderBottom:"1px solid #eee"}}>
-        {[["prospects","Prospects"],["quotes","Devis"],["reviews","Avis"],["notes","Notes"]].map(([k,l])=>(
+        {[["prospects","Prospects"],["quotes","Devis"],["reviews","Avis"],["users","Utilisateurs"],["notes","Notes"]].map(([k,l])=>(
           <button key={k} onClick={()=>setTab(k)} style={{padding:"8px 16px",border:"none",background:"none",cursor:"pointer",fontWeight:tab===k?"600":"400",borderBottom:tab===k?"2px solid #000":"none",marginBottom:-1}}>{l}</button>
         ))}
       </div>
       {tab==="prospects"&&<ProspectsTab/>}
       {tab==="quotes"&&<QuotesTab/>}
       {tab==="reviews"&&<ReviewsAdminTab/>}
+      {tab==="users"&&<UsersRightsTab currentUser={user}/>}
       {tab==="notes"&&<NotesTab/>}
     </main>
   </>)
@@ -296,6 +297,264 @@ function ReviewsAdminTab() {
       ))}
     </div>
   )
+}
+
+function UsersRightsTab({currentUser}){
+  const[users,setUsers]=useState([])
+  const[loading,setLoading]=useState(true)
+  const[busy,setBusy]=useState(null)
+  const[error,setError]=useState("")
+  const[success,setSuccess]=useState("")
+  const[search,setSearch]=useState("")
+
+  useEffect(()=>{
+    fetch(`${API}/api/users-rights/`,{headers:ah()})
+      .then(async response=>{
+        const data=await response.json().catch(()=>null)
+
+        if(!response.ok){
+          throw data||{detail:`HTTP ${response.status}`}
+        }
+
+        return data
+      })
+      .then(data=>setUsers(data.results||data))
+      .catch(error=>setError(formatApiError(error)))
+      .finally(()=>setLoading(false))
+  },[])
+
+  const filteredUsers=users.filter(user=>{
+    const query=search.trim().toLowerCase()
+
+    if(!query){
+      return true
+    }
+
+    return [
+      user.username,
+      user.email,
+      user.first_name,
+      user.last_name,
+      user.role,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase()
+      .includes(query)
+  })
+
+  async function updateAdminRights(userId,action){
+    const isPromotion=action==="promote-admin"
+
+    const message=isPromotion
+      ? "Donner les droits admin à cet utilisateur ?"
+      : "Retirer les droits admin à cet utilisateur ?"
+
+    if(!window.confirm(message)){
+      return
+    }
+
+    setBusy(userId)
+    setError("")
+    setSuccess("")
+
+    try{
+      const response=await fetch(`${API}/api/users-rights/${userId}/${action}/`,{
+        method:"PATCH",
+        headers:ah(),
+      })
+
+      const data=await response.json().catch(()=>null)
+
+      if(!response.ok){
+        throw data||{detail:`HTTP ${response.status}`}
+      }
+
+      setUsers(previousUsers=>
+        previousUsers.map(user=>user.id===userId?data:user)
+      )
+
+      setSuccess(
+        isPromotion
+          ? `Droits admin accordés à ${data.username}.`
+          : `Droits admin retirés à ${data.username}.`
+      )
+    }catch(error){
+      setError(formatApiError(error))
+    }finally{
+      setBusy(null)
+    }
+  }
+
+  if(loading){
+    return <p>Chargement...</p>
+  }
+
+  return(
+    <div>
+      <h2 style={{marginBottom:12}}>Gestion des utilisateurs</h2>
+
+      <p style={{fontSize:13,color:"#666",marginTop:0,marginBottom:16}}>
+        Ici, l’admin connecté peut donner ou retirer les droits admin à un compte utilisateur déjà existant.
+      </p>
+
+      <div style={{marginBottom:12}}>
+        <input
+          value={search}
+          onChange={e=>setSearch(e.target.value)}
+          placeholder="Rechercher par nom, email, rôle..."
+          style={{
+            width:"100%",
+            maxWidth:420,
+            padding:"8px 10px",
+            border:"1px solid #ddd",
+            borderRadius:6,
+            boxSizing:"border-box",
+          }}
+        />
+      </div>
+
+      {error&&(
+        <p style={{
+          color:"#842029",
+          background:"#f8d7da",
+          border:"1px solid #f5c2c7",
+          borderRadius:4,
+          padding:"8px 10px",
+          fontSize:13,
+        }}>
+          {error}
+        </p>
+      )}
+
+      {success&&(
+        <p style={{
+          color:"#0f5132",
+          background:"#d1e7dd",
+          border:"1px solid #badbcc",
+          borderRadius:4,
+          padding:"8px 10px",
+          fontSize:13,
+        }}>
+          {success}
+        </p>
+      )}
+
+      <div style={{overflowX:"auto"}}>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+          <thead>
+            <tr style={{background:"#f5f5f5"}}>
+              {["Utilisateur","Email","Nom","Rôle","Statut","Action"].map(header=>(
+                <th
+                  key={header}
+                  style={{
+                    padding:"8px 10px",
+                    textAlign:"left",
+                    borderBottom:"2px solid #ddd",
+                  }}
+                >
+                  {header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+
+          <tbody>
+            {filteredUsers.map(user=>{
+              const isCurrentUser=currentUser?.id===user.id
+              const isAdmin=user.is_staff||user.role==="ADMIN"||user.is_superuser
+
+              return(
+                <tr key={user.id} style={{borderBottom:"1px solid #eee"}}>
+                  <td style={{padding:"8px 10px"}}>
+                    <b>{user.username}</b>
+                    {isCurrentUser&&(
+                      <span style={{fontSize:12,color:"#666"}}> — vous</span>
+                    )}
+                  </td>
+
+                  <td style={{padding:"8px 10px"}}>
+                    {user.email?(
+                      <a href={`mailto:${user.email}`}>{user.email}</a>
+                    ):"—"}
+                  </td>
+
+                  <td style={{padding:"8px 10px"}}>
+                    {[user.first_name,user.last_name].filter(Boolean).join(" ")||"—"}
+                  </td>
+
+                  <td style={{padding:"8px 10px"}}>
+                    {user.role||"—"}
+                  </td>
+
+                  <td style={{padding:"8px 10px"}}>
+                    {user.is_superuser?"Super admin":isAdmin?"Admin":"Utilisateur"}
+                  </td>
+
+                  <td style={{padding:"8px 10px"}}>
+                    {user.is_superuser?(
+                      <span style={{color:"#888"}}>Géré côté technique</span>
+                    ):isCurrentUser?(
+                      <span style={{color:"#888"}}>Votre compte</span>
+                    ):isAdmin?(
+                      <button
+                        onClick={()=>updateAdminRights(user.id,"remove-admin")}
+                        disabled={busy===user.id}
+                        style={{
+                          fontSize:12,
+                          padding:"4px 10px",
+                          border:"1px solid #f5c6cb",
+                          borderRadius:4,
+                          background:"#f8d7da",
+                          cursor:"pointer",
+                        }}
+                      >
+                        {busy===user.id?"Modification...":"Retirer droits admin"}
+                      </button>
+                    ):(
+                      <button
+                        onClick={()=>updateAdminRights(user.id,"promote-admin")}
+                        disabled={busy===user.id}
+                        style={{
+                          fontSize:12,
+                          padding:"4px 10px",
+                          border:"1px solid #badbcc",
+                          borderRadius:4,
+                          background:"#d1e7dd",
+                          cursor:"pointer",
+                        }}
+                      >
+                        {busy===user.id?"Modification...":"Donner droits admin"}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+
+function formatApiError(error){
+  if(!error){
+    return "Une erreur est survenue."
+  }
+
+  if(typeof error==="string"){
+    return error
+  }
+
+  if(error.detail){
+    return error.detail
+  }
+
+  return Object.entries(error)
+    .map(([key,value])=>`${key} : ${Array.isArray(value)?value.join(" "):value}`)
+    .join(" | ")||"Une erreur est survenue."
 }
 
 function NotesTab(){
