@@ -22,7 +22,7 @@ export default function Footer() {
           <Link to="/contact">Organisation d’évènements</Link>
           <Link to="/services/animations">Animations</Link>
           <Link to="/services/team-building">Team Building</Link>
-          <Link to="/services/demande-de-devis">Devis gratuit</Link>
+          <Link to="/demande-de-devis">Devis gratuit</Link>
         </div>
 
         <div className="footerCol">
