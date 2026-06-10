@@ -22,9 +22,9 @@ export default function Hero() {
           <Link className="btn" to="/demande-de-devis">
             demandez votre devis
           </Link>
-          <a className="btn-soft" href="#events">
+          <Link className="btn-soft" to="/evenements">
             voir nos événements
-          </a>
+          </Link>
         </div>
       </div>
 
