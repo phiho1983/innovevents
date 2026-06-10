@@ -22,12 +22,13 @@ export default function AdminPage(){
         <button className="btn" onClick={()=>{logout();nav("/")}}>Déconnexion</button>
       </div>
       <div style={{display:"flex",gap:4,marginBottom:20,borderBottom:"1px solid #eee"}}>
-        {[["prospects","Prospects"],["quotes","Devis"],["notes","Notes"]].map(([k,l])=>(
+        {[["prospects","Prospects"],["quotes","Devis"],["reviews","Avis"],["notes","Notes"]].map(([k,l])=>(
           <button key={k} onClick={()=>setTab(k)} style={{padding:"8px 16px",border:"none",background:"none",cursor:"pointer",fontWeight:tab===k?"600":"400",borderBottom:tab===k?"2px solid #000":"none",marginBottom:-1}}>{l}</button>
         ))}
       </div>
       {tab==="prospects"&&<ProspectsTab/>}
       {tab==="quotes"&&<QuotesTab/>}
+      {tab==="reviews"&&<ReviewsAdminTab/>}
       {tab==="notes"&&<NotesTab/>}
     </main>
   </>)
@@ -167,6 +168,134 @@ function CreateQuoteForm({onSuccess}){
       <button type="submit" className="btn" disabled={loading}>{loading?"Création...":"Créer le devis"}</button>
     </form>
   </div>)
+}
+
+function ReviewsAdminTab() {
+  const [reviews, setReviews] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState(null)
+
+  useEffect(() => {
+    fetch(`${API}/api/reviews/`, {
+      headers: ah(),
+    })
+      .then((response) => response.json())
+      .then((data) => setReviews(data.results || data))
+      .finally(() => setLoading(false))
+  }, [])
+
+  async function deleteReview(id) {
+    if (!window.confirm("Supprimer cet avis ?")) {
+      return
+    }
+
+    setBusy(id)
+
+    try {
+      const response = await fetch(`${API}/api/reviews/${id}/`, {
+        method: "DELETE",
+        headers: ah(),
+      })
+
+      if (!response.ok) {
+        throw await response.json().catch(() => ({
+          detail: `HTTP ${response.status}`,
+        }))
+      }
+
+      setReviews((previousReviews) =>
+        previousReviews.filter((review) => review.id !== id)
+      )
+    } catch (error) {
+      alert("Erreur : " + JSON.stringify(error))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  if (loading) {
+    return <p>Chargement...</p>
+  }
+
+  return (
+    <div>
+      <h2 style={{ marginBottom: 12 }}>
+        Avis clients ({reviews.length})
+      </h2>
+
+      {reviews.length === 0 && (
+        <p style={{ color: "#888" }}>Aucun avis pour le moment.</p>
+      )}
+
+      {reviews.map((review) => (
+        <div
+          key={review.id}
+          style={{
+            border: "1px solid #eee",
+            borderRadius: 8,
+            padding: 14,
+            marginBottom: 8,
+            background: "#fff",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 12,
+              marginBottom: 8,
+            }}
+          >
+            <div>
+              <b>{review.author_name || "Inconnu"}</b>{" "}
+              <span
+                style={{
+                  fontSize: 13,
+                  color: "#666",
+                }}
+              >
+                — {"★".repeat(review.rating || 5)}
+              </span>
+            </div>
+
+            <span
+              style={{
+                fontSize: 12,
+                color: "#888",
+              }}
+            >
+              {new Date(review.created_at).toLocaleDateString("fr-FR")}
+            </span>
+          </div>
+
+          <p
+            style={{
+              fontSize: 13,
+              lineHeight: 1.6,
+              margin: "0 0 8px",
+            }}
+          >
+            {review.content}
+          </p>
+
+          <button
+            onClick={() => deleteReview(review.id)}
+            disabled={busy === review.id}
+            style={{
+              fontSize: 12,
+              padding: "4px 10px",
+              border: "1px solid #f5c6cb",
+              borderRadius: 4,
+              background: "#f8d7da",
+              cursor: "pointer",
+            }}
+          >
+            Supprimer
+          </button>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 function NotesTab(){
