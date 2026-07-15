@@ -1,0 +1,86 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-innovevents}
+      POSTGRES_USER: ${POSTGRES_USER:-innovevents}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-innovevents_pwd}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - innovevents_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  mongo:
+    image: mongo:7
+    container_name: innovevents_mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-innovevents}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-innovevents_mongo_pwd}
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-innovevents_logs}
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    volumes:
+      - innovevents_mongodata:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ../innovevents-back
+      dockerfile: ../innovevents-docker/docker/Dockerfile-backend
+    environment:
+      DEBUG: "${DJANGO_DEBUG:-1}"
+      SECRET_KEY: "${DJANGO_SECRET_KEY:-dev-only-change-me}"
+      ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,192.168.1.49}"
+      DATABASE_URL: "postgres://${POSTGRES_USER:-innovevents}:${POSTGRES_PASSWORD:-innovevents_pwd}@db:5432/${POSTGRES_DB:-innovevents}"
+      CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}"
+      CSRF_TRUSTED_ORIGINS: "${CSRF_TRUSTED_ORIGINS:-}"
+      DJANGO_SUPERUSER_USERNAME: "${DJANGO_SUPERUSER_USERNAME:-admin}"
+      DJANGO_SUPERUSER_EMAIL: "${DJANGO_SUPERUSER_EMAIL:-admin@innovevents.local}"
+      DJANGO_SUPERUSER_PASSWORD: "${DJANGO_SUPERUSER_PASSWORD:-admin1234}"
+      MONGO_URL: "mongodb://${MONGO_USER:-innovevents}:${MONGO_PASSWORD:-innovevents_mongo_pwd}@mongo:27017/${MONGO_DB:-innovevents_logs}?authSource=admin"
+      MONGO_DB: "${MONGO_DB:-innovevents_logs}"
+    command: >
+      sh -c "python manage.py migrate --noinput
+      && python scripts/create_superuser.py
+      && python manage.py runserver 0.0.0.0:8000"
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - ../innovevents-back:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ../innovevents-front
+      dockerfile: ../innovevents-docker/docker/Dockerfile-frontend
+    environment:
+      VITE_HOST: "0.0.0.0"
+      VITE_PORT: "${FRONTEND_PORT:-5173}"
+      VITE_API_URL: "${VITE_API_URL:-http://localhost:8000}"
+    command: >
+      sh -c "npm ci
+      && npm run dev -- --host 0.0.0.0 --port 5173"
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    volumes:
+      - ../innovevents-front:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  innovevents_pgdata:
+  innovevents_mongodata:
