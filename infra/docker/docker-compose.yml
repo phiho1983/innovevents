@@ -34,8 +34,8 @@ services:
 
   backend:
     build:
-      context: ../innovevents-back
-      dockerfile: ../innovevents-docker/docker/Dockerfile-backend
+      context: ../../apps/back
+      dockerfile: ../../infra/docker/docker/Dockerfile-backend
     environment:
       DEBUG: "${DJANGO_DEBUG:-1}"
       SECRET_KEY: "${DJANGO_SECRET_KEY:-dev-only-change-me}"
@@ -55,7 +55,7 @@ services:
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     volumes:
-      - ../innovevents-back:/app
+      - ../../apps/back:/app
     depends_on:
       db:
         condition: service_healthy
@@ -64,8 +64,8 @@ services:
 
   frontend:
     build:
-      context: ../innovevents-front
-      dockerfile: ../innovevents-docker/docker/Dockerfile-frontend
+      context: ../../apps/front
+      dockerfile: ../../infra/docker/docker/Dockerfile-frontend
     environment:
       VITE_HOST: "0.0.0.0"
       VITE_PORT: "${FRONTEND_PORT:-5173}"
@@ -76,7 +76,7 @@ services:
     ports:
       - "${FRONTEND_PORT:-5173}:5173"
     volumes:
-      - ../innovevents-front:/app
+      - ../../apps/front:/app
       - /app/node_modules
     depends_on:
       - backend
