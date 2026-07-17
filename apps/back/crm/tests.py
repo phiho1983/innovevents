@@ -1,4 +1,5 @@
 from django.test import TestCase
+from decimal import Decimal
 
 # Create your tests here.
 from django.test import TestCase
@@ -43,9 +44,9 @@ class QuoteModelTest(TestCase):
                                               phone="0600000000",company="Z",city="Paris",message="Ok")
 
     def test_quote_totals(self):
-        q=Quote.objects.create(prospect=self.prospect,tva_rate="0.20")
-        QuoteItem.objects.create(quote=q,label="Traiteur",amount_ht="2000.00")
-        QuoteItem.objects.create(quote=q,label="Salle",amount_ht="1000.00")
+        q = Quote.objects.create(prospect=self.prospect,tva_rate=Decimal("0.20"))
+        QuoteItem.objects.create(quote=q,label="Traiteur",amount_ht=Decimal("2000.00"))
+        QuoteItem.objects.create(quote=q,label="Salle",amount_ht=Decimal("1000.00"))
         self.assertEqual(float(q.total_ht),3000.0)
         self.assertEqual(float(q.total_tva),600.0)
         self.assertEqual(float(q.total_ttc),3600.0)

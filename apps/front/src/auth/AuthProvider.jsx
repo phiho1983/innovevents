@@ -1,8 +1,9 @@
-import React, { createContext, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { AuthContext } from "./AuthContext";
 import { clearTokens, getAccessToken } from "../api/client";
 import { login as apiLogin, me as apiMe } from "../api/auth";
 
-export const AuthContext = createContext(null);
+
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -21,7 +22,7 @@ export function AuthProvider({ children }) {
       const data = await apiMe();
       setUser(data);
       return data;
-    } catch (e) {
+    } catch  {
       clearTokens();
       setUser(null);
       return null;
