@@ -81,8 +81,11 @@ jobs:
       - name: Appliquer les migrations
         run: python manage.py migrate --noinput
 
-      - name: Exécuter les tests
-        run: python manage.py test --verbosity=2
+      - name: Exécuter les tests avec couverture
+        run: coverage run --source=. manage.py test --verbosity=2
+
+      - name: Afficher le rapport de couverture
+        run: coverage report -m --fail-under=60
   
   frontend:
     name: Frontend React

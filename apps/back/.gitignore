@@ -22,3 +22,6 @@ staticfiles/
 Thumbs.db
 # Migrations (NE PAS ignorer)
 # (on garde les migrations versionnées)
+.coverage
+htmlcov/
+coverage.xml
