@@ -66,7 +66,7 @@ Un superuser peut être créé automatiquement au démarrage (si le script scrip
 Exemple dans .env :
 
 DJANGO_SUPERUSER_USERNAME=admin
-DJANGO_SUPERUSER_PASSWORD=1234
+DJANGO_SUPERUSER_PASSWORD=admin1234
 DJANGO_SUPERUSER_EMAIL=admin@innovevents.local
 Refaire les migrations (reset DB)
 Le backend exécute automatiquement :
