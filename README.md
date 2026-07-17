@@ -1,80 +1,74 @@
-﻿# Innovevents
+# Innov'Events
 
-Innovevents est une application de gestion commerciale destinée au secteur événementiel.
+Innov'Events est une plateforme de gestion événementielle destinée à centraliser le suivi des prospects, des clients, des événements, des devis et des échanges internes de l'agence.
 
-Le projet permet notamment de présenter les services de l’entreprise, gérer les prospects, créer des devis, calculer les montants HT, TVA et TTC, générer des documents PDF et accéder à certaines fonctionnalités depuis une application mobile.
+Le projet comprend une application web, une API sécurisée, une application mobile ainsi que les services nécessaires au stockage des données métier et à la journalisation des actions sensibles.
 
-Ce dépôt est organisé sous la forme d’un **monorepo** regroupant le backend, le frontend, l’application mobile et l’infrastructure Docker.
+## Objectifs
 
----
+Innov'Events permet de :
 
-## Fonctionnalités principales
+- centraliser les informations relatives aux prospects et aux clients ;
+- organiser et suivre les événements ;
+- créer, calculer et générer des devis au format PDF ;
+- faciliter la collaboration entre les administrateurs et les employés ;
+- permettre aux clients de consulter et de traiter leurs devis ;
+- accéder aux informations essentielles depuis une application mobile ;
+- conserver une trace des actions sensibles réalisées dans l'application.
 
-* Présentation publique de l’entreprise et de ses services
-* Authentification sécurisée par jetons JWT
-* Gestion des utilisateurs
-* Gestion des prospects
-* Création et suivi des devis
-* Calcul automatique des montants HT, TVA et TTC
-* Génération de devis au format PDF
-* Administration des données avec Django Admin
-* Enregistrement de données applicatives dans PostgreSQL
-* Enregistrement de certaines données techniques dans MongoDB
-* Interface web responsive
-* Application mobile réalisée avec React Native et Expo
+## Technologies utilisées
 
----
+### Application web
 
-## Architecture du monorepo
+- React
+- Vite
+- React Router
+- GSAP
+- Three.js
+
+### API
+
+- Python
+- Django
+- Django REST Framework
+- Simple JWT
+- Gunicorn
+
+### Application mobile
+
+- React Native
+- Expo
+- React Navigation
+
+### Données et infrastructure
+
+- PostgreSQL pour les données relationnelles
+- MongoDB pour la journalisation
+- Docker
+- Docker Compose
+- GitHub Actions pour l'intégration continue
+
+## Structure du projet
 
 ```text
 innovevents/
 ├── apps/
-│   ├── back/                   # API Django REST
-│   ├── front/                  # Application web React
-│   └── mobile/                 # Application mobile Expo / React Native
-│
+│   ├── back/          # API Django
+│   ├── front/         # Application web React
+│   └── mobile/        # Application mobile React Native
 ├── infra/
-│   └── docker/
-│       ├── docker-compose.yml  # Orchestration locale
-│       └── docker/
-│           ├── Dockerfile-backend
-│           └── Dockerfile-frontend
-│
-├── docs/                       # Documentation du projet
-├── .github/                    # Workflows GitHub Actions
-├── .gitignore
+│   └── docker/        # Configuration Docker
+├── docs/              # Documentation technique et fonctionnelle
 └── README.md
 ```
 
----
-
-## Stack technique
-
-| Composant            | Technologies                              |
-| -------------------- | ----------------------------------------- |
-| Frontend web         | React, Vite, React Router, GSAP, Three.js |
-| Backend              | Python, Django, Django REST Framework     |
-| Authentification     | JWT avec Simple JWT                       |
-| Application mobile   | React Native, Expo                        |
-| Base relationnelle   | PostgreSQL 16                             |
-| Base documentaire    | MongoDB 7                                 |
-| Génération PDF       | ReportLab                                 |
-| Conteneurisation     | Docker, Docker Compose                    |
-| Versionnement        | Git, GitHub                               |
-| Intégration continue | GitHub Actions                            |
-
----
-
 ## Prérequis
 
-Avant de lancer le projet, vérifier que les outils suivants sont installés :
+Les outils suivants doivent être installés :
 
-* Git
-* Docker
-* Docker Compose
-* Node.js et npm pour l’application mobile
-* Expo Go sur un téléphone, ou un émulateur Android/iOS
+- Git
+- Docker
+- Docker Compose
 
 Vérification :
 
@@ -82,30 +76,18 @@ Vérification :
 git --version
 docker --version
 docker compose version
-node --version
-npm --version
 ```
 
----
+## Installation
 
-## Installation du projet
-
-### 1. Cloner le monorepo
+Cloner le dépôt puis se placer dans le dossier du projet :
 
 ```bash
-git clone https://github.com/phiho1983/innovevents.git
+git clone <URL_DU_DEPOT>
 cd innovevents
 ```
 
-### 2. Se placer sur la branche de développement
-
-```bash
-git switch dev
-```
-
-### 3. Préparer les variables d’environnement
-
-Sous Linux ou macOS :
+Créer le fichier d'environnement à partir du modèle fourni :
 
 ```bash
 cp infra/docker/.env.example infra/docker/.env
@@ -117,356 +99,259 @@ Sous Windows PowerShell :
 Copy-Item infra/docker/.env.example infra/docker/.env
 ```
 
-Le fichier `.env` contient les paramètres nécessaires au fonctionnement local :
+Renseigner ensuite les variables nécessaires dans le fichier `.env`.
 
-```env
-POSTGRES_DB=innovevents
-POSTGRES_USER=innovevents
-POSTGRES_PASSWORD=change_me
-POSTGRES_PORT=5432
+> Les secrets réels ne doivent jamais être ajoutés au dépôt Git.
 
-MONGO_DB=innovevents_logs
-MONGO_USER=innovevents
-MONGO_PASSWORD=change_me
-MONGO_PORT=27017
+## Démarrage avec Docker
 
-DJANGO_DEBUG=1
-DJANGO_SECRET_KEY=change_me_with_a_long_random_value
-DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
-DJANGO_SUPERUSER_USERNAME=admin
-DJANGO_SUPERUSER_EMAIL=admin@innovevents.local
-DJANGO_SUPERUSER_PASSWORD=change_me
-
-CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
-CSRF_TRUSTED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
-
-BACKEND_PORT=8000
-FRONTEND_PORT=5173
-VITE_API_URL=http://localhost:8000
-```
-
-Les valeurs de cet exemple sont uniquement destinées à l’environnement local.
-
-Le fichier `.env` ne doit jamais être ajouté au dépôt Git.
-
----
-
-## Lancement avec Docker
-
-Toutes les commandes Docker peuvent être exécutées depuis la racine du monorepo.
-
-### Vérifier la configuration
+Se placer dans le dossier contenant la configuration Docker :
 
 ```bash
-docker compose \
-  --env-file infra/docker/.env \
-  -f infra/docker/docker-compose.yml \
-  config
+cd infra/docker
 ```
 
-Cette commande doit se terminer sans erreur avant le lancement des conteneurs.
-
-### Construire et démarrer les services
+Construire et démarrer les services :
 
 ```bash
-docker compose \
-  --env-file infra/docker/.env \
-  -f infra/docker/docker-compose.yml \
-  up --build -d
+docker compose up --build
 ```
 
-### Vérifier l’état des services
+Pour démarrer les services en arrière-plan :
 
 ```bash
-docker compose \
-  --env-file infra/docker/.env \
-  -f infra/docker/docker-compose.yml \
-  ps
+docker compose up --build -d
 ```
 
-Les services suivants doivent être démarrés :
+## Services disponibles
 
-* `db`
-* `mongo`
-* `backend`
-* `frontend`
+| Service | Adresse locale |
+|---|---|
+| Application web | `http://localhost:5173` |
+| API Django | `http://localhost:8000` |
+| Administration Django | `http://localhost:8000/admin` |
+| PostgreSQL | `localhost:5432` |
+| MongoDB | `localhost:27017` |
 
----
+## Arrêt de l'application
 
-## Accès aux applications
+```bash
+docker compose down
+```
 
-| Service               | Adresse                     |
-| --------------------- | --------------------------- |
-| Frontend web          | http://localhost:5173       |
-| Backend Django        | http://localhost:8000       |
-| Administration Django | http://localhost:8000/admin |
-| PostgreSQL            | `localhost:5432`            |
-| MongoDB               | `localhost:27017`           |
+Pour supprimer également les volumes et réinitialiser les données locales :
 
----
+```bash
+docker compose down -v
+```
 
-## Lancement de l’application mobile
+> Cette dernière commande supprime les données enregistrées localement dans PostgreSQL et MongoDB.
 
-L’application mobile n’est pas lancée par le Docker Compose principal.
+## Commandes Docker utiles
 
-Depuis la racine du projet :
+Afficher l'état des services :
+
+```bash
+docker compose ps
+```
+
+Afficher les journaux :
+
+```bash
+docker compose logs -f
+```
+
+Afficher uniquement les journaux du backend :
+
+```bash
+docker compose logs -f backend
+```
+
+Exécuter les migrations Django :
+
+```bash
+docker compose exec backend python manage.py migrate
+```
+
+Créer un compte administrateur :
+
+```bash
+docker compose exec backend python manage.py createsuperuser
+```
+
+Vérifier la configuration Django :
+
+```bash
+docker compose exec backend python manage.py check
+```
+
+Exécuter les tests du backend :
+
+```bash
+docker compose exec backend python manage.py test
+```
+
+## Exécution locale sans Docker
+
+### API Django
+
+```bash
+cd apps/back
+python -m venv .venv
+```
+
+Activation de l'environnement virtuel sous Linux ou macOS :
+
+```bash
+source .venv/bin/activate
+```
+
+Activation sous Windows PowerShell :
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+Installation des dépendances et démarrage :
+
+```bash
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
+```
+
+### Application web
+
+```bash
+cd apps/front
+npm ci
+npm run dev
+```
+
+### Application mobile
 
 ```bash
 cd apps/mobile
 npm ci
-npx expo start
+npm start
 ```
 
-Il est ensuite possible d’ouvrir l’application :
+L'application mobile peut ensuite être ouverte avec Expo Go, un émulateur Android ou un simulateur iOS.
 
-* avec Expo Go sur un téléphone ;
-* avec un émulateur Android ;
-* avec un simulateur iOS ;
-* dans un navigateur avec la commande `npm run web`.
+## Tests et qualité du code
 
-Commandes disponibles :
+### Backend
 
 ```bash
-npm run start
-npm run android
-npm run ios
-npm run web
+cd apps/back
+python manage.py check
+python manage.py test
 ```
 
-L’adresse de l’API utilisée par l’application mobile doit être accessible depuis le téléphone ou l’émulateur.
-
-Depuis un téléphone physique, `localhost` désigne le téléphone lui-même et non l’ordinateur. Il faut donc utiliser l’adresse IP locale de la machine qui exécute le backend.
-
-Exemple :
-
-```text
-http://192.168.1.50:8000
-```
-
----
-
-## Exécution des tests
-
-### Tests du backend Django
+### Frontend
 
 ```bash
-docker compose \
-  --env-file infra/docker/.env \
-  -f infra/docker/docker-compose.yml \
-  exec backend python manage.py test
+cd apps/front
+npm ci
+npm run lint
+npm run build
 ```
 
-### Analyse du frontend
+## Intégration continue
 
-```bash
-docker compose \
-  --env-file infra/docker/.env \
-  -f infra/docker/docker-compose.yml \
-  exec frontend npm run lint
+Le projet utilise GitHub Actions afin de vérifier automatiquement la qualité du code avant son intégration.
+
+Le pipeline exécute notamment :
+
+- l'installation des dépendances ;
+- les vérifications Django ;
+- les tests du backend ;
+- l'analyse ESLint du frontend ;
+- la compilation de l'application web.
+
+Les workflows sont déclenchés lors des `push` et des `pull requests` sur les branches principales du projet.
+
+## Variables d'environnement
+
+Les paramètres propres à chaque environnement sont définis dans un fichier `.env`.
+
+Exemples de variables utilisées :
+
+```dotenv
+DJANGO_SECRET_KEY=
+DJANGO_DEBUG=
+DJANGO_ALLOWED_HOSTS=
+
+POSTGRES_DB=
+POSTGRES_USER=
+POSTGRES_PASSWORD=
+POSTGRES_PORT=
+
+MONGO_DB=
+MONGO_USER=
+MONGO_PASSWORD=
+MONGO_PORT=
+
+CORS_ALLOWED_ORIGINS=
+CSRF_TRUSTED_ORIGINS=
+VITE_API_URL=
+
+DJANGO_SUPERUSER_USERNAME=
+DJANGO_SUPERUSER_EMAIL=
+DJANGO_SUPERUSER_PASSWORD=
 ```
 
-### Build de production du frontend
+Un fichier `.env.example` doit présenter les variables attendues sans contenir de mot de passe ni de secret réel.
 
-```bash
-docker compose \
-  --env-file infra/docker/.env \
-  -f infra/docker/docker-compose.yml \
-  exec frontend npm run build
-```
+## Gestion des versions
 
-Le projet doit être considéré comme valide lorsque :
+Le projet utilise les branches principales suivantes :
 
-1. les conteneurs démarrent correctement ;
-2. le frontend est accessible ;
-3. le backend répond ;
-4. les migrations Django sont appliquées ;
-5. les tests backend réussissent ;
-6. le lint frontend ne retourne aucune erreur bloquante ;
-7. le build frontend se termine correctement.
+- `main` : version stable destinée à la production ;
+- `dev` : branche d'intégration et de développement.
 
----
-
-## Commandes Docker utiles
-
-### Consulter tous les logs
-
-```bash
-docker compose \
-  --env-file infra/docker/.env \
-  -f infra/docker/docker-compose.yml \
-  logs -f
-```
-
-### Consulter les logs du backend
-
-```bash
-docker compose \
-  --env-file infra/docker/.env \
-  -f infra/docker/docker-compose.yml \
-  logs -f backend
-```
-
-### Consulter les logs du frontend
-
-```bash
-docker compose \
-  --env-file infra/docker/.env \
-  -f infra/docker/docker-compose.yml \
-  logs -f frontend
-```
-
-### Arrêter les conteneurs
-
-```bash
-docker compose \
-  --env-file infra/docker/.env \
-  -f infra/docker/docker-compose.yml \
-  down
-```
-
-### Reconstruire les images
-
-```bash
-docker compose \
-  --env-file infra/docker/.env \
-  -f infra/docker/docker-compose.yml \
-  up --build -d
-```
-
-### Supprimer les conteneurs et les volumes
-
-```bash
-docker compose \
-  --env-file infra/docker/.env \
-  -f infra/docker/docker-compose.yml \
-  down -v
-```
-
-> Attention : l’option `-v` supprime les volumes Docker et les données locales de PostgreSQL et MongoDB.
-
----
-
-## Commandes Django utiles
-
-### Appliquer les migrations
-
-```bash
-docker compose \
-  --env-file infra/docker/.env \
-  -f infra/docker/docker-compose.yml \
-  exec backend python manage.py migrate
-```
-
-### Créer les migrations
-
-```bash
-docker compose \
-  --env-file infra/docker/.env \
-  -f infra/docker/docker-compose.yml \
-  exec backend python manage.py makemigrations
-```
-
-### Créer un administrateur
-
-```bash
-docker compose \
-  --env-file infra/docker/.env \
-  -f infra/docker/docker-compose.yml \
-  exec backend python manage.py createsuperuser
-```
-
-### Ouvrir un shell Django
-
-```bash
-docker compose \
-  --env-file infra/docker/.env \
-  -f infra/docker/docker-compose.yml \
-  exec backend python manage.py shell
-```
-
----
-
-## Organisation Git
-
-Le dépôt utilise deux branches principales :
-
-| Branche | Utilisation                               |
-| ------- | ----------------------------------------- |
-| `main`  | Version stable et présentable du projet   |
-| `dev`   | Branche de développement et d’intégration |
-
-Le développement courant est réalisé sur `dev`.
-
-Avant de commencer une modification :
-
-```bash
-git switch dev
-git pull origin dev
-```
-
-Avant un commit :
-
-```bash
-git status
-git diff
-```
-
----
+Les modifications sont développées sur des branches dédiées, puis intégrées dans `dev` après validation. La branche `main` reçoit uniquement les versions testées et approuvées.
 
 ## Documentation
 
-La documentation complète du projet est centralisée dans le dossier `docs/`.
+La documentation du projet est regroupée dans le dossier `docs/`.
 
-L’organisation prévue est la suivante :
+Elle comprend notamment :
 
-```text
-docs/
-├── technical/      # Documentation technique et architecture
-├── user/           # Documentation utilisateur
-├── database/       # MCD, schémas et scripts SQL
-├── diagrams/       # Cas d’utilisation et diagrammes de séquence
-├── deployment/     # Procédures Docker et déploiement
-├── testing/        # Stratégie de tests et couverture
-└── project/        # Kanban, gestion de projet et livrables
-```
-
----
+- l'architecture logicielle ;
+- la conception de la base de données ;
+- le MCD, le MLD et le MPD ;
+- les scripts SQL de création et d'insertion ;
+- la configuration Docker ;
+- la stratégie Git ;
+- le plan de tests ;
+- les rapports de couverture ;
+- la configuration de l'intégration continue ;
+- la procédure de déploiement ;
+- la documentation utilisateur.
 
 ## Sécurité
 
-Les règles suivantes doivent être respectées :
+Les principales mesures mises en œuvre sont :
 
-* ne jamais versionner un fichier `.env` ;
-* ne jamais publier de mot de passe réel ;
-* utiliser une clé Django différente pour chaque environnement ;
-* désactiver le mode `DEBUG` en production ;
-* limiter la valeur de `ALLOWED_HOSTS` ;
-* limiter les origines CORS aux domaines autorisés ;
-* remplacer les identifiants administrateur par défaut ;
-* utiliser HTTPS pour les environnements exposés sur Internet.
+- authentification par jetons JWT ;
+- contrôle des autorisations selon les rôles ;
+- validation des données côté serveur ;
+- stockage sécurisé des mots de passe avec Django ;
+- utilisation de variables d'environnement pour les secrets ;
+- restrictions CORS ;
+- configuration des hôtes autorisés ;
+- journalisation des actions sensibles ;
+- séparation des données relationnelles et des journaux techniques.
 
----
+Les secrets et identifiants de démonstration doivent être remplacés avant tout déploiement en production.
 
-## État du projet
+## Déploiement
 
-Le projet est en cours de mise en conformité pour son déploiement et sa présentation finale.
+La procédure de déploiement est détaillée dans la documentation technique du projet.
 
-Les éléments suivis comprennent notamment :
+Le déploiement de la version de production doit être automatisé depuis la branche `main` après la réussite des contrôles réalisés par le pipeline d'intégration continue.
 
-* conteneurisation complète du monorepo ;
-* automatisation des tests ;
-* intégration continue ;
-* déploiement automatisé ;
-* documentation technique ;
-* documentation utilisateur ;
-* documentation de la base de données ;
-* diagrammes de conception ;
-* amélioration de la couverture des tests.
+## Licence
 
----
-
-## Auteur
-
-Projet Innovevents
-Dépôt GitHub : `phiho1983/innovevents`
-
+Projet réalisé dans le cadre de l'évaluation du titre professionnel Concepteur développeur d'applications.
