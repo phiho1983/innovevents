@@ -1,25 +1,28 @@
-# Innov'Events — Environnement Docker local
+# Innov'Events — Installation locale avec Docker
 
-Ce dépôt contient la configuration Docker nécessaire pour exécuter localement les différents services de l’application **Innov'Events** :
+Ce dépôt contient le projet **Innov'Events** :
 
-- l’application web React ;
-- l’API Django ;
-- la base de données relationnelle PostgreSQL ;
-- la base de données NoSQL MongoDB.
+- backend Django et API REST ;
+- frontend React ;
+- application mobile ;
+- PostgreSQL ;
+- MongoDB ;
+- configuration Docker ;
+- documentation et livrables.
 
-L’objectif est de pouvoir démarrer l’ensemble de l’environnement avec une seule commande grâce à Docker Compose.
+Cette procédure permet à un développeur ou à un examinateur de cloner le dépôt, de créer sa propre configuration locale et de démarrer l'application sans recevoir les mots de passe du développeur.
 
 ---
 
-## Prérequis
+## 1. Prérequis
 
-Les outils suivants doivent être installés :
+Installer :
 
 - Git ;
-- Docker ;
+- Docker Desktop ou Docker Engine ;
 - Docker Compose.
 
-Vérifier leur installation :
+Vérifier l'installation :
 
 ```bash
 git --version
@@ -27,382 +30,480 @@ docker --version
 docker compose version
 ```
 
+Sous Windows, Docker Desktop doit être démarré.
+
 ---
 
-## Organisation des dossiers
-
-Les trois dossiers doivent être placés dans le même dossier parent afin que Docker puisse accéder au code du frontend et du backend.
+## 2. Organisation du dépôt
 
 ```text
 innovevents/
-├── innovevents-docker/   # Configuration Docker
-├── innovevents-back/     # API Django
-└── innovevents-front/    # Application web React
+├── apps/
+│   ├── back/              # Backend Django
+│   ├── front/             # Frontend React
+│   └── mobile/            # Application mobile
+├── infra/
+│   └── docker/
+│       ├── docker-compose.yml
+│       ├── .env.example
+│       └── docker/
+├── Docs/
+├── .github/
+│   └── workflows/
+└── README.md
 ```
 
-Les chemins utilisés dans le fichier `docker-compose.yml` sont notamment :
+Les commandes Docker de ce document doivent être exécutées depuis :
 
 ```text
-../innovevents-back
-../innovevents-front
+infra/docker/
 ```
-
-Si les dossiers portent des noms différents, les chemins définis dans le fichier `docker-compose.yml` devront être adaptés.
 
 ---
 
-## Installation
-
-### Linux et macOS
-
-```bash
-mkdir -p innovevents
-cd innovevents
-
-git clone <URL_BACKEND> innovevents-back
-git clone <URL_FRONTEND> innovevents-front
-git clone https://github.com/phiho1983/innovevents-docker.git innovevents-docker
-```
+## 3. Cloner le dépôt
 
 ### Windows PowerShell
 
 ```powershell
-New-Item -ItemType Directory -Path innovevents
+git clone https://github.com/phiho1983/innovevents.git
 Set-Location innovevents
-
-git clone <URL_BACKEND> innovevents-back
-git clone <URL_FRONTEND> innovevents-front
-git clone https://github.com/phiho1983/innovevents-docker.git innovevents-docker
 ```
-
----
-
-## Configuration de l’environnement
-
-Se placer dans le dossier Docker :
-
-```bash
-cd innovevents-docker
-```
-
-Créer le fichier `.env` à partir du fichier d’exemple.
 
 ### Linux et macOS
 
 ```bash
-cp .env.example .env
+git clone https://github.com/phiho1983/innovevents.git
+cd innovevents
 ```
+
+---
+
+## 4. Gestion des secrets
+
+Le vrai fichier `.env` n'est pas présent sur GitHub.
+
+```text
+.env          → fichier local privé, non versionné
+.env.example  → modèle public, sans secret réel
+```
+
+L'examinateur crée son propre `.env` et choisit ses propres mots de passe.
+
+Les mots de passe du développeur local et ceux de la version déployée ne sont pas communiqués.
+
+---
+
+## 5. Créer le fichier `.env`
+
+Se placer dans le dossier Docker.
 
 ### Windows PowerShell
 
 ```powershell
+Set-Location infra\docker
 Copy-Item .env.example .env
+notepad .env
 ```
 
-Le fichier `.env` permet notamment de configurer :
+### Linux et macOS
 
-- les identifiants PostgreSQL ;
-- les identifiants MongoDB ;
-- la clé secrète Django ;
-- les hôtes autorisés ;
-- les origines CORS ;
-- le compte administrateur de démonstration ;
-- les ports utilisés par les différents services.
+```bash
+cd infra/docker
+cp .env.example .env
+nano .env
+```
 
-Exemple :
+Exemple de configuration :
 
 ```dotenv
+# Django
 DJANGO_DEBUG=1
-DJANGO_SECRET_KEY=dev-only-change-me
+DJANGO_SECRET_KEY=change_me_with_a_long_random_value
 DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+CORS_ALLOWED_ORIGINS=http://localhost:5173
 
+# PostgreSQL
 POSTGRES_DB=innovevents
 POSTGRES_USER=innovevents
-POSTGRES_PASSWORD=innovevents_pwd
+POSTGRES_PASSWORD=change_me
 POSTGRES_PORT=5432
 
+# MongoDB
 MONGO_DB=innovevents_logs
 MONGO_USER=innovevents
-MONGO_PASSWORD=innovevents_mongo_pwd
+MONGO_PASSWORD=change_me
 MONGO_PORT=27017
 
+# Services
 BACKEND_PORT=8000
 FRONTEND_PORT=5173
 VITE_API_URL=http://localhost:8000
 
+# Administrateur Django local
 DJANGO_SUPERUSER_USERNAME=admin
 DJANGO_SUPERUSER_EMAIL=admin@innovevents.local
-DJANGO_SUPERUSER_PASSWORD=admin1234
+DJANGO_SUPERUSER_PASSWORD=change_me
 ```
 
-> Les identifiants présentés ci-dessus sont uniquement destinés au développement local. Ils doivent être remplacés pour un environnement de production.
+Toutes les valeurs `change_me` doivent être remplacées avant le premier démarrage.
 
 ---
 
-## Démarrage de l’application
+## 6. Création automatique des bases et comptes techniques
 
-Depuis le dossier `innovevents-docker`, construire les images et démarrer les services :
+Lors du premier démarrage avec des volumes Docker neufs, Docker utilise les variables du `.env`.
 
-```bash
-docker compose up --build
+### PostgreSQL
+
+Les variables suivantes créent automatiquement :
+
+- la base PostgreSQL ;
+- l'utilisateur PostgreSQL ;
+- son mot de passe.
+
+```dotenv
+POSTGRES_DB=innovevents
+POSTGRES_USER=innovevents
+POSTGRES_PASSWORD=mot_de_passe_choisi
 ```
 
-Pour lancer les services en arrière-plan :
+L'examinateur n'a pas besoin de créer manuellement le compte PostgreSQL.
 
-```bash
-docker compose up --build -d
+### MongoDB
+
+Les variables suivantes créent automatiquement :
+
+- l'utilisateur MongoDB ;
+- son mot de passe ;
+- la base documentaire.
+
+```dotenv
+MONGO_DB=innovevents_logs
+MONGO_USER=innovevents
+MONGO_PASSWORD=mot_de_passe_choisi
 ```
 
-Docker Compose démarre les services suivants :
+L'examinateur n'a pas besoin de créer manuellement le compte MongoDB.
 
-| Service Docker | Rôle |
-|---|---|
-| `frontend` | Application web React |
-| `backend` | API Django |
-| `db` | Base de données PostgreSQL |
-| `mongo` | Base de données MongoDB destinée à la journalisation |
+### Important : les volumes conservent les anciens identifiants
 
-Le backend attend que PostgreSQL et MongoDB soient disponibles avant de démarrer.
+Les mots de passe du `.env` sont utilisés lors de la première initialisation.
 
----
-
-## Accès aux services
-
-| Service | Adresse |
-|---|---|
-| Application web | `http://localhost:5173` |
-| API Django | `http://localhost:8000` |
-| Administration Django | `http://localhost:8000/admin` |
-| PostgreSQL | `localhost:5432` |
-| MongoDB | `localhost:27017` |
-
----
-
-## Stockage des données
-
-Les données sont conservées dans deux volumes Docker :
+Modifier ensuite une valeur dans `.env` ne change pas automatiquement le mot de passe déjà enregistré dans PostgreSQL ou MongoDB.
 
 ```text
-innovevents_pgdata
-innovevents_mongodata
+Premier démarrage   → création des comptes dans les volumes
+Démarrages suivants → réutilisation des comptes existants
 ```
 
-Le volume `innovevents_pgdata` contient les données PostgreSQL.
-
-Le volume `innovevents_mongodata` contient les données MongoDB, notamment les journaux d’activité de l’application.
-
-Les données restent disponibles après l’arrêt ou le redémarrage des conteneurs.
+Sur un clone neuf avec de nouveaux volumes, les valeurs choisies par l'examinateur sont utilisées normalement.
 
 ---
 
-## Création automatique du compte administrateur
+## 7. Compte administrateur Django
 
-Au démarrage, le backend peut exécuter automatiquement :
+Le compte administrateur local est défini avec :
+
+```dotenv
+DJANGO_SUPERUSER_USERNAME=admin
+DJANGO_SUPERUSER_EMAIL=admin@innovevents.local
+DJANGO_SUPERUSER_PASSWORD=mot_de_passe_choisi
+```
+
+Au démarrage, le backend peut exécuter :
 
 ```bash
 python manage.py migrate --noinput
 python scripts/create_superuser.py
 ```
 
-Le compte administrateur est créé à partir des variables définies dans le fichier `.env` :
+Le compte est créé uniquement s'il n'existe pas déjà.
 
-```dotenv
-DJANGO_SUPERUSER_USERNAME=admin
-DJANGO_SUPERUSER_EMAIL=admin@innovevents.local
-DJANGO_SUPERUSER_PASSWORD=admin1234
-```
+Modifier uniquement `DJANGO_SUPERUSER_PASSWORD` dans `.env` ne modifie pas le mot de passe d'un compte déjà présent.
 
-Le script ne recrée pas le compte si celui-ci existe déjà.
-
----
-
-## Arrêt de l’application
-
-Arrêter les services sans supprimer les données :
+Pour changer le mot de passe :
 
 ```bash
-docker compose down
+docker compose exec backend python manage.py changepassword admin
 ```
 
----
-
-## Réinitialisation complète des bases de données
-
-Pour supprimer les conteneurs ainsi que les volumes PostgreSQL et MongoDB :
-
-```bash
-docker compose down -v
-docker compose up --build
-```
-
-> Attention : l’option `-v` supprime définitivement les données locales enregistrées dans PostgreSQL et MongoDB.
-
----
-
-## Commandes utiles
-
-### Afficher l’état des services
-
-```bash
-docker compose ps
-```
-
-### Afficher tous les journaux
-
-```bash
-docker compose logs -f
-```
-
-### Afficher les journaux du backend
-
-```bash
-docker compose logs -f backend
-```
-
-### Afficher les journaux du frontend
-
-```bash
-docker compose logs -f frontend
-```
-
-### Afficher les journaux PostgreSQL
-
-```bash
-docker compose logs -f db
-```
-
-### Afficher les journaux MongoDB
-
-```bash
-docker compose logs -f mongo
-```
-
----
-
-## Commandes Django
-
-### Créer les migrations
-
-```bash
-docker compose exec backend python manage.py makemigrations
-```
-
-### Appliquer les migrations
-
-```bash
-docker compose exec backend python manage.py migrate
-```
-
-### Vérifier la configuration Django
-
-```bash
-docker compose exec backend python manage.py check
-```
-
-### Exécuter les tests
-
-```bash
-docker compose exec backend python manage.py test
-```
-
-### Créer manuellement un administrateur
+Pour créer manuellement un autre administrateur :
 
 ```bash
 docker compose exec backend python manage.py createsuperuser
 ```
 
-### Ouvrir le shell Django
-
-```bash
-docker compose exec backend python manage.py shell
-```
+L'examinateur choisit alors lui-même le nom, l'email et le mot de passe.
 
 ---
 
-## Commandes PostgreSQL
+## 8. Comptes administrateur, employé et client
 
-Ouvrir une console PostgreSQL :
+Le superutilisateur permet d'accéder à :
 
-```bash
-docker compose exec db psql -U innovevents -d innovevents
+```text
+http://localhost:8000/admin
 ```
 
-Afficher les tables :
+Depuis Django Admin, l'examinateur peut créer les comptes nécessaires aux tests :
 
-```sql
-\dt
-```
+- administrateur ;
+- employé ;
+- client.
 
-Quitter la console :
+Aucun mot de passe personnel n'est publié dans le dépôt.
 
-```sql
-\q
-```
-
-Si les valeurs `POSTGRES_USER` ou `POSTGRES_DB` ont été modifiées dans le fichier `.env`, elles doivent également être adaptées dans la commande.
+Les scripts présents dans `Docs/database/` servent à valider le modèle SQL et les données de démonstration. Ils ne remplacent pas les migrations Django ni la création normale des comptes de l'application.
 
 ---
 
-## Commandes MongoDB
+## 9. Démarrer l'environnement
 
-Ouvrir une console MongoDB :
+Depuis `infra/docker` :
 
 ```bash
-docker compose exec mongo mongosh \
-  --username innovevents \
-  --password innovevents_mongo_pwd \
-  --authenticationDatabase admin
+docker compose up --build -d
 ```
 
-Sélectionner la base utilisée pour les journaux :
+Services démarrés :
 
-```javascript
-use innovevents_logs
-```
+| Service | Rôle |
+|---|---|
+| `frontend` | Application React |
+| `backend` | API Django |
+| `db` | PostgreSQL |
+| `mongo` | MongoDB |
 
-Afficher les collections :
-
-```javascript
-show collections
-```
-
-Afficher les documents de la collection des journaux :
-
-```javascript
-db.logs.find().pretty()
-```
-
-Quitter la console :
-
-```javascript
-exit
-```
-
-Si les variables `MONGO_USER`, `MONGO_PASSWORD` ou `MONGO_DB` ont été modifiées dans le fichier `.env`, leurs valeurs doivent également être adaptées dans les commandes.
-
----
-
-## Vérification du fonctionnement
-
-Après le démarrage, vérifier que tous les services sont actifs :
+Vérifier leur état :
 
 ```bash
 docker compose ps
 ```
 
-Les services `db` et `mongo` doivent être indiqués comme sains :
+Résultat attendu :
 
 ```text
-healthy
+backend    Up
+frontend   Up
+db         Up (healthy)
+mongo      Up (healthy)
 ```
 
-Vérifier ensuite l’API Django :
+Afficher aussi les conteneurs arrêtés :
+
+```bash
+docker compose ps -a
+```
+
+---
+
+## 10. Accès aux services
+
+| Service | Adresse |
+|---|---|
+| Application web | `http://localhost:5173` |
+| API Django | `http://localhost:8000` |
+| Django Admin | `http://localhost:8000/admin` |
+| PostgreSQL | `localhost:5432` |
+| MongoDB | `localhost:27017` |
+
+---
+
+## 11. Première connexion de l'examinateur
+
+1. Cloner le dépôt.
+2. Copier `.env.example` vers `.env`.
+3. Remplacer toutes les valeurs `change_me`.
+4. Démarrer Docker.
+5. Ouvrir `http://localhost:5173`.
+6. Utiliser le compte défini dans `DJANGO_SUPERUSER_USERNAME`.
+7. Utiliser le mot de passe choisi dans `DJANGO_SUPERUSER_PASSWORD`.
+
+Vérifier les comptes Django existants :
+
+```bash
+docker compose exec backend python manage.py shell -c "from django.contrib.auth import get_user_model; U=get_user_model(); print(list(U.objects.values('username','email','is_staff','is_superuser','is_active')))"
+```
+
+Réinitialiser le mot de passe admin :
+
+```bash
+docker compose exec backend python manage.py changepassword admin
+```
+
+---
+
+## 12. Persistance des données
+
+Les données sont conservées dans des volumes Docker.
+
+Les données restent présentes après :
+
+```bash
+docker compose down
+```
+
+Le volume PostgreSQL conserve notamment les comptes Django, événements, réservations, prospects, devis et migrations.
+
+---
+
+## 13. Arrêt et redémarrage
+
+Arrêter sans supprimer les données :
+
+```bash
+docker compose down
+```
+
+Redémarrer :
+
+```bash
+docker compose up -d
+```
+
+---
+
+## 14. Réinitialisation complète
+
+Pour supprimer les volumes et recréer l'environnement :
+
+```bash
+docker compose down -v
+docker compose up --build -d
+```
+
+Attention : cette opération supprime définitivement toutes les données locales PostgreSQL et MongoDB.
+
+Au redémarrage, les comptes techniques et le compte administrateur sont recréés à partir du `.env` actuel.
+
+---
+
+## 15. Changer les mots de passe après initialisation
+
+### Django
+
+```bash
+docker compose exec backend python manage.py changepassword admin
+```
+
+### PostgreSQL
+
+Une erreur telle que :
+
+```text
+password authentication failed for user "innovevents"
+```
+
+indique souvent que le `.env` ne correspond plus au mot de passe enregistré dans le volume.
+
+Pour aligner PostgreSQL avec le `.env` :
+
+```bash
+docker compose exec db psql -U innovevents -d innovevents -c "ALTER USER innovevents WITH PASSWORD 'nouveau_mot_de_passe';"
+```
+
+La valeur doit être identique à :
+
+```dotenv
+POSTGRES_PASSWORD=nouveau_mot_de_passe
+```
+
+Cette commande ne supprime pas les tables ni les données.
+
+### MongoDB
+
+Modifier `MONGO_PASSWORD` dans `.env` ne met pas à jour un utilisateur MongoDB déjà stocké.
+
+En local, lorsqu'aucune donnée ne doit être conservée :
+
+```bash
+docker compose down -v
+docker compose up --build -d
+```
+
+---
+
+## 16. Commandes utiles
+
+### Journaux
+
+```bash
+docker compose logs -f
+docker compose logs -f backend
+docker compose logs -f frontend
+docker compose logs -f db
+docker compose logs -f mongo
+```
+
+### Django
+
+```bash
+docker compose exec backend python manage.py check
+docker compose exec backend python manage.py migrate
+docker compose exec backend python manage.py makemigrations --check --dry-run
+docker compose exec backend python manage.py test --verbosity=2
+docker compose exec backend python manage.py createsuperuser
+docker compose exec backend python manage.py changepassword admin
+```
+
+### Couverture backend
+
+```bash
+docker compose exec backend coverage erase
+docker compose exec backend coverage run --source=. manage.py test --verbosity=1
+docker compose exec backend coverage report -m
+```
+
+### PostgreSQL
+
+```bash
+docker compose exec db psql -U innovevents -d innovevents
+```
+
+Dans `psql` :
+
+```sql
+\dt
+\q
+```
+
+### MongoDB
+
+```bash
+docker compose exec mongo mongosh --username innovevents --password mot_de_passe_du_env --authenticationDatabase admin
+```
+
+Puis :
+
+```javascript
+use innovevents_logs
+show collections
+exit
+```
+
+---
+
+## 17. Vérification du fonctionnement
+
+```bash
+docker compose ps
+docker compose exec backend python manage.py check
+```
+
+Tester l'API :
 
 ```bash
 curl http://localhost:8000
 ```
 
-Puis ouvrir l’application web dans un navigateur :
+Sous PowerShell :
+
+```powershell
+Invoke-WebRequest http://localhost:8000
+```
+
+Ouvrir ensuite :
 
 ```text
 http://localhost:5173
@@ -410,115 +511,140 @@ http://localhost:5173
 
 ---
 
-## Reconstruction des services
+## 18. Résolution des problèmes courants
 
-Reconstruire tous les services :
-
-```bash
-docker compose build --no-cache
-docker compose up
-```
-
-Reconstruire uniquement le backend :
+### Backend arrêté
 
 ```bash
-docker compose build --no-cache backend
-docker compose up backend
+docker compose ps -a
+docker compose logs --tail=150 backend
 ```
 
-Reconstruire uniquement le frontend :
+### Erreur PostgreSQL
 
-```bash
-docker compose build --no-cache frontend
-docker compose up frontend
+Vérifier que `POSTGRES_PASSWORD` correspond au mot de passe conservé dans le volume.
+
+### Tables déjà présentes
+
+Un script de création SQL doit être exécuté sur une base vide.
+
+### Accents incorrects sous PowerShell
+
+Copier le script dans le conteneur :
+
+```powershell
+docker compose cp chemin\script.sql db:/tmp/script.sql
 ```
 
----
+Puis :
 
-## Résolution des problèmes courants
-
-### Le backend ne trouve pas PostgreSQL
-
-Vérifier l’état du service :
-
-```bash
-docker compose ps db
-docker compose logs db
+```powershell
+docker compose exec db psql -U innovevents -d nom_base -f /tmp/script.sql
 ```
 
-### Le backend ne trouve pas MongoDB
+### Frontend sans accès à l'API
 
-Vérifier l’état du service :
-
-```bash
-docker compose ps mongo
-docker compose logs mongo
-```
-
-Vérifier également la variable `MONGO_URL` transmise au backend.
-
-### Le frontend ne communique pas avec l’API
-
-Vérifier la valeur suivante dans le fichier `.env` :
+Vérifier :
 
 ```dotenv
 VITE_API_URL=http://localhost:8000
+CORS_ALLOWED_ORIGINS=http://localhost:5173
 ```
 
-Vérifier également la configuration CORS du backend.
+### Port déjà utilisé
 
-### Docker ne trouve pas le frontend ou le backend
+Modifier les ports dans `.env`.
 
-Vérifier que les dossiers sont correctement placés :
+---
+
+## 19. Application mobile
+
+L'application mobile est située dans :
 
 ```text
-innovevents/
-├── innovevents-docker/
-├── innovevents-back/
-└── innovevents-front/
+apps/mobile/
 ```
 
-Vérifier ensuite les chemins `context` et `volumes` définis dans le fichier `docker-compose.yml`.
+Elle n'est pas démarrée par le Docker Compose web présenté ici.
 
-### Un port est déjà utilisé
+Consulter la documentation du dossier mobile pour installer ses dépendances, configurer l'URL de l'API et lancer l'application.
 
-Modifier le port correspondant dans le fichier `.env`.
+---
 
-Exemple :
+## 20. Sécurité
 
-```dotenv
-FRONTEND_PORT=5174
-BACKEND_PORT=8001
-POSTGRES_PORT=5433
-MONGO_PORT=27018
+- Ne jamais versionner `.env`.
+- Ne jamais publier un vrai mot de passe.
+- Conserver uniquement `.env.example` dans Git.
+- Remplacer toutes les valeurs `change_me`.
+- Utiliser une clé Django longue et aléatoire.
+- Ne pas afficher les mots de passe dans les captures.
+- Ne pas réutiliser les identifiants Render en local.
+- Ne pas exposer PostgreSQL ou MongoDB publiquement.
+
+La version locale et la version Render utilisent des bases et des comptes distincts.
+
+```text
+Docker local → base locale et mots de passe locaux
+Render       → base distante et mots de passe distants
 ```
 
 ---
 
-## Sécurité
+## 21. Vérifier que `.env` est ignoré
 
-Les bonnes pratiques suivantes doivent être respectées :
+Depuis la racine :
 
-- ne jamais versionner le fichier `.env` ;
-- ne pas utiliser les mots de passe de démonstration en production ;
-- utiliser une clé secrète Django complexe ;
-- limiter les valeurs de `DJANGO_ALLOWED_HOSTS` ;
-- limiter les origines autorisées par CORS ;
-- ne pas exposer PostgreSQL et MongoDB publiquement ;
-- sauvegarder séparément les données PostgreSQL et MongoDB ;
-- remplacer les identifiants administrateur avant le déploiement.
+```bash
+git status
+git check-ignore infra/docker/.env
+```
+
+Résultat attendu :
+
+```text
+infra/docker/.env
+```
 
 ---
 
-## Services utilisés
+## 22. Procédure résumée pour l'examinateur
 
-L’environnement Docker utilise les images suivantes :
+### Windows PowerShell
 
-```text
-postgres:16
-mongo:7
+```powershell
+git clone https://github.com/phiho1983/innovevents.git
+Set-Location innovevents\infra\docker
+Copy-Item .env.example .env
+notepad .env
+docker compose up --build -d
+docker compose ps
 ```
 
-PostgreSQL stocke les données relationnelles de l’application.
+### Linux et macOS
 
-MongoDB stocke les journaux d’activité et les informations techniques nécessitant une structure documentaire flexible.
+```bash
+git clone https://github.com/phiho1983/innovevents.git
+cd innovevents/infra/docker
+cp .env.example .env
+nano .env
+docker compose up --build -d
+docker compose ps
+```
+
+L'examinateur choisit ses propres mots de passe, démarre les services et utilise le compte administrateur défini dans son `.env`.
+
+---
+
+## Conclusion
+
+Une installation neuve ne nécessite pas les identifiants personnels du développeur.
+
+L'examinateur :
+
+- crée son propre `.env` ;
+- choisit ses propres mots de passe ;
+- démarre Docker ;
+- obtient automatiquement PostgreSQL et MongoDB ;
+- crée ou utilise son propre administrateur Django ;
+- crée ensuite les comptes fonctionnels nécessaires aux tests.
