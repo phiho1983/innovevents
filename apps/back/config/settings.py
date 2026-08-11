@@ -1,4 +1,3 @@
-# innovevents-back/config/settings.py
 """
 Django settings for config project.
 
@@ -11,7 +10,13 @@ import os
 
 import dj_database_url
 
+
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+# -------------------------
+# GENERAL
+# -------------------------
 
 SECRET_KEY = os.getenv(
     "SECRET_KEY",
@@ -22,27 +27,44 @@ DEBUG = os.getenv("DEBUG", "1") == "1"
 
 
 allowed_hosts = os.getenv("ALLOWED_HOSTS", "")
-ALLOWED_HOSTS = [h.strip() for h in allowed_hosts.split(",") if h.strip()] or [
+
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in allowed_hosts.split(",")
+    if h.strip()
+] or [
     "localhost",
     "127.0.0.1",
 ]
+
+
+# -------------------------
+# APPLICATIONS
+# -------------------------
 
 INSTALLED_APPS = [
     "rest_framework",
     "events",
     "bookings",
+
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+
     "django_extensions",
     "crm",
     "corsheaders",
     "accounts",
-    "reviews"
+    "reviews",
 ]
+
+
+# -------------------------
+# MIDDLEWARE
+# -------------------------
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -56,7 +78,13 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+
 ROOT_URLCONF = "config.urls"
+
+
+# -------------------------
+# TEMPLATES
+# -------------------------
 
 TEMPLATES = [
     {
@@ -73,15 +101,26 @@ TEMPLATES = [
     }
 ]
 
+
 WSGI_APPLICATION = "config.wsgi.application"
+
 
 # -------------------------
 # DATABASE
 # -------------------------
-# Local: Postgres Docker (souvent sans SSL) -> REQUIRE_DB_SSL=0 (par défaut)
-# Prod: Render + Neon (souvent SSL requis)  -> REQUIRE_DB_SSL=1 dans Render
+
+# Local :
+# PostgreSQL Docker, généralement sans SSL.
+#
+# Production :
+# Render + Neon, SSL généralement requis.
+#
+# REQUIRE_DB_SSL=0 en local
+# REQUIRE_DB_SSL=1 en production
+
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 REQUIRE_DB_SSL = os.getenv("REQUIRE_DB_SSL", "0") == "1"
+
 
 DATABASES = {
     "default": dj_database_url.config(
@@ -91,66 +130,176 @@ DATABASES = {
     )
 }
 
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+SECURE_PROXY_SSL_HEADER = (
+    "HTTP_X_FORWARDED_PROTO",
+    "https",
+)
+
+
+# -------------------------
+# AUTHENTIFICATION
+# -------------------------
+
+AUTH_USER_MODEL = "accounts.User"
+
 
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
-    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
-    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+    {
+        "NAME": (
+            "django.contrib.auth.password_validation."
+            "UserAttributeSimilarityValidator"
+        )
+    },
+    {
+        "NAME": (
+            "django.contrib.auth.password_validation."
+            "MinimumLengthValidator"
+        )
+    },
+    {
+        "NAME": (
+            "django.contrib.auth.password_validation."
+            "CommonPasswordValidator"
+        )
+    },
+    {
+        "NAME": (
+            "django.contrib.auth.password_validation."
+            "NumericPasswordValidator"
+        )
+    },
 ]
 
+
+# -------------------------
+# INTERNATIONALISATION
+# -------------------------
+
 LANGUAGE_CODE = "fr-fr"
+
 TIME_ZONE = "UTC"
+
 USE_I18N = True
+
 USE_TZ = True
 
+
 # -------------------------
-# STATIC FILES (Render needs STATIC_ROOT for collectstatic)
+# STATIC FILES
 # -------------------------
+
 STATIC_URL = "static/"
+
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+
 STORAGES = {
-    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+    "default": {
+        "BACKEND": (
+            "django.core.files.storage.FileSystemStorage"
+        )
+    },
+    "staticfiles": {
+        "BACKEND": (
+            "whitenoise.storage."
+            "CompressedManifestStaticFilesStorage"
+        )
+    },
 }
+
 
 # -------------------------
 # DRF / JWT
 # -------------------------
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        (
+            "rest_framework_simplejwt.authentication."
+            "JWTAuthentication"
+        ),
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "DEFAULT_PAGINATION_CLASS": (
+        "rest_framework.pagination.PageNumberPagination"
+    ),
     "PAGE_SIZE": 10,
 }
+
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
 }
 
+
 # -------------------------
 # EMAIL
 # -------------------------
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-DEFAULT_FROM_EMAIL = "no-reply@innovevents.com"
+
+# En développement local :
+# Django -> SMTP -> Mailpit
+#
+# Docker fournit :
+# EMAIL_HOST=mailpit
+# EMAIL_PORT=1025
+
+EMAIL_BACKEND = (
+    "django.core.mail.backends.smtp.EmailBackend"
+)
+
+EMAIL_HOST = os.getenv(
+    "EMAIL_HOST",
+    "localhost",
+)
+
+EMAIL_PORT = int(
+    os.getenv(
+        "EMAIL_PORT",
+        "1025",
+    )
+)
+
+EMAIL_USE_TLS = False
+
+EMAIL_USE_SSL = False
+
+
+DEFAULT_FROM_EMAIL = "no-reply@innovevents.local"
+
 QUOTE_CONTACT_EMAIL = "contact@innovevents.com"
-THANK_YOU_MESSAGE = "Merci ! Votre demande de devis a bien été envoyée. Nous revenons vers vous rapidement."
+
+THANK_YOU_MESSAGE = (
+    "Merci ! Votre demande de devis a bien été envoyée. "
+    "Nous revenons vers vous rapidement."
+)
+
 
 # -------------------------
 # CORS / CSRF
 # -------------------------
+
 cors_origins = os.getenv(
     "CORS_ALLOWED_ORIGINS",
     "http://localhost:5173,http://127.0.0.1:5173",
 )
-CORS_ALLOWED_ORIGINS = [o.strip() for o in cors_origins.split(",") if o.strip()]
 
-csrf_trusted = os.getenv("CSRF_TRUSTED_ORIGINS", "")
-CSRF_TRUSTED_ORIGINS = [o.strip() for o in csrf_trusted.split(",") if o.strip()]
-AUTH_USER_MODEL = "accounts.User"
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in cors_origins.split(",")
+    if origin.strip()
+]
+
+
+csrf_trusted = os.getenv(
+    "CSRF_TRUSTED_ORIGINS",
+    "",
+)
+
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in csrf_trusted.split(",")
+    if origin.strip()
+]

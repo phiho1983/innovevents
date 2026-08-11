@@ -48,6 +48,8 @@ services:
       DJANGO_SUPERUSER_PASSWORD: "${DJANGO_SUPERUSER_PASSWORD:-admin1234}"
       MONGO_URL: "mongodb://${MONGO_USER:-innovevents}:${MONGO_PASSWORD:-innovevents_mongo_pwd}@mongo:27017/${MONGO_DB:-innovevents_logs}?authSource=admin"
       MONGO_DB: "${MONGO_DB:-innovevents_logs}"
+      EMAIL_HOST: "mailpit"
+      EMAIL_PORT: "1025"
     command: >
       sh -c "python manage.py migrate --noinput
       && python scripts/create_superuser.py
@@ -81,6 +83,17 @@ services:
     depends_on:
       - backend
 
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: innovevents_mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
 volumes:
   innovevents_pgdata:
   innovevents_mongodata:
+
+
+
+
