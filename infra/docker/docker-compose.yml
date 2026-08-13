@@ -45,7 +45,7 @@ services:
       CSRF_TRUSTED_ORIGINS: "${CSRF_TRUSTED_ORIGINS:-}"
       DJANGO_SUPERUSER_USERNAME: "${DJANGO_SUPERUSER_USERNAME:-admin}"
       DJANGO_SUPERUSER_EMAIL: "${DJANGO_SUPERUSER_EMAIL:-admin@innovevents.local}"
-      DJANGO_SUPERUSER_PASSWORD: "${DJANGO_SUPERUSER_PASSWORD:-admin1234}"
+      DJANGO_SUPERUSER_PASSWORD: "${DJANGO_SUPERUSER_PASSWORD:-}"
       MONGO_URL: "mongodb://${MONGO_USER:-innovevents}:${MONGO_PASSWORD:-innovevents_mongo_pwd}@mongo:27017/${MONGO_DB:-innovevents_logs}?authSource=admin"
       MONGO_DB: "${MONGO_DB:-innovevents_logs}"
       EMAIL_HOST: "mailpit"

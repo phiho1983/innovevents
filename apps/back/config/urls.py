@@ -11,7 +11,9 @@ from accounts.views import (
     verify_email,
     LoggedTokenObtainPairView,
     forgot_password,
+    reset_password,
     change_password,
+    resend_code,
 )
 
 
@@ -62,7 +64,17 @@ urlpatterns = [
     ),
 
     path(
+        "api/reset-password/",
+        reset_password,
+    ),
+
+    path(
         "api/change-password/",
         change_password,
+    ),
+
+    path(
+    "api/resend-code/",
+    resend_code,
     ),
 ]

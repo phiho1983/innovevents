@@ -3,7 +3,6 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
 from django.db import transaction
-from django.utils.crypto import get_random_string
 
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, permission_classes, action
@@ -14,7 +13,10 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from config.mongo import log_action
 
 from .models import VerificationCode
-from .serializers import UserRightsSerializer
+from .serializers import (
+    UserRightsSerializer,
+    VerifiedTokenObtainPairSerializer,
+)
 from .services import create_verification_code, check_verification_code
 
 
@@ -41,6 +43,8 @@ class IsDashboardAdmin(BasePermission):
 
 
 class LoggedTokenObtainPairView(TokenObtainPairView):
+    serializer_class = VerifiedTokenObtainPairSerializer
+
     def post(self, request, *args, **kwargs):
         ip = (
             request.META.get("HTTP_X_FORWARDED_FOR", "")
@@ -235,53 +239,251 @@ def verify_email(request):
         status=status.HTTP_200_OK,
     )
 
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def resend_code(request):
+    email = (
+        request.data.get("email") or ""
+    ).strip().lower()
+
+    purpose = (
+        request.data.get("purpose") or ""
+    ).strip()
+
+    if not email:
+        return Response(
+            {"email": ["Obligatoire."]},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    allowed_purposes = [
+        VerificationCode.Purpose.EMAIL_VERIFICATION,
+        VerificationCode.Purpose.PASSWORD_RESET,
+    ]
+
+    if purpose not in allowed_purposes:
+        return Response(
+            {"purpose": ["Type de code invalide."]},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    user = User.objects.filter(
+        email__iexact=email
+    ).first()
+
+    generic_response = {
+        "detail": (
+            "Si cet email existe, "
+            "un nouveau code a été envoyé."
+        )
+    }
+
+    if not user:
+        return Response(
+            generic_response,
+            status=status.HTTP_200_OK,
+        )
+
+    if (
+        purpose
+        == VerificationCode.Purpose.EMAIL_VERIFICATION
+        and user.email_verified
+    ):
+        return Response(
+            {
+                "detail": (
+                    "Adresse e-mail déjà vérifiée."
+                )
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    code, _ = create_verification_code(
+        user,
+        purpose,
+    )
+
+    if purpose == VerificationCode.Purpose.EMAIL_VERIFICATION:
+        subject = "Nouveau code de vérification Innov'Events"
+
+        message = (
+            f"Bonjour {user.username},\n\n"
+            f"Votre nouveau code de vérification est : {code}\n\n"
+            "Ce code est valable pendant 10 minutes.\n\n"
+            "Si vous n'êtes pas à l'origine de cette demande, "
+            "vous pouvez ignorer ce message."
+        )
+
+    else:
+        subject = "Nouveau code de réinitialisation Innov'Events"
+
+        message = (
+            f"Bonjour {user.username},\n\n"
+            f"Votre nouveau code de réinitialisation est : {code}\n\n"
+            "Ce code est valable pendant 10 minutes.\n\n"
+            "Si vous n'êtes pas à l'origine de cette demande, "
+            "vous pouvez ignorer ce message."
+        )
+
+    send_mail(
+        subject=subject,
+        message=message,
+        from_email=None,
+        recipient_list=[user.email],
+        fail_silently=False,
+    )
+
+    return Response(
+        generic_response,
+        status=status.HTTP_200_OK,
+    )
+
+
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def forgot_password(request):
     email = (
         request.data.get("email") or ""
-    ).strip()
+    ).strip().lower()
+
+    generic_response = {
+        "detail": (
+            "Si cet email existe, "
+            "un code de réinitialisation a été envoyé."
+        )
+    }
+
+    if not email:
+        return Response(
+            {"email": ["Obligatoire."]},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     user = User.objects.filter(
-        email=email
+        email__iexact=email
     ).first()
 
     if not user:
         return Response(
-            {
-                "detail": (
-                    "Si cet email existe, "
-                    "un mail a été envoyé."
-                )
-            },
+            generic_response,
             status=status.HTTP_200_OK,
         )
 
-    tmp = get_random_string(16)
-
-    user.set_password(tmp)
-    user.must_change_password = True
-    user.save()
+    code, _ = create_verification_code(
+        user,
+        VerificationCode.Purpose.PASSWORD_RESET,
+    )
 
     send_mail(
-        "Réinitialisation de votre mot de passe Innov'Events",
-        (
-            "Votre nouveau mot de passe temporaire : "
-            f"{tmp}\n\n"
-            "Vous devrez le modifier "
-            "à la prochaine connexion."
+        subject="Réinitialisation de votre mot de passe Innov'Events",
+        message=(
+            f"Bonjour {user.username},\n\n"
+            f"Votre code de réinitialisation est : {code}\n\n"
+            "Ce code est valable pendant 10 minutes.\n\n"
+            "Si vous n'êtes pas à l'origine de cette demande, "
+            "vous pouvez ignorer ce message."
         ),
-        None,
-        [email],
-        fail_silently=True,
+        from_email=None,
+        recipient_list=[user.email],
+        fail_silently=False,
+    )
+
+    return Response(
+        generic_response,
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def reset_password(request):
+    email = (
+        request.data.get("email") or ""
+    ).strip().lower()
+
+    code = (
+        request.data.get("code") or ""
+    ).strip()
+
+    new_password = (
+        request.data.get("password") or ""
+    )
+
+    if not email:
+        return Response(
+            {"email": ["Obligatoire."]},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not code:
+        return Response(
+            {"code": ["Obligatoire."]},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not new_password:
+        return Response(
+            {"password": ["Obligatoire."]},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    user = User.objects.filter(
+        email__iexact=email
+    ).first()
+
+    if not user:
+        return Response(
+            {"detail": "Code invalide ou expiré."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        validate_password(
+            new_password,
+            user=user,
+        )
+
+    except ValidationError as exc:
+        return Response(
+            {"password": list(exc.messages)},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    valid, reason = check_verification_code(
+        user,
+        VerificationCode.Purpose.PASSWORD_RESET,
+        code,
+    )
+
+    if not valid:
+        return Response(
+            {"detail": "Code invalide ou expiré."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    user.set_password(new_password)
+    user.must_change_password = False
+
+    user.save(
+        update_fields=[
+            "password",
+            "must_change_password",
+        ]
+    )
+
+    log_action(
+        "MOT_DE_PASSE_REINITIALISE",
+        user.id,
+        {
+            "username": user.username,
+        },
     )
 
     return Response(
         {
             "detail": (
-                "Si cet email existe, "
-                "un mail a été envoyé."
+                "Mot de passe réinitialisé avec succès."
             )
         },
         status=status.HTTP_200_OK,
