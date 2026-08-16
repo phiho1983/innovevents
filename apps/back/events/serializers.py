@@ -1,8 +1,8 @@
-from rest_framework import serializers
 from django.db.models import Sum
+from rest_framework import serializers
 
-from .models import Event
-from bookings.models import Booking  # adapte le chemin si besoin
+from bookings.models import Booking
+from .models import Event, HomePhoto
 
 
 class EventSerializer(serializers.ModelSerializer):
@@ -18,23 +18,53 @@ class EventSerializer(serializers.ModelSerializer):
 
     def validate_capacity(self, value):
         if value <= 0:
-            raise serializers.ValidationError("La capacité doit être supérieure à 0.")
+            raise serializers.ValidationError(
+                "La capacité doit être supérieure à 0."
+            )
 
-        # Si update : empêcher capacity < places déjà prises (PENDING + CONFIRMED)
+        # Si update : empêcher capacity < places déjà prises
+        # (PENDING + CONFIRMED)
         if self.instance:
             taken = (
                 Booking.objects
                 .filter(
                     event=self.instance,
-                    status__in=[Booking.Status.PENDING, Booking.Status.CONFIRMED],
+                    status__in=[
+                        Booking.Status.PENDING,
+                        Booking.Status.CONFIRMED,
+                    ],
                 )
                 .aggregate(total=Sum("quantity"))
-                .get("total") or 0
+                .get("total")
+                or 0
             )
 
             if value < taken:
                 raise serializers.ValidationError(
-                    f"Impossible de réduire la capacité à {value} : {taken} place(s) déjà réservée(s)."
+                    f"Impossible de réduire la capacité à {value} : "
+                    f"{taken} place(s) déjà réservée(s)."
                 )
 
         return value
+
+
+class HomePhotoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = HomePhoto
+
+        fields = [
+            "id",
+            "slot",
+            "image_url",
+            "cloudinary_public_id",
+            "alt_text",
+            "updated_at",
+        ]
+
+        read_only_fields = [
+            "id",
+            "slot",
+            "image_url",
+            "cloudinary_public_id",
+            "updated_at",
+        ]
