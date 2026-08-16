@@ -239,12 +239,11 @@ SIMPLE_JWT = {
 # EMAIL
 # -------------------------
 
-# En développement local :
+# Local :
 # Django -> SMTP -> Mailpit
 #
-# Docker fournit :
-# EMAIL_HOST=mailpit
-# EMAIL_PORT=1025
+# Production :
+# Django -> API HTTPS Brevo
 
 EMAIL_BACKEND = (
     "django.core.mail.backends.smtp.EmailBackend"
@@ -263,11 +262,29 @@ EMAIL_PORT = int(
 )
 
 EMAIL_USE_TLS = False
-
 EMAIL_USE_SSL = False
 
 
-DEFAULT_FROM_EMAIL = "no-reply@innovevents.local"
+DEFAULT_FROM_EMAIL = os.getenv(
+    "DEFAULT_FROM_EMAIL",
+    "no-reply@innovevents.local",
+)
+
+BREVO_API_KEY = os.getenv(
+    "BREVO_API_KEY",
+    "",
+)
+
+BREVO_SENDER_EMAIL = os.getenv(
+    "BREVO_SENDER_EMAIL",
+    "",
+)
+
+BREVO_SENDER_NAME = os.getenv(
+    "BREVO_SENDER_NAME",
+    "Innov'Events",
+)
+
 
 QUOTE_CONTACT_EMAIL = "contact@innovevents.com"
 
@@ -275,7 +292,6 @@ THANK_YOU_MESSAGE = (
     "Merci ! Votre demande de devis a bien été envoyée. "
     "Nous revenons vers vous rapidement."
 )
-
 
 # -------------------------
 # CORS / CSRF

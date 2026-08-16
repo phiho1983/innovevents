@@ -1,8 +1,8 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from django.core.mail import send_mail
 from django.db import transaction
+from .email_service import send_transactional_email
 
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, permission_classes, action
@@ -153,19 +153,17 @@ def signup(request):
             VerificationCode.Purpose.EMAIL_VERIFICATION,
         )
 
-    send_mail(
-        subject="Votre code de vérification Innov'Events",
-        message=(
-            f"Bonjour {user.username},\n\n"
-            f"Votre code de vérification est : {code}\n\n"
-            "Ce code est valable pendant 10 minutes.\n\n"
-            "Si vous n'êtes pas à l'origine de cette inscription, "
-            "vous pouvez ignorer ce message."
-        ),
-        from_email=None,
-        recipient_list=[user.email],
-        fail_silently=False,
-    )
+    send_transactional_email(
+    recipient_email=user.email,
+    subject="Votre code de vérification Innov'Events",
+    text_content=(
+        f"Bonjour {user.username},\n\n"
+        f"Votre code de vérification est : {code}\n\n"
+        "Ce code est valable pendant 10 minutes.\n\n"
+        "Si vous n'êtes pas à l'origine de cette inscription, "
+        "vous pouvez ignorer ce message."
+    ),
+)
 
     return Response(
         {
@@ -325,13 +323,11 @@ def resend_code(request):
             "vous pouvez ignorer ce message."
         )
 
-    send_mail(
-        subject=subject,
-        message=message,
-        from_email=None,
-        recipient_list=[user.email],
-        fail_silently=False,
-    )
+    send_transactional_email(
+    recipient_email=user.email,
+    subject=subject,
+    text_content=message,
+)
 
     return Response(
         generic_response,
@@ -375,19 +371,17 @@ def forgot_password(request):
         VerificationCode.Purpose.PASSWORD_RESET,
     )
 
-    send_mail(
-        subject="Réinitialisation de votre mot de passe Innov'Events",
-        message=(
-            f"Bonjour {user.username},\n\n"
-            f"Votre code de réinitialisation est : {code}\n\n"
-            "Ce code est valable pendant 10 minutes.\n\n"
-            "Si vous n'êtes pas à l'origine de cette demande, "
-            "vous pouvez ignorer ce message."
-        ),
-        from_email=None,
-        recipient_list=[user.email],
-        fail_silently=False,
-    )
+    send_transactional_email(
+    recipient_email=user.email,
+    subject="Réinitialisation de votre mot de passe Innov'Events",
+    text_content=(
+        f"Bonjour {user.username},\n\n"
+        f"Votre code de réinitialisation est : {code}\n\n"
+        "Ce code est valable pendant 10 minutes.\n\n"
+        "Si vous n'êtes pas à l'origine de cette demande, "
+        "vous pouvez ignorer ce message."
+    ),
+)
 
     return Response(
         generic_response,
