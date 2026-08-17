@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.db import transaction
 
 from rest_framework import status as http_status
 from rest_framework.decorators import action
@@ -7,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from accounts.permissions import IsBusinessAdmin
+from events.models import Event
 
 from .models import Booking
 from .serializers import BookingSerializer
@@ -39,7 +41,9 @@ class BookingViewSet(ModelViewSet):
     """
 
     serializer_class = BookingSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [
+        IsAuthenticated
+    ]
 
     def is_internal_user(self):
         user = self.request.user
@@ -57,8 +61,10 @@ class BookingViewSet(ModelViewSet):
         )
 
     def get_queryset(self):
-        queryset = Booking.objects.all().order_by(
-            "-created_at"
+        queryset = (
+            Booking.objects
+            .all()
+            .order_by("-created_at")
         )
 
         # ADMIN / EMPLOYEE :
@@ -74,17 +80,137 @@ class BookingViewSet(ModelViewSet):
 
     def perform_create(self, serializer):
         """
-        La réservation appartient toujours
-        à l'utilisateur authentifié.
+        Création transactionnelle d'une réservation.
 
-        Le client ne peut donc jamais injecter
-        un autre user dans le payload.
+        Le client ne peut jamais injecter :
+        - un autre utilisateur ;
+        - un statut CONFIRMED.
+
+        L'événement est verrouillé avec SELECT FOR UPDATE
+        pendant la dernière vérification de capacité.
+
+        Deux créations simultanées pour le même événement
+        ne peuvent donc pas toutes les deux se baser
+        sur la même capacité disponible.
         """
 
-        serializer.save(
-            user=self.request.user,
-            status=Booking.Status.PENDING,
+        event = serializer.validated_data[
+            "event"
+        ]
+
+        quantity = serializer.validated_data[
+            "quantity"
+        ]
+
+        with transaction.atomic():
+            locked_event = (
+                Event.objects
+                .select_for_update()
+                .get(pk=event.pk)
+            )
+
+            BookingSerializer.ensure_capacity(
+                event=locked_event,
+                quantity=quantity,
+            )
+
+            serializer.save(
+                event=locked_event,
+                user=self.request.user,
+                status=Booking.Status.PENDING,
+            )
+
+    def perform_update(self, serializer):
+        """
+        Modification transactionnelle.
+
+        La réservation courante est verrouillée.
+
+        Les événements concernés sont ensuite verrouillés
+        dans un ordre déterministe afin de réduire
+        les risques de deadlock.
+
+        La capacité est recalculée à l'intérieur
+        de la transaction avant l'enregistrement.
+        """
+
+        booking_id = (
+            serializer.instance.pk
         )
+
+        requested_event = (
+            serializer.validated_data
+            .get("event")
+        )
+
+        requested_quantity = (
+            serializer.validated_data
+            .get("quantity")
+        )
+
+        with transaction.atomic():
+            locked_booking = (
+                Booking.objects
+                .select_for_update()
+                .get(pk=booking_id)
+            )
+
+            if requested_event is not None:
+                target_event_id = (
+                    requested_event.pk
+                )
+            else:
+                target_event_id = (
+                    locked_booking.event_id
+                )
+
+            event_ids = sorted(
+                {
+                    locked_booking.event_id,
+                    target_event_id,
+                }
+            )
+
+            locked_events = {
+                event.pk: event
+                for event in (
+                    Event.objects
+                    .select_for_update()
+                    .filter(pk__in=event_ids)
+                    .order_by("pk")
+                )
+            }
+
+            target_event = (
+                locked_events[
+                    target_event_id
+                ]
+            )
+
+            if requested_quantity is not None:
+                quantity = (
+                    requested_quantity
+                )
+            else:
+                quantity = (
+                    locked_booking.quantity
+                )
+
+            BookingSerializer.ensure_capacity(
+                event=target_event,
+                quantity=quantity,
+                exclude_booking_id=(
+                    locked_booking.pk
+                ),
+            )
+
+            serializer.instance = (
+                locked_booking
+            )
+
+            serializer.save(
+                event=target_event
+            )
 
     @action(
         detail=True,

@@ -58,13 +58,20 @@ class EventSerializer(serializers.ModelSerializer):
         return obj.remaining_capacity()
 
     def validate_capacity(self, value):
+        """
+        La capacité d'un événement doit toujours
+        être strictement supérieure à zéro.
+
+        Lors d'une modification, elle ne peut pas
+        devenir inférieure au nombre de places
+        déjà réservées.
+        """
+
         if value <= 0:
             raise serializers.ValidationError(
                 "La capacité doit être supérieure à 0."
             )
 
-        # Lors d'une modification, empêcher de réduire la capacité
-        # sous le nombre de places déjà réservées.
         if self.instance:
             taken = (
                 Booking.objects
@@ -87,6 +94,51 @@ class EventSerializer(serializers.ModelSerializer):
                 )
 
         return value
+
+    def validate(self, attrs):
+        """
+        Vérifie la cohérence chronologique
+        de l'événement.
+
+        end_at reste facultatif.
+
+        S'il est renseigné, il doit obligatoirement
+        être postérieur à start_at.
+        """
+
+        start_at = attrs.get(
+            "start_at",
+            getattr(
+                self.instance,
+                "start_at",
+                None,
+            ),
+        )
+
+        end_at = attrs.get(
+            "end_at",
+            getattr(
+                self.instance,
+                "end_at",
+                None,
+            ),
+        )
+
+        if (
+            start_at is not None
+            and end_at is not None
+            and end_at <= start_at
+        ):
+            raise serializers.ValidationError(
+                {
+                    "end_at": (
+                        "La date de fin doit être "
+                        "postérieure à la date de début."
+                    )
+                }
+            )
+
+        return attrs
 
 
 class HomePhotoSerializer(serializers.ModelSerializer):
