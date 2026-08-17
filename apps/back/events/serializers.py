@@ -2,16 +2,57 @@ from django.db.models import Sum
 from rest_framework import serializers
 
 from bookings.models import Booking
+
 from .models import Event, HomePhoto
 
 
+class PublicEventSerializer(serializers.ModelSerializer):
+    """
+    Serializer destiné aux visiteurs et utilisateurs non internes.
+
+    Il n'expose que les informations nécessaires à l'affichage public
+    d'un événement.
+    """
+
+    remaining_capacity = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Event
+        fields = (
+            "id",
+            "title",
+            "description",
+            "city",
+            "start_at",
+            "end_at",
+            "capacity",
+            "remaining_capacity",
+            "event_type",
+            "theme",
+            "image",
+        )
+        read_only_fields = fields
+
+    def get_remaining_capacity(self, obj):
+        return obj.remaining_capacity()
+
+
 class EventSerializer(serializers.ModelSerializer):
+    """
+    Serializer interne utilisé pour la gestion des événements.
+    """
+
     remaining_capacity = serializers.SerializerMethodField()
 
     class Meta:
         model = Event
         fields = "__all__"
-        read_only_fields = ("id", "organizer")
+        read_only_fields = (
+            "id",
+            "organizer",
+            "created_at",
+            "remaining_capacity",
+        )
 
     def get_remaining_capacity(self, obj):
         return obj.remaining_capacity()
@@ -22,8 +63,8 @@ class EventSerializer(serializers.ModelSerializer):
                 "La capacité doit être supérieure à 0."
             )
 
-        # Si update : empêcher capacity < places déjà prises
-        # (PENDING + CONFIRMED)
+        # Lors d'une modification, empêcher de réduire la capacité
+        # sous le nombre de places déjà réservées.
         if self.instance:
             taken = (
                 Booking.objects
@@ -51,20 +92,4 @@ class EventSerializer(serializers.ModelSerializer):
 class HomePhotoSerializer(serializers.ModelSerializer):
     class Meta:
         model = HomePhoto
-
-        fields = [
-            "id",
-            "slot",
-            "image_url",
-            "cloudinary_public_id",
-            "alt_text",
-            "updated_at",
-        ]
-
-        read_only_fields = [
-            "id",
-            "slot",
-            "image_url",
-            "cloudinary_public_id",
-            "updated_at",
-        ]
+        fields = "__all__"

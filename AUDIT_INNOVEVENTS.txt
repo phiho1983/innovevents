@@ -1,0 +1,449 @@
+AUDIT TECHNIQUE, FONCTIONNEL ET SECURITE — INNOV'EVENTS
+======================================================
+
+Date de l'audit : 17 août 2026
+Branche auditée : staging
+Commit audité : 85995c9 — feat(home): add homepage photo slots and API
+Périmètre : dépôt complet (web React, API Django, mobile Expo, Docker, CI/CD, migrations, tests, documentation et historique Git accessible)
+Nature de l'audit : lecture seule et analyse statique ; aucune correction, installation, migration ou écriture autre que le présent rapport
+
+
+1. SYNTHESE EXECUTIVE
+====================
+
+Verdict global : NON PRET POUR LA PRODUCTION.
+
+Le dépôt présente une base de MVP cohérente : monorepo lisible, séparation web/API/mobile, modèles métier déjà substantiels, authentification JWT avec vérification d'e-mail, migrations versionnées, environnement Docker local et pipeline CI. Les 69 fichiers Python passent une analyse syntaxique AST sans erreur.
+
+Cependant, un défaut bloquant rend actuellement l'endpoint des événements inutilisable : EventSerializer appelle obj.remaining_capacity(), méthode absente du modèle Event. En parallèle, l'endpoint public des événements renvoie par défaut tous les événements, y compris les brouillons et ceux sans consentement client, tant que l'appelant omet le paramètre public. Ce second défaut constitue une exposition de données métier potentiellement personnelles.
+
+La gestion des rôles est incohérente entre role, is_staff et is_superuser. Elle rend les droits difficiles à raisonner, exclut les employés de plusieurs fonctions annoncées, et permet à tout compte ayant role=ADMIN d'attribuer des droits administrateur. Les actions sur les devis ne contrôlent pas les transitions d'état. Les réservations restent vulnérables à la surréservation concurrente. Les endpoints publics sensibles n'ont ni limitation de débit ni défense anti-automatisation visible.
+
+La qualité est en retrait : seulement 22 tests backend détectés, aucun test frontend/mobile, aucune étape mobile dans la CI, seuil de couverture backend limité à 60 %, dépendances Python partiellement non figées et images Docker non immuables. La documentation décrit parfois une cible plus aboutie que l'implémentation réelle.
+
+Evaluation pondérée globale : 49 %
+
+- Fonctionnel et conformité métier : 54 %
+- Architecture et maintenabilité : 57 %
+- Sécurité applicative : 38 %
+- Données, intégrité et migrations : 57 %
+- Tests et assurance qualité : 31 %
+- DevOps, Docker et production : 43 %
+- Frontend web, UX et accessibilité : 55 %
+- Application mobile : 32 %
+- Documentation : 72 %
+
+Confiance de l'évaluation : élevée pour les constats statiques ; moyenne pour le comportement d'exécution, car l'environnement local ne permettait pas d'exécuter la suite complète sans installer de dépendances, ce qui était interdit.
+
+
+2. METHODE, PREUVES ET LIMITES
+==============================
+
+Eléments inspectés :
+- structure et fichiers cachés utiles ;
+- état Git, branches et 20 derniers commits ;
+- code Python/Django, JavaScript/JSX React et React Native ;
+- modèles, serializers, vues, permissions, routes et migrations ;
+- fichiers package.json, package-lock.json et requirements.txt ;
+- Dockerfiles, docker-compose.yml et modèles d'environnement ;
+- workflow GitHub Actions ;
+- documentation fonctionnelle, technique, API, tests, base de données et déploiement ;
+- fichier .env local accessible, sans reproduire ses secrets dans ce rapport.
+
+Contrôles exécutés sans modification durable :
+- analyse syntaxique AST des 69 fichiers Python : 69 analysés, 0 erreur syntaxique ;
+- recherche statique de secrets, permissions, stockage de jetons et marqueurs techniques ;
+- contrôle Git avant rédaction : arbre propre ;
+- inventaire : environ 3 622 lignes Python, 2 866 lignes frontend et 334 lignes mobile.
+
+Contrôles non exécutés :
+- tests Django et django check : Django n'est pas installé dans l'interpréteur disponible ;
+- lint frontend : le répertoire node_modules présent ne fournit pas l'exécutable ESLint ;
+- build frontend : non exécuté car il générerait dist, écriture interdite ;
+- tests Docker, PostgreSQL, MongoDB, Mailpit et réseau : non exécutés pour éviter toute création de conteneur, volume ou donnée ;
+- audit dynamique OWASP, test de charge, scan de dépendances en ligne et validation réelle de déploiement : hors environnement disponible.
+
+Les captures de réussite et de couverture présentes dans Docs sont des preuves historiques, pas une validation du commit audité.
+
+
+3. INVENTAIRE ET ARCHITECTURE
+=============================
+
+Architecture observée :
+- apps/back : Django 6, Django REST Framework, SimpleJWT, PostgreSQL/SQLite, MongoDB pour les journaux, ReportLab et Brevo/SMTP ;
+- apps/front : React 19, Vite 7, React Router 7, GSAP et Three.js ;
+- apps/mobile : Expo 54, React Native 0.81 et React Navigation ;
+- infra/docker : PostgreSQL 16, MongoDB 7, backend de développement, frontend Vite et Mailpit ;
+- .github/workflows/ci.yml : validation backend et frontend sur dev/main ;
+- Docs : documentation fonctionnelle, technique, API, SQL, CI/CD et déploiement.
+
+Points positifs :
+- séparation claire des applications et des responsabilités ;
+- configuration majoritairement pilotée par variables d'environnement ;
+- migrations présentes pour les modèles inspectés ;
+- permissions DRF explicites sur la majorité des viewsets ;
+- mots de passe utilisateurs gérés par Django ;
+- codes de vérification hachés, expirables, consommables et limités à cinq essais ;
+- requêtes Mongo avec délais d'attente, l'échec de journalisation ne bloque pas le métier ;
+- serializers distincts pour création publique et consultation administrative des prospects ;
+- filtrage des devis et réservations par utilisateur non staff ;
+- CI avec check Django, dérive des migrations, tests, couverture, lint et build web.
+
+Faiblesses structurelles :
+- logique métier concentrée dans des vues longues et très compactes ;
+- imports effectués dans les méthodes, styles et conventions hétérogènes ;
+- trois systèmes d'autorisation concurrents : role, is_staff et is_superuser ;
+- aucune couche de service métier pour les transitions de devis/réservation ou la conversion prospect-client ;
+- pas de schéma OpenAPI généré ni de validation contractuelle entre clients et API ;
+- pas d'observabilité structurée : print pour Mongo, pas de configuration logging, métriques, traces ou remontée d'erreurs.
+
+
+4. PROBLEMES CRITIQUES — P0
+===========================
+
+P0-01 — Endpoint événements cassé par une méthode inexistante
+Preuve : apps/back/events/serializers.py, get_remaining_capacity(), appelle obj.remaining_capacity(). Aucune méthode remaining_capacity n'existe dans apps/back/events/models.py ni ailleurs dans le dépôt.
+Impact : toute sérialisation d'un Event déclenche vraisemblablement AttributeError et une réponse HTTP 500. Sont concernés la liste publique, le détail, le tableau de bord, le client web et l'application mobile.
+Priorité : correction immédiate avant toute recette ou livraison.
+Recommandation : implémenter une propriété/méthode unique et testée calculant la somme PENDING+CONFIRMED, ou annoter la requête ; ajouter des tests API list/retrieve et capacité restante.
+
+P0-02 — Fuite potentielle d'événements privés ou non consentis
+Preuve : EventViewSet autorise AllowAny pour list/retrieve. get_queryset() ne filtre visible=True, client_agreed=True et status != DRAFT que si le paramètre public est fourni. GET /api/events/ sans ce paramètre retourne Event.objects.all(). Le serializer expose fields="__all__", incluant client, organizer, statut, image et autres données.
+Impact : un visiteur anonyme peut consulter des événements brouillons, invisibles ou sans accord client, ainsi que leurs associations utilisateur. Risque confidentialité/RGPD et secret commercial.
+Priorité : correction immédiate, revue des données potentiellement déjà exposées et des journaux d'accès de production.
+Recommandation : appliquer un queryset public sûr par défaut aux anonymes ; réserver la vue complète aux rôles autorisés ; employer des serializers public/interne séparés ; ne jamais fonder une restriction d'accès sur un paramètre fourni par le client.
+
+
+5. PROBLEMES MAJEURS — P1
+==========================
+
+P1-01 — Modèle d'autorisation incohérent et escalade de privilèges interne
+Preuve : IsDashboardAdmin accepte is_staff, is_superuser OU role=ADMIN. promote_admin attribue role=ADMIN et is_staff=True. Les autres endpoints administratifs utilisent surtout IsAdminUser, qui ne regarde que is_staff. Le rôle EMPLOYEE n'est donc pas aligné avec les fonctions promises.
+Impact : un compte dont seul role vaut ADMIN peut promouvoir d'autres comptes ; un EMPLOYEE sans is_staff ne peut pas utiliser les fonctions métier ; un utilisateur staff est traité comme administrateur même si son role indique autre chose.
+Recommandation : définir une matrice RBAC unique, utiliser des permissions nommées par capacité, synchroniser ou supprimer les indicateurs redondants, réserver la gestion des administrateurs aux superadmins, tester toutes les combinaisons.
+
+P1-02 — Conversion prospect-client crée un compte difficilement utilisable et transmet un mot de passe
+Preuve : crm/views.py convert crée un utilisateur avec username dérivé de l'e-mail, mais le message transmis présente l'e-mail comme « Login ». Le compte conserve email_verified=False alors que le login JWT refuse tout e-mail non vérifié. must_change_password n'est pas positionné à True. Le mot de passe temporaire est envoyé en clair par e-mail avec fail_silently=True.
+Impact : le client peut être incapable de se connecter ; absence de preuve d'envoi ; pratique de sécurité faible ; parcours incohérent.
+Recommandation : envoyer un lien/code d'activation à usage unique, ne jamais transmettre de mot de passe, fixer explicitement les états du compte, afficher le vrai identifiant ou authentifier par e-mail, encapsuler l'opération dans transaction.atomic.
+
+P1-03 — Transitions de devis non protégées
+Preuve : accept, refuse et request_change affectent directement le statut sans vérifier qu'il est SENT, sans verrouillage et sans idempotence métier. Un administrateur authentifié peut aussi appeler ces actions, car elles exigent seulement IsAuthenticated et son queryset n'est pas filtré.
+Impact : un devis DRAFT, ACCEPTED ou REFUSED peut être rebasculé arbitrairement ; traçabilité et valeur contractuelle fragilisées.
+Recommandation : machine à états explicite, permissions par acteur, transaction et select_for_update, horodatage/identité de décision, journalisation de toutes les transitions et tests négatifs.
+
+P1-04 — Surréservation possible en concurrence
+Preuve : BookingSerializer calcule la capacité disponible puis la création est réalisée séparément, sans transaction ni verrou de ligne. Deux requêtes simultanées peuvent valider la même capacité.
+Impact : dépassement de capacité d'événement.
+Recommandation : transaction.atomic + verrouillage de l'événement/réservations, contrainte ou compteur atomique, puis test concurrent.
+
+P1-05 — Endpoints publics sans limitation de débit
+Preuve : aucune DEFAULT_THROTTLE_CLASSES/RATES dans settings et aucun throttling local sur login, signup, verify-email, resend-code, forgot-password, reset-password et création de prospect.
+Impact : brute force, spam d'e-mails, coût Brevo, enumeration temporelle, déni de service et pollution CRM. La limite de cinq essais protège un code individuel mais l'attaquant peut demander de nouveaux codes.
+Recommandation : limites par IP, compte et route, délai minimal de renvoi, quota quotidien, CAPTCHA adaptatif, protection au reverse proxy et alertes.
+
+P1-06 — Configuration production incomplète
+Preuve : DEBUG vaut 1 par défaut ; SECRET_KEY a un fallback connu ; absence visible de SECURE_SSL_REDIRECT, SESSION_COOKIE_SECURE, CSRF_COOKIE_SECURE, HSTS, SECURE_HSTS_INCLUDE_SUBDOMAINS, SECURE_CONTENT_TYPE_NOSNIFF et politique CSP. Le Docker Compose exécute runserver et le frontend Vite de développement.
+Impact : une variable oubliée peut produire une configuration faible ; les conteneurs décrits ne constituent pas une stack de production.
+Recommandation : settings séparés ou validation fail-fast en production, Gunicorn réellement utilisé, reverse proxy TLS, en-têtes de sécurité, cookies sécurisés, CSP et check --deploy dans la CI de livraison.
+
+
+6. PROBLEMES IMPORTANTS — P2
+=============================
+
+P2-01 — Jetons web conservés dans localStorage
+Impact : tout XSS peut voler access et refresh tokens. Aucun rafraîchissement automatique n'est implémenté malgré le stockage du refresh token.
+Recommandation : cookie HttpOnly/Secure/SameSite adapté ou architecture BFF ; à défaut CSP stricte, durée courte, rotation et révocation ; centraliser le refresh et le traitement des 401.
+
+P2-02 — Changement de mot de passe affaibli
+Preuve : change_password vérifie seulement une longueur de huit caractères, contrairement à signup/reset qui appellent validate_password. Il ne demande pas l'ancien mot de passe et ne révoque pas les JWT existants.
+Recommandation : validate_password, confirmation de l'ancien secret ou réauthentification, blacklist/rotation des tokens et audit.
+
+P2-03 — Validation insuffisante des événements
+Preuve : pas de validation end_at > start_at, client_agreed cohérent avec client, visible cohérent avec le statut, dates de réservation, ou limite du paramètre upcoming. int(upcoming) peut lever ValueError ou accepter des valeurs excessives/négatives.
+Recommandation : validations serializer, filtres bornés et typés, réponses 400 explicites.
+
+P2-04 — Mise à jour/suppression de réservation trop permissive
+Preuve : BookingViewSet hérite de ModelViewSet ; un client propriétaire peut PATCH/PUT/DELETE sa réservation via les routes standards, y compris changer event/quantity selon le serializer. cancel n'impose pas de fenêtre temporelle et permet d'annuler une réservation confirmée sans workflow métier.
+Recommandation : limiter les méthodes, définir les transitions et délais, journaliser, tester les cas confirmés/passés.
+
+P2-05 — Intégrité des devis insuffisante
+Preuve : Quote autorise simultanément client et prospect nuls ou tous deux renseignés ; tva_rate et amount_ht n'ont pas de validateurs métier ; update() ne gère pas les items imbriqués ; aucune référence métier immuable ni version de document.
+Recommandation : contraintes CheckConstraint, montants non négatifs, versionnage, numéro unique, snapshot des coordonnées et conditions au moment de l'envoi.
+
+P2-06 — Avis publiés sans modération
+Preuve : le champ validated a été supprimé par migration ; tout utilisateur authentifié peut créer un avis immédiatement visible publiquement. La documentation annonce la validation des avis côté employé.
+Impact : contenu abusif ou inapproprié immédiatement public, divergence fonctionnelle.
+Recommandation : statut de modération, workflow et permissions dédiées, signalement et tests.
+
+P2-07 — Notes et application mobile incohérentes
+Preuve : le mobile envoie {content, event} vers /api/notes/, mais le modèle Note n'a aucun champ event ; le serializer rejettera ce champ. NoteViewSet exige IsAdminUser alors que l'interface et la documentation parlent de collaboration employés. L'écran EmployeePage est essentiellement un texte indicatif et n'est pas routé dans App.jsx.
+Impact : ajout de note mobile non fonctionnel ; espace employé annoncé mais absent/inaccessible.
+Recommandation : décider si les notes portent sur client, événement ou global ; aligner modèle, API et clients ; router et implémenter l'espace employé ; tester bout en bout.
+
+P2-08 — Mobile incomplet et configuration figée
+Preuve : URL API Render codée en dur ; seul l'access token est stocké, sans refresh ni logout robuste ; aucun script lint/test/build ; aucune étape mobile en CI ; ClientScreen et EventDetail reposent sur un produit API dont la cohérence n'est pas garantie.
+Recommandation : configuration par environnement/build profile, stockage sécurisé natif, cycle JWT complet, gestion offline/erreurs et CI Expo.
+
+P2-09 — Gestion d'erreurs frontend fragmentée
+Preuve : appels fetch directs et apiFetch coexistent ; plusieurs .catch(console.error), catch vide, alert(JSON.stringify), réponses parfois consommées sans vérifier response.ok. Pas d'ErrorBoundary ni de stratégie globale 401/403/5xx.
+Recommandation : client API unique, erreurs typées, refresh contrôlé, composants d'état accessibles, télémétrie sans données sensibles.
+
+P2-10 — E-mails incohérents
+Preuve : les flux comptes utilisent send_transactional_email/Brevo, mais prospects, devis et conversion utilisent directement send_mail. Plusieurs appels ont fail_silently=True. QUOTE_CONTACT_EMAIL est codé en dur dans settings.
+Recommandation : service unique, configuration par environnement, files/retry, journal de livraison et contenu HTML/texte testé.
+
+P2-11 — Journalisation non exhaustive et données sensibles
+Preuve : seules certaines actions sont envoyées à Mongo ; acceptation/refus de devis, réservations, suppression d'avis et changement de mot de passe ne sont pas tous audités. Les erreurs Mongo sont imprimées. Les identifiants et e-mails peuvent entrer dans les logs sans politique de rétention.
+Recommandation : catalogue d'événements d'audit, logs structurés, corrélation, contrôle d'accès, rétention/purge RGPD, chiffrement et alerte de panne.
+
+P2-12 — Risque de suppression en cascade
+Preuve : Event.organizer utilise CASCADE ; supprimer un organisateur supprime ses événements puis leurs réservations. Review.author et plusieurs relations utilisent aussi CASCADE.
+Recommandation : politique d'archivage/anonymisation, PROTECT ou SET_NULL selon le métier, tests de suppression et conservation légale.
+
+
+7. PROBLEMES MODERES ET DETTE — P3
+==================================
+
+- requirements.txt mélange versions exactes et bornes minimales (gunicorn, dj-database-url, whitenoise, Pillow, reportlab, requests), ce qui nuit à la reproductibilité.
+- psycopg et psycopg-binary sont installés ensemble sans justification visible.
+- images Docker postgres:16, mongo:7, node:22-alpine, python:3.12-slim et mailpit:latest ne sont pas figées par digest ; mailpit:latest est particulièrement non déterministe.
+- conteneurs exécutés vraisemblablement en root ; pas de USER non privilégié, read_only, cap_drop, limites ressources ou politiques de redémarrage.
+- ports PostgreSQL, MongoDB et SMTP sont exposés sur l'hôte par défaut, inutile et risqué hors développement local.
+- aucun .dockerignore visible : contextes plus lourds et risque d'inclusion de fichiers locaux/secrets dans les couches.
+- Docker frontend installe les dépendances à l'image puis npm ci est relancé à chaque démarrage avec un volume node_modules.
+- pas de healthcheck backend/frontend ni de condition de santé avant démarrage frontend.
+- backend Docker local ne passe pas REQUIRE_DB_SSL, ce qui est acceptable localement mais la séparation production reste implicite.
+- endpoint /api/health/ ne vérifie ni PostgreSQL ni MongoDB et est non versionné.
+- API non versionnée (/api/ seulement), compliquant les évolutions compatibles.
+- EventSerializer fields="__all__" augmente le risque d'exposition lors de l'ajout futur d'un champ.
+- HomePhotoSerializer rend alt_text modifiable mais le viewset est ReadOnly : incohérence mineure.
+- stockage ImageField présent sans MEDIA_ROOT/MEDIA_URL/stockage production visible ; aucun service de médias Docker.
+- plusieurs écrans utilisent beaucoup de styles inline et un code minifié manuellement, défavorable à la maintenance et aux revues.
+- textes visiblement mal encodés dans plusieurs sorties/outils ; vérifier l'encodage UTF-8 réel et le rendu final sur Windows/Linux.
+- aucune internationalisation frontend/mobile malgré un backend configuré en français.
+- mentions légales présentes, mais vérifier réellement politique de confidentialité, cookies, durée de conservation, droits RGPD et contact DPO selon le traitement.
+- pas de licence logicielle explicite, seulement une mention de contexte pédagogique.
+- README annonce branches main/dev alors que le travail audité est sur staging ; la CI ne se déclenche pas sur push/PR vers staging.
+- aucun tag Git détecté, donc pas de stratégie de version/release vérifiable.
+
+
+8. TESTS ET QUALITE
+===================
+
+Etat observé :
+- 22 méthodes de test backend détectées : 16 accounts, 6 crm ;
+- aucun test détecté pour events, bookings et reviews malgré la présence de fichiers tests.py ;
+- aucun test frontend ;
+- aucun test mobile ;
+- pas de test end-to-end automatisé ;
+- CI exige seulement 60 % de couverture backend ; la documentation contient une capture historique à 68 % ;
+- couverture calculée avec --source=. inclut potentiellement migrations/config et ne définit pas précisément le code métier attendu.
+
+Lacunes prioritaires :
+- événement public/privé et sérialisation de remaining_capacity ;
+- RBAC complet admin/employé/client/anonyme ;
+- accès croisé aux devis, réservations, notes et événements ;
+- transitions de devis et réservations ;
+- concurrence sur capacité ;
+- conversion prospect-client et activation ;
+- modération des avis ;
+- génération PDF, pagination et filtres invalides ;
+- throttling et parcours d'e-mail ;
+- composants et routes web, accessibilité et erreurs ;
+- contrats mobile/API.
+
+Objectifs recommandés :
+- P0/P1 : 100 % des règles d'autorisation et transitions critiques couvertes ;
+- couverture backend globale >= 85 %, branchement >= 75 %, sans compter les migrations ;
+- tests unitaires frontend des parcours auth/devis ;
+- tests d'intégration API réels avec PostgreSQL ;
+- tests E2E des parcours visiteur, client, employé et admin ;
+- smoke test mobile et build Expo dans la CI ;
+- tests de sécurité : IDOR, mass assignment, throttling, XSS, CSRF selon stratégie de token.
+
+
+9. SECURITE ET RGPD
+===================
+
+Forces : hachage Django des mots de passe, validateurs lors de l'inscription/reset, codes OTP hachés et expirables, JWT à durée d'accès de 30 minutes, restrictions CORS configurables, secrets locaux ignorés par Git, échec Mongo isolé du métier.
+
+Risques : fuite d'événements P0, RBAC ambigu, absence de throttling, tokens localStorage, configuration production permissive par défaut, mot de passe temporaire par e-mail, journalisation partielle, pas de politique de rétention/purge, pas de headers production démontrés, données personnelles prospect/client dans plusieurs stockages.
+
+Le fichier infra/docker/.env contient des identifiants locaux non génériques. Il est correctement ignoré et n'apparaît pas dans l'historique Git inspecté. Il faut néanmoins les traiter comme secrets : droits filesystem minimaux, rotation s'ils ont été réutilisés ailleurs, jamais de copie dans captures/logs/support. Le présent rapport ne les reproduit pas.
+
+Checklist RGPD à formaliser :
+- base légale et finalités par donnée ;
+- information/consentement sur formulaires ;
+- minimisation ;
+- durées prospects, clients, événements, devis, avis et logs ;
+- purge/anonymisation automatisée ;
+- export, rectification et suppression ;
+- registre des sous-traitants (hébergeur, Brevo, éventuel Cloudinary, Mongo/PostgreSQL) ;
+- localisation et transferts ;
+- sauvegardes et effacement dans les sauvegardes ;
+- procédure de violation ;
+- contrôle des accès et preuve d'audit.
+
+
+10. DEVOPS, DEPLOIEMENT ET DEPENDANCES
+======================================
+
+CI actuelle : bonne base, mais limitée aux branches dev/main. Elle ne couvre pas staging, le mobile, la sécurité des dépendances, les secrets, les conteneurs, le déploiement ni un test E2E.
+
+Améliorations recommandées :
+- inclure staging ou aligner les branches documentées ;
+- permissions GitHub Actions minimales, concurrence/cancel-in-progress et timeouts ;
+- figer les actions par SHA selon politique de sécurité ;
+- ajouter pip-audit/Dependabot, npm audit contrôlé, secret scanning et analyse statique ;
+- construire et scanner les images ;
+- exécuter django check --deploy avec configuration production ;
+- générer artefacts de couverture et rapports de tests ;
+- ajouter migration check contre PostgreSQL et smoke test API ;
+- définir CD séparée avec approbation, rollback et migrations sauvegardées ;
+- sauvegardes PostgreSQL/Mongo testées par restauration ;
+- SBOM, versions immuables et politique de patching.
+
+Le Docker Compose doit être explicitement qualifié de développement. Une production minimale devrait utiliser Gunicorn, un reverse proxy/TLS ou une plateforme managée, des services de données privés, un utilisateur non root, des secrets injectés, des médias persistants/objet, des healthchecks, limites, logs et sauvegardes.
+
+
+11. COHERENCE DOCUMENTATION / IMPLEMENTATION
+============================================
+
+Conforme ou proche : architecture générale, stack technologique, Docker local, JWT, modèles principaux, génération PDF présente, Mongo pour certains audits, CI backend/frontend et documentation riche.
+
+Divergences principales :
+- espace employé annoncé mais non routé et non implémenté fonctionnellement ;
+- validation des avis annoncée mais champ de validation supprimé ;
+- notes collaboratives annoncées mais API admin-only et contrat mobile invalide ;
+- API dite sécurisée alors qu'une liste anonyme expose potentiellement les événements privés ;
+- frontend/mobile décrits comme disponibles malgré des parcours manifestement cassés par EventSerializer ;
+- usage Gunicorn annoncé mais Docker Compose utilise runserver ;
+- déploiement automatisé annoncé comme objectif, aucun workflow CD présent ;
+- branches documentées main/dev, branche staging active mais non couverte sur push ;
+- variables du README utilisent le préfixe DJANGO_* alors que settings lit SECRET_KEY/DEBUG/ALLOWED_HOSTS ; Compose fait la traduction, mais l'exécution locale sans Docker décrite peut induire en erreur.
+
+Recommandation : distinguer clairement « implémenté et testé », « implémenté non vérifié » et « cible/roadmap » dans chaque document ; générer la documentation API depuis le schéma réel.
+
+
+12. ESTIMATION D'ACHEVEMENT
+===========================
+
+Ces pourcentages mesurent la complétude observable et la robustesse, pas le volume de code produit.
+
+- Socle backend et modèles : 68 % — domaines clés présents, mais invariants et services métier incomplets.
+- Authentification et comptes : 67 % — parcours avancé, mais throttling, changement de mot de passe et conversion client à corriger.
+- CRM/devis/PDF : 66 % — fonctionnalités présentes, transitions et intégrité insuffisantes.
+- Evénements/réservations : 38 % — défaut runtime bloquant, confidentialité et concurrence.
+- Avis/notes/collaboration : 37 % — fonctionnalités simples, divergence de modération et contrat mobile.
+- Frontend public : 65 % — pages et navigation présentes, tests/accessibilité/erreurs insuffisants.
+- Espaces authentifiés web : 52 % — client/admin substantiels, employé absent, API cassante.
+- Mobile : 32 % — prototype navigable, configuration et contrat incomplets, pas de QA.
+- Infrastructure locale : 70 % — environnement de développement complet, durcissement absent.
+- Production/CD/observabilité : 28 % — documentation supérieure à l'automatisation réelle.
+- Tests : 31 % — bon début accounts, couverture des domaines critiques trop faible.
+- Documentation : 72 % — abondante mais plusieurs écarts avec le code.
+
+MVP démontrable après correction des P0 : environ 63 %.
+Produit pilote avec utilisateurs réels : environ 48 %.
+Préparation production : environ 35 %.
+
+
+13. ROADMAP PRIORISEE
+=====================
+
+Phase 0 — Stop-ship, 1 à 2 jours
+1. Corriger remaining_capacity et ajouter tests list/retrieve.
+2. Fermer l'exposition des événements : queryset et serializer publics sûrs par défaut.
+3. Lancer la suite complète dans un environnement reproductible et confirmer migrations/lint/build.
+4. Vérifier les journaux de production pour évaluer une exposition passée.
+
+Phase 1 — Sécurité et intégrité, 3 à 7 jours
+1. Définir et appliquer la matrice RBAC ; verrouiller l'administration des droits.
+2. Corriger conversion prospect-client et activation sans mot de passe par e-mail.
+3. Ajouter throttling aux routes publiques/auth.
+4. Imposer les machines à états devis/réservation et la concurrence transactionnelle.
+5. Renforcer changement de mot de passe et stratégie JWT.
+6. Ajouter les validations métier et contraintes de base.
+
+Phase 2 — Fiabilité fonctionnelle, 1 à 2 semaines
+1. Aligner notes, avis, espace employé et contrat mobile/API.
+2. Centraliser client API et gestion d'erreurs web/mobile.
+3. Couvrir events, bookings, reviews, RBAC et devis par tests.
+4. Ajouter tests frontend et E2E des quatre rôles.
+5. Corriger médias, e-mails et observabilité structurée.
+
+Phase 3 — Industrialisation, 1 à 2 semaines
+1. Séparer développement/production et durcir Django/Docker.
+2. Figer dépendances et images, ajouter scans et SBOM.
+3. Étendre la CI à staging/mobile/conteneurs ; définir CD avec rollback.
+4. Mettre en place sauvegardes/restaurations, supervision et alertes.
+5. Réconcilier documentation et code, publier OpenAPI versionnée.
+
+Phase 4 — Conformité et exploitation continue
+1. Finaliser registre RGPD, conservation et automatisation de purge.
+2. Revue d'accessibilité WCAG, performance et compatibilité navigateurs/appareils.
+3. Test de charge et audit de sécurité dynamique/pentest avant mise en production.
+4. SLO, runbooks d'incident, rotation de secrets et exercices de restauration.
+
+
+14. CHECKLIST DE VALIDATION AVANT PRODUCTION
+============================================
+
+Bloquants fonctionnels
+[ ] GET /api/events/ et /api/events/{id}/ ne renvoient plus de 500.
+[ ] Un anonyme ne peut voir que les événements explicitement publics et consentis.
+[ ] Un client ne peut jamais lire/modifier les ressources d'un autre client.
+[ ] Les transitions devis et réservations respectent une machine à états testée.
+[ ] Deux réservations concurrentes ne peuvent dépasser la capacité.
+[ ] Conversion prospect-client, activation et première connexion fonctionnent bout en bout.
+[ ] Notes mobile, avis et espace employé sont alignés avec les exigences réelles.
+
+Sécurité
+[ ] Matrice RBAC écrite, implémentée et testée par endpoint/action.
+[ ] Seul un superadmin peut attribuer les privilèges administratifs critiques.
+[ ] Throttling actif sur login, signup, codes, reset et formulaire prospect.
+[ ] SECRET_KEY obligatoire et DEBUG=False en production, sans fallback faible.
+[ ] HTTPS forcé, HSTS et en-têtes/cookies sécurisés validés.
+[ ] Stratégie JWT avec rotation/révocation et stockage client approuvée.
+[ ] Changement/reset de mot de passe révoque les sessions nécessaires.
+[ ] Aucun mot de passe envoyé par e-mail.
+[ ] Scan secrets et dépendances sans alerte critique/haute non acceptée.
+[ ] Journal d'audit complet, protégé, surveillé et avec rétention définie.
+
+Qualité
+[ ] django check et django check --deploy réussissent.
+[ ] makemigrations --check --dry-run ne détecte aucune dérive.
+[ ] migrations testées sur copie récente et rollback documenté.
+[ ] tests backend, frontend, mobile et E2E au vert sur le commit livré.
+[ ] couverture backend >= 85 % et règles critiques couvertes à 100 %.
+[ ] lint et build reproductibles sans dépendance locale implicite.
+[ ] schéma OpenAPI validé contre web et mobile.
+[ ] aucun 4xx/5xx inattendu dans les parcours de recette.
+
+Production et exploitation
+[ ] Gunicorn/serveur production utilisé, jamais runserver/Vite dev.
+[ ] base et Mongo non exposés publiquement.
+[ ] conteneurs non root, images figées/scannées, limites et healthchecks définis.
+[ ] médias persistants et sauvegardés.
+[ ] sauvegardes PostgreSQL/Mongo restaurées avec succès lors d'un exercice.
+[ ] supervision, alertes, erreurs applicatives et corrélation activées.
+[ ] procédure de déploiement, migration, rollback et incident testée.
+[ ] staging couvert par CI et identique à la production sur les points structurants.
+[ ] variables et secrets injectés par un gestionnaire adapté et rotatifs.
+
+UX, accessibilité et conformité
+[ ] tests clavier, lecteurs d'écran, contrastes, focus, formulaires et messages d'erreur.
+[ ] états chargement/vide/erreur/réseau vérifiés web et mobile.
+[ ] politique de confidentialité et mentions légales adaptées aux traitements réels.
+[ ] consentement, droits, export, suppression et conservation RGPD opérationnels.
+[ ] sous-traitants et transferts documentés.
+[ ] recette multi-navigateurs et appareils réalisée.
+
+
+15. CONCLUSION
+==============
+
+Innov'Events possède un socle crédible de projet de formation/MVP et une documentation supérieure à la moyenne pour sa taille. L'effort récent sur l'authentification et les e-mails est visible. Néanmoins, le commit audité ne doit pas être livré : le défaut de sérialisation des événements casse un domaine central et la politique d'accès de ce même endpoint expose potentiellement des données privées.
+
+La priorité n'est pas d'ajouter de nouvelles fonctionnalités. Il faut d'abord restaurer le fonctionnement des événements, fermer l'exposition anonyme, unifier les rôles, sécuriser les transitions et la concurrence, puis établir une preuve automatisée via des tests couvrant les scénarios d'autorisation. Une fois ces points réglés, la consolidation production (settings, Docker, CI/CD, observabilité, sauvegardes et RGPD) pourra transformer ce MVP en produit pilote fiable.

@@ -1,6 +1,7 @@
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.db.models import Sum
 
 
 User = get_user_model()
@@ -24,10 +25,12 @@ class Event(models.Model):
     description = models.TextField(blank=True)
     city = models.CharField(max_length=120)
     start_at = models.DateTimeField()
+
     end_at = models.DateTimeField(
         null=True,
         blank=True,
     )
+
     capacity = models.PositiveIntegerField(default=1)
 
     event_type = models.CharField(
@@ -74,6 +77,22 @@ class Event(models.Model):
 
     def __str__(self):
         return f"{self.title} - {self.city}"
+
+    def remaining_capacity(self):
+        reserved = (
+            self.bookings
+            .filter(
+                status__in=[
+                    "PENDING",
+                    "CONFIRMED",
+                ]
+            )
+            .aggregate(total=Sum("quantity"))
+            .get("total")
+            or 0
+        )
+
+        return max(self.capacity - reserved, 0)
 
     @property
     def is_public(self):

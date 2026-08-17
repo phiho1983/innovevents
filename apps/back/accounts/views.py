@@ -2,62 +2,80 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from .email_service import send_transactional_email
 
 from rest_framework import status, viewsets
-from rest_framework.decorators import api_view, permission_classes, action
-from rest_framework.permissions import AllowAny, IsAuthenticated, BasePermission
+from rest_framework.decorators import (
+    action,
+    api_view,
+    permission_classes,
+    throttle_classes,
+)
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from config.mongo import log_action
 
+from .email_service import send_transactional_email
 from .models import VerificationCode
+from .permissions import IsBusinessAdmin
 from .serializers import (
     UserRightsSerializer,
     VerifiedTokenObtainPairSerializer,
 )
-from .services import create_verification_code, check_verification_code
+from .services import (
+    create_verification_code,
+    check_verification_code,
+)
+from .throttles import (
+    ForgotPasswordRateThrottle,
+    LoginRateThrottle,
+    ResendCodeRateThrottle,
+    ResetPasswordRateThrottle,
+    SignupRateThrottle,
+    VerifyEmailRateThrottle,
+)
 
 
 User = get_user_model()
 
 
-class IsDashboardAdmin(BasePermission):
-    """
-    Autorise uniquement les comptes qui ont accès au dashboard admin.
-    """
-
-    def has_permission(self, request, view):
-        user = request.user
-
-        return bool(
-            user
-            and user.is_authenticated
-            and (
-                user.is_staff
-                or user.is_superuser
-                or getattr(user, "role", None) == User.Role.ADMIN
-            )
-        )
-
-
 class LoggedTokenObtainPairView(TokenObtainPairView):
     serializer_class = VerifiedTokenObtainPairSerializer
 
+    throttle_classes = [
+        LoginRateThrottle
+    ]
+
     def post(self, request, *args, **kwargs):
         ip = (
-            request.META.get("HTTP_X_FORWARDED_FOR", "")
+            request.META.get(
+                "HTTP_X_FORWARDED_FOR",
+                "",
+            )
             .split(",")[0]
             .strip()
-            or request.META.get("REMOTE_ADDR", "inconnue")
+            or request.META.get(
+                "REMOTE_ADDR",
+                "inconnue",
+            )
         )
 
-        response = super().post(request, *args, **kwargs)
+        response = super().post(
+            request,
+            *args,
+            **kwargs,
+        )
 
         if response.status_code == 200:
-            username = request.data.get("username", "")
-            user = User.objects.filter(username=username).first()
+            username = request.data.get(
+                "username",
+                "",
+            )
+
+            user = User.objects.filter(
+                username=username,
+            ).first()
 
             log_action(
                 "CONNEXION_REUSSIE",
@@ -73,7 +91,11 @@ class LoggedTokenObtainPairView(TokenObtainPairView):
                 "CONNEXION_ECHOUEE",
                 None,
                 {
-                    "username_tente": request.data.get("username", ""),
+                    "username_tente":
+                        request.data.get(
+                            "username",
+                            "",
+                        ),
                     "ip": ip,
                 },
             )
@@ -84,48 +106,88 @@ class LoggedTokenObtainPairView(TokenObtainPairView):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def me(request):
-    u = request.user
+    user = request.user
 
     return Response(
         {
-            "id": u.id,
-            "username": u.get_username(),
-            "email": getattr(u, "email", ""),
-            "role": getattr(u, "role", ""),
-            "is_staff": u.is_staff,
-            "is_superuser": u.is_superuser,
+            "id": user.id,
+            "username": user.get_username(),
+            "email": getattr(
+                user,
+                "email",
+                "",
+            ),
+            "role": getattr(
+                user,
+                "role",
+                "",
+            ),
+            "is_staff": user.is_staff,
+            "is_superuser": user.is_superuser,
         }
     )
 
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@throttle_classes([SignupRateThrottle])
 def signup(request):
-    username = (request.data.get("username") or "").strip()
-    email = (request.data.get("email") or "").strip().lower()
-    password = request.data.get("password") or ""
+    username = (
+        request.data.get("username")
+        or ""
+    ).strip()
+
+    email = (
+        request.data.get("email")
+        or ""
+    ).strip().lower()
+
+    password = (
+        request.data.get("password")
+        or ""
+    )
 
     if not username:
         return Response(
-            {"username": ["Obligatoire."]},
+            {
+                "username": [
+                    "Obligatoire."
+                ]
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     if not email:
         return Response(
-            {"email": ["Obligatoire."]},
+            {
+                "email": [
+                    "Obligatoire."
+                ]
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    if User.objects.filter(username=username).exists():
+    if User.objects.filter(
+        username=username,
+    ).exists():
         return Response(
-            {"username": ["Déjà utilisé."]},
+            {
+                "username": [
+                    "Déjà utilisé."
+                ]
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    if User.objects.filter(email__iexact=email).exists():
+    if User.objects.filter(
+        email__iexact=email,
+    ).exists():
         return Response(
-            {"email": ["Email déjà utilisé."]},
+            {
+                "email": [
+                    "Email déjà utilisé."
+                ]
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -134,7 +196,11 @@ def signup(request):
 
     except ValidationError as exc:
         return Response(
-            {"password": list(exc.messages)},
+            {
+                "password": list(
+                    exc.messages
+                )
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -154,16 +220,19 @@ def signup(request):
         )
 
     send_transactional_email(
-    recipient_email=user.email,
-    subject="Votre code de vérification Innov'Events",
-    text_content=(
-        f"Bonjour {user.username},\n\n"
-        f"Votre code de vérification est : {code}\n\n"
-        "Ce code est valable pendant 10 minutes.\n\n"
-        "Si vous n'êtes pas à l'origine de cette inscription, "
-        "vous pouvez ignorer ce message."
-    ),
-)
+        recipient_email=user.email,
+        subject=(
+            "Votre code de vérification "
+            "Innov'Events"
+        ),
+        text_content=(
+            f"Bonjour {user.username},\n\n"
+            f"Votre code de vérification est : {code}\n\n"
+            "Ce code est valable pendant 10 minutes.\n\n"
+            "Si vous n'êtes pas à l'origine de cette inscription, "
+            "vous pouvez ignorer ce message."
+        ),
+    )
 
     return Response(
         {
@@ -179,35 +248,57 @@ def signup(request):
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@throttle_classes([VerifyEmailRateThrottle])
 def verify_email(request):
-    email = (request.data.get("email") or "").strip().lower()
-    code = (request.data.get("code") or "").strip()
+    email = (
+        request.data.get("email")
+        or ""
+    ).strip().lower()
+
+    code = (
+        request.data.get("code")
+        or ""
+    ).strip()
 
     if not email:
         return Response(
-            {"email": ["Obligatoire."]},
+            {
+                "email": [
+                    "Obligatoire."
+                ]
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     if not code:
         return Response(
-            {"code": ["Obligatoire."]},
+            {
+                "code": [
+                    "Obligatoire."
+                ]
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     user = User.objects.filter(
-        email__iexact=email
+        email__iexact=email,
     ).first()
 
     if not user:
         return Response(
-            {"detail": "Code invalide ou expiré."},
+            {
+                "detail":
+                    "Code invalide ou expiré."
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     if user.email_verified:
         return Response(
-            {"detail": "Adresse e-mail déjà vérifiée."},
+            {
+                "detail":
+                    "Adresse e-mail déjà vérifiée."
+            },
             status=status.HTTP_200_OK,
         )
 
@@ -219,38 +310,51 @@ def verify_email(request):
 
     if not valid:
         return Response(
-            {"detail": "Code invalide ou expiré."},
+            {
+                "detail":
+                    "Code invalide ou expiré."
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     user.email_verified = True
+
     user.save(
-        update_fields=["email_verified"]
+        update_fields=[
+            "email_verified",
+        ]
     )
 
     return Response(
         {
-            "detail": (
+            "detail":
                 "Adresse e-mail vérifiée avec succès."
-            )
         },
         status=status.HTTP_200_OK,
     )
 
+
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@throttle_classes([ResendCodeRateThrottle])
 def resend_code(request):
     email = (
-        request.data.get("email") or ""
+        request.data.get("email")
+        or ""
     ).strip().lower()
 
     purpose = (
-        request.data.get("purpose") or ""
+        request.data.get("purpose")
+        or ""
     ).strip()
 
     if not email:
         return Response(
-            {"email": ["Obligatoire."]},
+            {
+                "email": [
+                    "Obligatoire."
+                ]
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -261,12 +365,16 @@ def resend_code(request):
 
     if purpose not in allowed_purposes:
         return Response(
-            {"purpose": ["Type de code invalide."]},
+            {
+                "purpose": [
+                    "Type de code invalide."
+                ]
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     user = User.objects.filter(
-        email__iexact=email
+        email__iexact=email,
     ).first()
 
     generic_response = {
@@ -289,9 +397,8 @@ def resend_code(request):
     ):
         return Response(
             {
-                "detail": (
+                "detail":
                     "Adresse e-mail déjà vérifiée."
-                )
             },
             status=status.HTTP_200_OK,
         )
@@ -301,8 +408,14 @@ def resend_code(request):
         purpose,
     )
 
-    if purpose == VerificationCode.Purpose.EMAIL_VERIFICATION:
-        subject = "Nouveau code de vérification Innov'Events"
+    if (
+        purpose
+        == VerificationCode.Purpose.EMAIL_VERIFICATION
+    ):
+        subject = (
+            "Nouveau code de vérification "
+            "Innov'Events"
+        )
 
         message = (
             f"Bonjour {user.username},\n\n"
@@ -313,7 +426,10 @@ def resend_code(request):
         )
 
     else:
-        subject = "Nouveau code de réinitialisation Innov'Events"
+        subject = (
+            "Nouveau code de réinitialisation "
+            "Innov'Events"
+        )
 
         message = (
             f"Bonjour {user.username},\n\n"
@@ -324,10 +440,10 @@ def resend_code(request):
         )
 
     send_transactional_email(
-    recipient_email=user.email,
-    subject=subject,
-    text_content=message,
-)
+        recipient_email=user.email,
+        subject=subject,
+        text_content=message,
+    )
 
     return Response(
         generic_response,
@@ -335,12 +451,13 @@ def resend_code(request):
     )
 
 
-
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@throttle_classes([ForgotPasswordRateThrottle])
 def forgot_password(request):
     email = (
-        request.data.get("email") or ""
+        request.data.get("email")
+        or ""
     ).strip().lower()
 
     generic_response = {
@@ -352,12 +469,16 @@ def forgot_password(request):
 
     if not email:
         return Response(
-            {"email": ["Obligatoire."]},
+            {
+                "email": [
+                    "Obligatoire."
+                ]
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     user = User.objects.filter(
-        email__iexact=email
+        email__iexact=email,
     ).first()
 
     if not user:
@@ -372,16 +493,19 @@ def forgot_password(request):
     )
 
     send_transactional_email(
-    recipient_email=user.email,
-    subject="Réinitialisation de votre mot de passe Innov'Events",
-    text_content=(
-        f"Bonjour {user.username},\n\n"
-        f"Votre code de réinitialisation est : {code}\n\n"
-        "Ce code est valable pendant 10 minutes.\n\n"
-        "Si vous n'êtes pas à l'origine de cette demande, "
-        "vous pouvez ignorer ce message."
-    ),
-)
+        recipient_email=user.email,
+        subject=(
+            "Réinitialisation de votre mot "
+            "de passe Innov'Events"
+        ),
+        text_content=(
+            f"Bonjour {user.username},\n\n"
+            f"Votre code de réinitialisation est : {code}\n\n"
+            "Ce code est valable pendant 10 minutes.\n\n"
+            "Si vous n'êtes pas à l'origine de cette demande, "
+            "vous pouvez ignorer ce message."
+        ),
+    )
 
     return Response(
         generic_response,
@@ -391,44 +515,63 @@ def forgot_password(request):
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@throttle_classes([ResetPasswordRateThrottle])
 def reset_password(request):
     email = (
-        request.data.get("email") or ""
+        request.data.get("email")
+        or ""
     ).strip().lower()
 
     code = (
-        request.data.get("code") or ""
+        request.data.get("code")
+        or ""
     ).strip()
 
     new_password = (
-        request.data.get("password") or ""
+        request.data.get("password")
+        or ""
     )
 
     if not email:
         return Response(
-            {"email": ["Obligatoire."]},
+            {
+                "email": [
+                    "Obligatoire."
+                ]
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     if not code:
         return Response(
-            {"code": ["Obligatoire."]},
+            {
+                "code": [
+                    "Obligatoire."
+                ]
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     if not new_password:
         return Response(
-            {"password": ["Obligatoire."]},
+            {
+                "password": [
+                    "Obligatoire."
+                ]
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     user = User.objects.filter(
-        email__iexact=email
+        email__iexact=email,
     ).first()
 
     if not user:
         return Response(
-            {"detail": "Code invalide ou expiré."},
+            {
+                "detail":
+                    "Code invalide ou expiré."
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -440,7 +583,11 @@ def reset_password(request):
 
     except ValidationError as exc:
         return Response(
-            {"password": list(exc.messages)},
+            {
+                "password": list(
+                    exc.messages
+                )
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -452,11 +599,17 @@ def reset_password(request):
 
     if not valid:
         return Response(
-            {"detail": "Code invalide ou expiré."},
+            {
+                "detail":
+                    "Code invalide ou expiré."
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    user.set_password(new_password)
+    user.set_password(
+        new_password
+    )
+
     user.must_change_password = False
 
     user.save(
@@ -470,15 +623,15 @@ def reset_password(request):
         "MOT_DE_PASSE_REINITIALISE",
         user.id,
         {
-            "username": user.username,
+            "username":
+                user.username,
         },
     )
 
     return Response(
         {
-            "detail": (
+            "detail":
                 "Mot de passe réinitialisé avec succès."
-            )
         },
         status=status.HTTP_200_OK,
     )
@@ -487,31 +640,56 @@ def reset_password(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def change_password(request):
-    new_pwd = request.data.get(
+    new_password = request.data.get(
         "password",
         "",
     )
 
-    if len(new_pwd) < 8:
+    if not new_password:
         return Response(
             {
                 "password": [
-                    "8 caractères minimum."
+                    "Obligatoire."
                 ]
             },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    request.user.set_password(new_pwd)
+    try:
+        validate_password(
+            new_password,
+            user=request.user,
+        )
+
+    except ValidationError as exc:
+        return Response(
+            {
+                "password": list(
+                    exc.messages
+                )
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    request.user.set_password(
+        new_password
+    )
+
     request.user.must_change_password = False
-    request.user.save()
+
+    request.user.save(
+        update_fields=[
+            "password",
+            "must_change_password",
+        ]
+    )
 
     return Response(
         {
-            "detail": (
+            "detail":
                 "Mot de passe mis à jour."
-            )
-        }
+        },
+        status=status.HTTP_200_OK,
     )
 
 
@@ -519,14 +697,21 @@ class UserAdminRightsViewSet(
     viewsets.ReadOnlyModelViewSet
 ):
     """
-    Liste les utilisateurs et permet de donner
-    ou retirer les droits admin.
+    Consultation et gestion des rôles ADMIN.
 
-    Accès réservé à l'admin connecté.
+    Seuls les ADMIN métier et les superusers
+    peuvent accéder à ces opérations.
+
+    User.role représente les droits métier.
+
+    is_staff reste réservé à l'accès au Django Admin.
     """
 
     serializer_class = UserRightsSerializer
-    permission_classes = [IsDashboardAdmin]
+
+    permission_classes = [
+        IsBusinessAdmin
+    ]
 
     def get_queryset(self):
         return User.objects.all().order_by(
@@ -545,6 +730,20 @@ class UserAdminRightsViewSet(
     ):
         target_user = self.get_object()
 
+        if (
+            target_user.id
+            == request.user.id
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Vous ne pouvez pas modifier "
+                        "vos propres droits."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         if target_user.is_superuser:
             return Response(
                 {
@@ -556,8 +755,26 @@ class UserAdminRightsViewSet(
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        target_user.role = User.Role.ADMIN
-        target_user.is_staff = True
+        if (
+            target_user.role
+            == User.Role.ADMIN
+        ):
+            serializer = self.get_serializer(
+                target_user
+            )
+
+            return Response(
+                serializer.data,
+                status=status.HTTP_200_OK,
+            )
+
+        previous_role = target_user.role
+
+        target_user.role = (
+            User.Role.ADMIN
+        )
+
+        target_user.is_staff = False
 
         target_user.save(
             update_fields=[
@@ -570,8 +787,14 @@ class UserAdminRightsViewSet(
             "DROITS_ADMIN_AJOUTES",
             request.user.id,
             {
-                "target_user_id": target_user.id,
-                "target_username": target_user.username,
+                "target_user_id":
+                    target_user.id,
+                "target_username":
+                    target_user.username,
+                "previous_role":
+                    previous_role,
+                "new_role":
+                    User.Role.ADMIN,
             },
         )
 
@@ -580,7 +803,8 @@ class UserAdminRightsViewSet(
         )
 
         return Response(
-            serializer.data
+            serializer.data,
+            status=status.HTTP_200_OK,
         )
 
     @action(
@@ -595,7 +819,10 @@ class UserAdminRightsViewSet(
     ):
         target_user = self.get_object()
 
-        if target_user.id == request.user.id:
+        if (
+            target_user.id
+            == request.user.id
+        ):
             return Response(
                 {
                     "detail": (
@@ -618,8 +845,25 @@ class UserAdminRightsViewSet(
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if target_user.role == User.Role.ADMIN:
-            target_user.role = User.Role.CLIENT
+        if (
+            target_user.role
+            != User.Role.ADMIN
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Cet utilisateur n'est "
+                        "pas administrateur."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        previous_role = target_user.role
+
+        target_user.role = (
+            User.Role.CLIENT
+        )
 
         target_user.is_staff = False
 
@@ -634,8 +878,14 @@ class UserAdminRightsViewSet(
             "DROITS_ADMIN_RETIRES",
             request.user.id,
             {
-                "target_user_id": target_user.id,
-                "target_username": target_user.username,
+                "target_user_id":
+                    target_user.id,
+                "target_username":
+                    target_user.username,
+                "previous_role":
+                    previous_role,
+                "new_role":
+                    User.Role.CLIENT,
             },
         )
 
@@ -644,5 +894,6 @@ class UserAdminRightsViewSet(
         )
 
         return Response(
-            serializer.data
+            serializer.data,
+            status=status.HTTP_200_OK,
         )
