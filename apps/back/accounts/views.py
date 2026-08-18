@@ -1,4 +1,4 @@
-from django.contrib.auth import get_user_model
+from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -12,23 +12,23 @@ from rest_framework.decorators import (
 )
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework.views import APIView
+
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from config.mongo import log_action
 
 from .email_service import send_transactional_email
 from .models import VerificationCode
 from .permissions import IsBusinessAdmin
-from .serializers import (
-    UserRightsSerializer,
-    VerifiedTokenObtainPairSerializer,
-)
+from .serializers import UserRightsSerializer
 from .services import (
-    create_verification_code,
     check_verification_code,
+    create_verification_code,
 )
 from .throttles import (
     ForgotPasswordRateThrottle,
+    Login2FARateThrottle,
     LoginRateThrottle,
     ResendCodeRateThrottle,
     ResetPasswordRateThrottle,
@@ -40,67 +40,301 @@ from .throttles import (
 User = get_user_model()
 
 
-class LoggedTokenObtainPairView(TokenObtainPairView):
-    serializer_class = VerifiedTokenObtainPairSerializer
+def get_client_ip(request):
+    forwarded_for = request.META.get(
+        "HTTP_X_FORWARDED_FOR",
+        "",
+    )
+
+    if forwarded_for:
+        return (
+            forwarded_for
+            .split(",")[0]
+            .strip()
+        )
+
+    return request.META.get(
+        "REMOTE_ADDR",
+        "inconnue",
+    )
+
+
+class LoggedTokenObtainPairView(APIView):
+    """
+    Première étape de connexion.
+
+    1. Vérifie username + mot de passe.
+    2. Vérifie que l'adresse e-mail est validée.
+    3. Génère un code LOGIN_2FA.
+    4. Envoie ce code par e-mail.
+
+    Aucun JWT n'est délivré à cette étape.
+    """
+
+    permission_classes = [
+        AllowAny
+    ]
 
     throttle_classes = [
         LoginRateThrottle
     ]
 
-    def post(self, request, *args, **kwargs):
-        ip = (
-            request.META.get(
-                "HTTP_X_FORWARDED_FOR",
-                "",
-            )
-            .split(",")[0]
-            .strip()
-            or request.META.get(
-                "REMOTE_ADDR",
-                "inconnue",
-            )
+    def post(
+        self,
+        request,
+        *args,
+        **kwargs,
+    ):
+        username = (
+            request.data.get("username")
+            or ""
+        ).strip()
+
+        password = (
+            request.data.get("password")
+            or ""
         )
 
-        response = super().post(
-            request,
-            *args,
-            **kwargs,
-        )
+        ip = get_client_ip(request)
 
-        if response.status_code == 200:
-            username = request.data.get(
-                "username",
-                "",
-            )
-
-            user = User.objects.filter(
-                username=username,
-            ).first()
-
-            log_action(
-                "CONNEXION_REUSSIE",
-                user.id if user else None,
+        if not username:
+            return Response(
                 {
-                    "username": username,
-                    "ip": ip,
+                    "username": [
+                        "Obligatoire."
+                    ]
                 },
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        else:
+        if not password:
+            return Response(
+                {
+                    "password": [
+                        "Obligatoire."
+                    ]
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = authenticate(
+            request=request,
+            username=username,
+            password=password,
+        )
+
+        if user is None:
             log_action(
                 "CONNEXION_ECHOUEE",
                 None,
                 {
                     "username_tente":
-                        request.data.get(
-                            "username",
-                            "",
-                        ),
-                    "ip": ip,
+                        username,
+                    "ip":
+                        ip,
+                    "reason":
+                        "INVALID_CREDENTIALS",
                 },
             )
 
-        return response
+            return Response(
+                {
+                    "detail":
+                        "Identifiants invalides."
+                },
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        if not user.email_verified:
+            log_action(
+                "CONNEXION_ECHOUEE",
+                user.id,
+                {
+                    "username_tente":
+                        username,
+                    "ip":
+                        ip,
+                    "reason":
+                        "EMAIL_NOT_VERIFIED",
+                },
+            )
+
+            return Response(
+                {
+                    "detail":
+                        "Adresse e-mail non vérifiée."
+                },
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        code, _ = create_verification_code(
+            user,
+            VerificationCode.Purpose.LOGIN_2FA,
+        )
+
+        send_transactional_email(
+            recipient_email=user.email,
+            subject=(
+                "Votre code de connexion "
+                "Innov'Events"
+            ),
+            text_content=(
+                f"Bonjour {user.username},\n\n"
+                "Une connexion à votre compte "
+                "Innov'Events vient d'être demandée.\n\n"
+                f"Votre code de connexion est : {code}\n\n"
+                "Ce code est valable pendant 10 minutes.\n\n"
+                "Saisissez ce code directement "
+                "dans l'application Innov'Events.\n\n"
+                "Si vous n'êtes pas à l'origine de cette "
+                "connexion, ne communiquez ce code "
+                "à personne."
+            ),
+        )
+
+        log_action(
+            "CODE_2FA_ENVOYE",
+            user.id,
+            {
+                "username":
+                    user.username,
+                "ip":
+                    ip,
+            },
+        )
+
+        return Response(
+            {
+                "detail": (
+                    "Identifiants valides. "
+                    "Un code de connexion a été "
+                    "envoyé par e-mail."
+                ),
+                "requires_2fa": True,
+                "username": user.username,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@throttle_classes([Login2FARateThrottle])
+def login_2fa(request):
+    """
+    Deuxième étape de connexion.
+
+    Body :
+    {
+        "username": "...",
+        "code": "123456"
+    }
+
+    Les JWT access + refresh ne sont délivrés
+    qu'après validation du code LOGIN_2FA.
+    """
+
+    username = (
+        request.data.get("username")
+        or ""
+    ).strip()
+
+    code = (
+        request.data.get("code")
+        or ""
+    ).strip()
+
+    ip = get_client_ip(request)
+
+    if not username:
+        return Response(
+            {
+                "username": [
+                    "Obligatoire."
+                ]
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not code:
+        return Response(
+            {
+                "code": [
+                    "Obligatoire."
+                ]
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    user = User.objects.filter(
+        username=username,
+        is_active=True,
+        email_verified=True,
+    ).first()
+
+    if user is None:
+        return Response(
+            {
+                "detail":
+                    "Code invalide ou expiré."
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    valid, reason = check_verification_code(
+        user,
+        VerificationCode.Purpose.LOGIN_2FA,
+        code,
+    )
+
+    if not valid:
+        log_action(
+            "CONNEXION_2FA_ECHOUEE",
+            user.id,
+            {
+                "username":
+                    user.username,
+                "ip":
+                    ip,
+                "reason":
+                    reason,
+            },
+        )
+
+        return Response(
+            {
+                "detail":
+                    "Code invalide ou expiré."
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    refresh = RefreshToken.for_user(
+        user
+    )
+
+    log_action(
+        "CONNEXION_REUSSIE",
+        user.id,
+        {
+            "username":
+                user.username,
+            "ip":
+                ip,
+            "two_factor":
+                "EMAIL",
+        },
+    )
+
+    return Response(
+        {
+            "access":
+                str(refresh.access_token),
+            "refresh":
+                str(refresh),
+        },
+        status=status.HTTP_200_OK,
+    )
 
 
 @api_view(["GET"])
@@ -192,7 +426,9 @@ def signup(request):
         )
 
     try:
-        validate_password(password)
+        validate_password(
+            password
+        )
 
     except ValidationError as exc:
         return Response(
@@ -229,8 +465,8 @@ def signup(request):
             f"Bonjour {user.username},\n\n"
             f"Votre code de vérification est : {code}\n\n"
             "Ce code est valable pendant 10 minutes.\n\n"
-            "Si vous n'êtes pas à l'origine de cette inscription, "
-            "vous pouvez ignorer ce message."
+            "Si vous n'êtes pas à l'origine de cette "
+            "inscription, vous pouvez ignorer ce message."
         ),
     )
 
@@ -640,9 +876,9 @@ def reset_password(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def change_password(request):
-    new_password = request.data.get(
-        "password",
-        "",
+    new_password = (
+        request.data.get("password")
+        or ""
     )
 
     if not new_password:

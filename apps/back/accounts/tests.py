@@ -1,3 +1,5 @@
+import re
+
 from django.contrib.auth import get_user_model
 from django.core import mail
 from django.core.cache import cache
@@ -95,8 +97,25 @@ class AccountsTestCase(TestCase):
             email_verified=True,
         )
 
+    def extract_code_from_last_email(self):
+        self.assertGreater(
+            len(mail.outbox),
+            0,
+        )
+
+        match = re.search(
+            r"\b(\d{6})\b",
+            mail.outbox[-1].body,
+        )
+
+        self.assertIsNotNone(
+            match
+        )
+
+        return match.group(1)
+
     # ==========================================================
-    # JWT
+    # JWT / LOGIN 2FA
     # ==========================================================
 
     def test_login_refused_if_email_not_verified(self):
@@ -109,11 +128,30 @@ class AccountsTestCase(TestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, 401)
-        self.assertNotIn("access", response.data)
-        self.assertNotIn("refresh", response.data)
+        self.assertEqual(
+            response.status_code,
+            401,
+        )
 
-    def test_login_allowed_if_email_verified(self):
+        self.assertNotIn(
+            "access",
+            response.data,
+        )
+
+        self.assertNotIn(
+            "refresh",
+            response.data,
+        )
+
+        self.assertFalse(
+            VerificationCode.objects.filter(
+                user=self.client_unverified,
+                purpose=VerificationCode.Purpose.LOGIN_2FA,
+                used_at__isnull=True,
+            ).exists()
+        )
+
+    def test_login_with_verified_email_requests_2fa(self):
         response = self.client.post(
             "/api/login/",
             {
@@ -123,11 +161,49 @@ class AccountsTestCase(TestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("access", response.data)
-        self.assertIn("refresh", response.data)
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
 
-    def test_admin_login_allowed(self):
+        self.assertTrue(
+            response.data["requires_2fa"]
+        )
+
+        self.assertEqual(
+            response.data["username"],
+            "client_verified",
+        )
+
+        self.assertNotIn(
+            "access",
+            response.data,
+        )
+
+        self.assertNotIn(
+            "refresh",
+            response.data,
+        )
+
+        self.assertEqual(
+            len(mail.outbox),
+            1,
+        )
+
+        self.assertIn(
+            self.client_verified.email,
+            mail.outbox[0].to,
+        )
+
+        self.assertTrue(
+            VerificationCode.objects.filter(
+                user=self.client_verified,
+                purpose=VerificationCode.Purpose.LOGIN_2FA,
+                used_at__isnull=True,
+            ).exists()
+        )
+
+    def test_admin_login_also_requires_2fa(self):
         response = self.client.post(
             "/api/login/",
             {
@@ -137,9 +213,225 @@ class AccountsTestCase(TestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("access", response.data)
-        self.assertIn("refresh", response.data)
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertTrue(
+            response.data["requires_2fa"]
+        )
+
+        self.assertNotIn(
+            "access",
+            response.data,
+        )
+
+        self.assertNotIn(
+            "refresh",
+            response.data,
+        )
+
+        self.assertEqual(
+            len(mail.outbox),
+            1,
+        )
+
+    def test_login_2fa_valid_code_returns_tokens(self):
+        first_response = self.client.post(
+            "/api/login/",
+            {
+                "username": "client_verified",
+                "password": "TestPassword123!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            first_response.status_code,
+            200,
+        )
+
+        code = self.extract_code_from_last_email()
+
+        second_response = self.client.post(
+            "/api/login-2fa/",
+            {
+                "username": "client_verified",
+                "code": code,
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            second_response.status_code,
+            200,
+        )
+
+        self.assertIn(
+            "access",
+            second_response.data,
+        )
+
+        self.assertIn(
+            "refresh",
+            second_response.data,
+        )
+
+    def test_login_2fa_invalid_code_is_refused(self):
+        first_response = self.client.post(
+            "/api/login/",
+            {
+                "username": "client_verified",
+                "password": "TestPassword123!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            first_response.status_code,
+            200,
+        )
+
+        second_response = self.client.post(
+            "/api/login-2fa/",
+            {
+                "username": "client_verified",
+                "code": "000000",
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            second_response.status_code,
+            400,
+        )
+
+        self.assertNotIn(
+            "access",
+            second_response.data,
+        )
+
+        self.assertNotIn(
+            "refresh",
+            second_response.data,
+        )
+
+    def test_login_2fa_code_cannot_be_reused(self):
+        first_response = self.client.post(
+            "/api/login/",
+            {
+                "username": "client_verified",
+                "password": "TestPassword123!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            first_response.status_code,
+            200,
+        )
+
+        code = self.extract_code_from_last_email()
+
+        first_2fa_response = self.client.post(
+            "/api/login-2fa/",
+            {
+                "username": "client_verified",
+                "code": code,
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            first_2fa_response.status_code,
+            200,
+        )
+
+        second_2fa_response = self.client.post(
+            "/api/login-2fa/",
+            {
+                "username": "client_verified",
+                "code": code,
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            second_2fa_response.status_code,
+            400,
+        )
+
+    def test_new_login_invalidates_previous_2fa_code(self):
+        first_login = self.client.post(
+            "/api/login/",
+            {
+                "username": "client_verified",
+                "password": "TestPassword123!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            first_login.status_code,
+            200,
+        )
+
+        first_code = self.extract_code_from_last_email()
+
+        second_login = self.client.post(
+            "/api/login/",
+            {
+                "username": "client_verified",
+                "password": "TestPassword123!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            second_login.status_code,
+            200,
+        )
+
+        second_code = self.extract_code_from_last_email()
+
+        first_code_response = self.client.post(
+            "/api/login-2fa/",
+            {
+                "username": "client_verified",
+                "code": first_code,
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            first_code_response.status_code,
+            400,
+        )
+
+        second_code_response = self.client.post(
+            "/api/login-2fa/",
+            {
+                "username": "client_verified",
+                "code": second_code,
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            second_code_response.status_code,
+            200,
+        )
+
+        self.assertIn(
+            "access",
+            second_code_response.data,
+        )
+
+        self.assertIn(
+            "refresh",
+            second_code_response.data,
+        )
 
     # ==========================================================
     # EMAIL VERIFICATION
@@ -160,7 +452,10 @@ class AccountsTestCase(TestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
 
         self.client_unverified.refresh_from_db()
 
@@ -178,7 +473,10 @@ class AccountsTestCase(TestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.status_code,
+            400,
+        )
 
         self.client_unverified.refresh_from_db()
 
@@ -207,7 +505,9 @@ class AccountsTestCase(TestCase):
             first_code,
         )
 
-        self.assertFalse(first_valid)
+        self.assertFalse(
+            first_valid
+        )
 
         second_valid, _ = check_verification_code(
             self.client_unverified,
@@ -215,7 +515,9 @@ class AccountsTestCase(TestCase):
             second_code,
         )
 
-        self.assertTrue(second_valid)
+        self.assertTrue(
+            second_valid
+        )
 
     def test_consumed_code_cannot_be_reused(self):
         code, _ = create_verification_code(
@@ -229,7 +531,9 @@ class AccountsTestCase(TestCase):
             code,
         )
 
-        self.assertTrue(first_valid)
+        self.assertTrue(
+            first_valid
+        )
 
         second_valid, _ = check_verification_code(
             self.client_unverified,
@@ -237,7 +541,9 @@ class AccountsTestCase(TestCase):
             code,
         )
 
-        self.assertFalse(second_valid)
+        self.assertFalse(
+            second_valid
+        )
 
     # ==========================================================
     # FORGOT PASSWORD
@@ -252,8 +558,15 @@ class AccountsTestCase(TestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertEqual(
+            len(mail.outbox),
+            1,
+        )
 
         self.assertIn(
             self.client_verified.email,
@@ -271,7 +584,10 @@ class AccountsTestCase(TestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
 
         self.client_verified.refresh_from_db()
 
@@ -290,7 +606,10 @@ class AccountsTestCase(TestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
 
     # ==========================================================
     # RESET PASSWORD
@@ -309,7 +628,10 @@ class AccountsTestCase(TestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.status_code,
+            400,
+        )
 
         self.client_verified.refresh_from_db()
 
@@ -335,7 +657,10 @@ class AccountsTestCase(TestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
 
         self.client_verified.refresh_from_db()
 
@@ -403,8 +728,15 @@ class AccountsTestCase(TestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertEqual(
+            len(mail.outbox),
+            1,
+        )
 
     def test_resend_password_reset_code(self):
         response = self.client.post(
@@ -418,8 +750,15 @@ class AccountsTestCase(TestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertEqual(
+            len(mail.outbox),
+            1,
+        )
 
     def test_resend_rejects_invalid_purpose(self):
         response = self.client.post(
@@ -431,7 +770,10 @@ class AccountsTestCase(TestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.status_code,
+            400,
+        )
 
     # ==========================================================
     # BUSINESS ROLES / ANTI PRIVILEGE ESCALATION
@@ -446,7 +788,10 @@ class AccountsTestCase(TestCase):
             "/api/users-rights/"
         )
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
 
     def test_employee_cannot_access_rights(self):
         self.client.force_authenticate(
@@ -457,7 +802,10 @@ class AccountsTestCase(TestCase):
             "/api/users-rights/"
         )
 
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(
+            response.status_code,
+            403,
+        )
 
     def test_client_with_is_staff_cannot_access_rights(self):
         self.client.force_authenticate(
@@ -468,7 +816,10 @@ class AccountsTestCase(TestCase):
             "/api/users-rights/"
         )
 
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(
+            response.status_code,
+            403,
+        )
 
     def test_client_cannot_promote_user(self):
         self.client.force_authenticate(
@@ -484,7 +835,10 @@ class AccountsTestCase(TestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(
+            response.status_code,
+            403,
+        )
 
         self.target_user.refresh_from_db()
 
@@ -511,7 +865,10 @@ class AccountsTestCase(TestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
 
         self.target_user.refresh_from_db()
 
@@ -542,7 +899,10 @@ class AccountsTestCase(TestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.status_code,
+            400,
+        )
 
     def test_remove_admin_returns_user_to_client(self):
         self.target_user.role = User.Role.ADMIN
@@ -568,7 +928,10 @@ class AccountsTestCase(TestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
 
         self.target_user.refresh_from_db()
 
@@ -603,6 +966,36 @@ class AccountsTestCase(TestCase):
                 },
                 format="json",
                 REMOTE_ADDR="10.10.0.1",
+            )
+
+            statuses.append(
+                response.status_code
+            )
+
+        self.assertEqual(
+            statuses[-1],
+            429,
+        )
+
+    def test_login_2fa_is_throttled(self):
+        cache.clear()
+
+        create_verification_code(
+            self.client_verified,
+            VerificationCode.Purpose.LOGIN_2FA,
+        )
+
+        statuses = []
+
+        for _ in range(11):
+            response = self.client.post(
+                "/api/login-2fa/",
+                {
+                    "username": "client_verified",
+                    "code": "000000",
+                },
+                format="json",
+                REMOTE_ADDR="10.10.0.7",
             )
 
             statuses.append(

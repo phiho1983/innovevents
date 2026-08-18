@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import include, path
 from django.http import JsonResponse
 
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -7,30 +7,49 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from .views import MeView, PublicConfigView
 
 from accounts.views import (
+    LoggedTokenObtainPairView,
+    change_password,
+    forgot_password,
+    login_2fa,
+    resend_code,
+    reset_password,
     signup,
     verify_email,
-    LoggedTokenObtainPairView,
-    forgot_password,
-    reset_password,
-    change_password,
-    resend_code,
 )
 
 
 def health(request):
-    return JsonResponse({"status": "ok"})
+    return JsonResponse(
+        {
+            "status": "ok"
+        }
+    )
 
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    path(
+        "admin/",
+        admin.site.urls,
+    ),
 
-    path("api/health/", health),
+    path(
+        "api/health/",
+        health,
+    ),
 
-    path("api/", include("config.api_urls")),
+    path(
+        "api/",
+        include("config.api_urls"),
+    ),
 
     path(
         "api/login/",
         LoggedTokenObtainPairView.as_view(),
+    ),
+
+    path(
+        "api/login-2fa/",
+        login_2fa,
     ),
 
     path(
@@ -74,7 +93,7 @@ urlpatterns = [
     ),
 
     path(
-    "api/resend-code/",
-    resend_code,
+        "api/resend-code/",
+        resend_code,
     ),
 ]

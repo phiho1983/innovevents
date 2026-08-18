@@ -3,16 +3,24 @@ from rest_framework.throttling import UserRateThrottle
 
 class LoginRateThrottle(UserRateThrottle):
     """
-    Protection de la connexion.
+    Protection de la première étape de connexion :
+    identifiant + mot de passe.
 
-    Utilisateur authentifié :
-    clé basée sur son ID.
-
-    Utilisateur anonyme :
-    clé basée sur son adresse IP.
+    Pour un utilisateur anonyme,
+    DRF utilise notamment son adresse IP.
     """
 
     scope = "login"
+    rate = "10/min"
+
+
+class Login2FARateThrottle(UserRateThrottle):
+    """
+    Protection de la seconde étape de connexion :
+    validation du code reçu par e-mail.
+    """
+
+    scope = "login_2fa"
     rate = "10/min"
 
 
