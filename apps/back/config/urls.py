@@ -1,11 +1,19 @@
 from django.contrib import admin
-from django.urls import include, path
 from django.http import JsonResponse
+from django.urls import include, path
 
-from rest_framework_simplejwt.views import TokenRefreshView
+from rest_framework_simplejwt.views import (
+    TokenRefreshView,
+)
 
-from .views import MeView, PublicConfigView
+from .views import (
+    MeView,
+    PublicConfigView,
+)
 
+from accounts.activation import (
+    activate_account,
+)
 from accounts.views import (
     LoggedTokenObtainPairView,
     change_password,
@@ -39,7 +47,9 @@ urlpatterns = [
 
     path(
         "api/",
-        include("config.api_urls"),
+        include(
+            "config.api_urls"
+        ),
     ),
 
     path(
@@ -75,6 +85,11 @@ urlpatterns = [
     path(
         "api/verify-email/",
         verify_email,
+    ),
+
+    path(
+        "api/activate-account/",
+        activate_account,
     ),
 
     path(

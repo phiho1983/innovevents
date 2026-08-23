@@ -44,10 +44,38 @@ function ProspectsTab(){
     setProspects(p=>p.map(x=>x.id===id?{...x,status:u.status}:x)); setUpd(null)
   }
   async function doConvert(id){
-    if(!window.confirm("Convertir ce prospect en client ?")) return
-    try{ await convertProspect(id); alert("Client créé ! Un email avec le mot de passe a été envoyé."); setProspects(p=>p.map(x=>x.id===id?{...x,status:"QUALIFIED"}:x)) }
-    catch(e){ alert("Erreur: "+JSON.stringify(e)) }
+  if(!window.confirm("Convertir ce prospect en client ?")) return
+
+  try{
+    const result=await convertProspect(id)
+
+    if(result.activation_email_sent){
+      alert(
+        `Client créé avec succès.\n\n`
+        + `Un code de vérification a été envoyé à ${result.email}.\n`
+        + `Identifiant du client : ${result.username}\n\n`
+        + `Aucun mot de passe temporaire n'a été envoyé.`
+      )
+    }else{
+      alert(
+        `Le client a bien été créé, mais l'e-mail d'activation `
+        + `n'a pas pu être envoyé.\n\n`
+        + `Le client peut demander un nouveau code depuis `
+        + `la page de vérification d'adresse.`
+      )
+    }
+
+    setProspects(p=>
+      p.map(x=>
+        x.id===id
+          ?{...x,status:"QUALIFIED"}
+          :x
+      )
+    )
+  }catch(e){
+    alert("Erreur: "+JSON.stringify(e))
   }
+}
   if(loading) return <p>Chargement...</p>
   return(<div>
     <h2 style={{marginBottom:12}}>Prospects ({prospects.length})</h2>

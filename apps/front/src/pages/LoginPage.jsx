@@ -7,7 +7,9 @@ import {
   useNavigate,
 } from "react-router-dom";
 
-import { useAuth } from "../auth/useAuth";
+import {
+  useAuth,
+} from "../auth/useAuth";
 
 import AuthForm from "../components/auth/AuthForm";
 import Navbar from "../components/Navbar";
@@ -36,14 +38,6 @@ export default function LoginPage() {
   function redirectAfterLogin(
     user
   ) {
-    /*
-     * On conserve ici le routage actuel
-     * de l'application.
-     *
-     * Le routage complet ADMIN / EMPLOYEE /
-     * CLIENT sera traité avec les espaces
-     * métier dédiés.
-     */
     navigate(
       user?.is_staff
         ? "/admin"
@@ -237,23 +231,64 @@ export default function LoginPage() {
           );
         }}
         footer={
-          <p
+          <div
             style={{
+              display: "grid",
+              gap: 8,
               fontSize: 12,
-              margin: 0,
             }}
           >
-            Pas de compte ?{" "}
-            <Link
-              to="/signup"
+            <p
               style={{
-                fontWeight:
-                  700,
+                margin: 0,
               }}
             >
-              Créer un compte
-            </Link>
-          </p>
+              Pas de compte ?{" "}
+              <Link
+                to="/signup"
+                style={{
+                  fontWeight:
+                    700,
+                }}
+              >
+                Créer un compte
+              </Link>
+            </p>
+
+            <p
+              style={{
+                margin: 0,
+              }}
+            >
+              Adresse e-mail
+              pas encore vérifiée ?{" "}
+              <Link
+                to="/verify-email"
+                style={{
+                  fontWeight:
+                    700,
+                }}
+              >
+                Saisir mon code
+              </Link>
+            </p>
+
+            <p
+              style={{
+                margin: 0,
+              }}
+            >
+              <Link
+                to="/forgot-password"
+                style={{
+                  fontWeight:
+                    700,
+                }}
+              >
+                Mot de passe oublié ?
+              </Link>
+            </p>
+          </div>
         }
       />
     </>

@@ -40,6 +40,11 @@ class VerificationCode(models.Model):
             "Authentification à deux facteurs",
         )
 
+        ACCOUNT_ACTIVATION = (
+            "ACCOUNT_ACTIVATION",
+            "Activation du compte",
+        )
+
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,

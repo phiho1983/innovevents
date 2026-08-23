@@ -51,3 +51,71 @@ export async function signup(
     }),
   });
 }
+
+export async function verifyEmail(
+  email,
+  code
+) {
+  return apiFetch("/api/verify-email/", {
+    method: "POST",
+    body: JSON.stringify({
+      email,
+      code,
+    }),
+  });
+}
+
+export async function activateAccount(
+  uid,
+  token,
+  password
+) {
+  const data = await apiFetch(
+    "/api/activate-account/",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        uid,
+        token,
+        password,
+      }),
+    }
+  );
+
+  if (!data?.access || !data?.refresh) {
+    throw new Error(
+      "Les jetons de connexion n'ont pas été reçus."
+    );
+  }
+
+  setTokens(
+    data.access,
+    data.refresh
+  );
+
+  return data;
+}
+
+export async function forgotPassword(email) {
+  return apiFetch("/api/forgot-password/", {
+    method: "POST",
+    body: JSON.stringify({
+      email,
+    }),
+  });
+}
+
+export async function resetPassword(
+  email,
+  code,
+  password
+) {
+  return apiFetch("/api/reset-password/", {
+    method: "POST",
+    body: JSON.stringify({
+      email,
+      code,
+      password,
+    }),
+  });
+}

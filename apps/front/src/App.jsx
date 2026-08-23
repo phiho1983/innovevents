@@ -1,42 +1,120 @@
-// front/src/App.jsx
-import { Routes, Route, Navigate } from "react-router-dom";
+import {
+  Navigate,
+  Route,
+  Routes,
+} from "react-router-dom";
 
-import HomePage from "./pages/HomePage";
-import QuoteRequestPage from "./pages/QuoteRequestPage";
-import LoginPage from "./pages/LoginPage";
-import SignupPage from "./pages/SignupPage";
+import {
+  ClientOnlyRoute,
+  StaffOnlyRoute,
+} from "./auth/RoleRoute";
+
+import ActivateAccountPage from "./pages/ActivateAccountPage";
 import AdminPage from "./pages/AdminPage";
 import ClientAccountPage from "./pages/ClientAccountPage";
+import ContactPage from "./pages/ContactPage";
+import EventsPage from "./pages/EventsPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import HomePage from "./pages/HomePage";
+import LegalPage from "./pages/LegalPage";
+import LoginPage from "./pages/LoginPage";
+import QuoteRequestPage from "./pages/QuoteRequestPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+import ReviewsPage from "./pages/ReviewsPage";
+import SignupPage from "./pages/SignupPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
 
-import { StaffOnlyRoute, ClientOnlyRoute } from "./auth/RoleRoute";
-import EventsPage       from "./pages/EventsPage"
-import ContactPage      from "./pages/ContactPage"
-import ReviewsPage      from "./pages/ReviewsPage"
-import LegalPage        from "./pages/LegalPage"
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/demande-de-devis" element={<QuoteRequestPage />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/signup" element={<SignupPage />} />
+      <Route
+        path="/"
+        element={<HomePage />}
+      />
 
-      {/* ADMIN : protégé */}
-      <Route element={<StaffOnlyRoute />}>
-        <Route path="/admin" element={<AdminPage />} />
+      <Route
+        path="/demande-de-devis"
+        element={<QuoteRequestPage />}
+      />
+
+      <Route
+        path="/login"
+        element={<LoginPage />}
+      />
+
+      <Route
+        path="/signup"
+        element={<SignupPage />}
+      />
+
+      <Route
+        path="/verify-email"
+        element={<VerifyEmailPage />}
+      />
+
+      <Route
+        path="/activation"
+        element={<ActivateAccountPage />}
+      />
+
+      <Route
+        path="/forgot-password"
+        element={<ForgotPasswordPage />}
+      />
+
+      <Route
+        path="/reset-password"
+        element={<ResetPasswordPage />}
+      />
+
+      <Route
+        path="/evenements"
+        element={<EventsPage />}
+      />
+
+      <Route
+        path="/contact"
+        element={<ContactPage />}
+      />
+
+      <Route
+        path="/avis"
+        element={<ReviewsPage />}
+      />
+
+      <Route
+        path="/mentions-legales"
+        element={<LegalPage />}
+      />
+
+      <Route
+        element={<StaffOnlyRoute />}
+      >
+        <Route
+          path="/admin"
+          element={<AdminPage />}
+        />
       </Route>
 
-      {/* CLIENT : protégé */}
-      <Route element={<ClientOnlyRoute />}>
-        <Route path="/client" element={<ClientAccountPage />} />
+      <Route
+        element={<ClientOnlyRoute />}
+      >
+        <Route
+          path="/client"
+          element={<ClientAccountPage />}
+        />
       </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
-      <Route path="/evenements"       element={<EventsPage />} />
-      <Route path="/contact"          element={<ContactPage />} />
-      <Route path="/avis"             element={<ReviewsPage />} />
-      <Route path="/mentions-legales" element={<LegalPage />} />
+      <Route
+        path="*"
+        element={
+          <Navigate
+            to="/"
+            replace
+          />
+        }
+      />
     </Routes>
   );
 }

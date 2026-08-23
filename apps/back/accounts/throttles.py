@@ -3,11 +3,9 @@ from rest_framework.throttling import UserRateThrottle
 
 class LoginRateThrottle(UserRateThrottle):
     """
-    Protection de la première étape de connexion :
+    Protection de la première étape
+    de connexion :
     identifiant + mot de passe.
-
-    Pour un utilisateur anonyme,
-    DRF utilise notamment son adresse IP.
     """
 
     scope = "login"
@@ -16,7 +14,8 @@ class LoginRateThrottle(UserRateThrottle):
 
 class Login2FARateThrottle(UserRateThrottle):
     """
-    Protection de la seconde étape de connexion :
+    Protection de la seconde étape
+    de connexion :
     validation du code reçu par e-mail.
     """
 
@@ -26,7 +25,8 @@ class Login2FARateThrottle(UserRateThrottle):
 
 class SignupRateThrottle(UserRateThrottle):
     """
-    Limite la création massive de comptes.
+    Limite la création massive
+    de comptes.
     """
 
     scope = "signup"
@@ -35,8 +35,8 @@ class SignupRateThrottle(UserRateThrottle):
 
 class VerifyEmailRateThrottle(UserRateThrottle):
     """
-    Limite les tentatives de vérification
-    d'une adresse e-mail.
+    Limite les tentatives
+    de vérification d'une adresse e-mail.
     """
 
     scope = "verify_email"
@@ -70,4 +70,16 @@ class ResetPasswordRateThrottle(UserRateThrottle):
     """
 
     scope = "reset_password"
+    rate = "10/hour"
+
+
+class AccountActivationRateThrottle(
+    UserRateThrottle
+):
+    """
+    Limite les tentatives d'utilisation
+    des liens d'activation.
+    """
+
+    scope = "account_activation"
     rate = "10/hour"
