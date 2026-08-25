@@ -40,6 +40,10 @@ class PublicEventSerializer(serializers.ModelSerializer):
 class EventSerializer(serializers.ModelSerializer):
     """
     Serializer interne utilisé pour la gestion des événements.
+
+    Les changements de statut d'un événement existant
+    doivent passer par les actions métier dédiées
+    et non par un PATCH direct.
     """
 
     remaining_capacity = serializers.SerializerMethodField()
@@ -97,14 +101,25 @@ class EventSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         """
-        Vérifie la cohérence chronologique
-        de l'événement.
-
-        end_at reste facultatif.
-
-        S'il est renseigné, il doit obligatoirement
-        être postérieur à start_at.
+        Vérifie :
+        - qu'un statut existant n'est pas modifié
+          directement par PATCH/PUT ;
+        - la cohérence chronologique de l'événement.
         """
+
+        if (
+            self.instance is not None
+            and "status" in self.initial_data
+        ):
+            raise serializers.ValidationError(
+                {
+                    "status": (
+                        "Le statut d'un événement "
+                        "doit être modifié via "
+                        "une action métier dédiée."
+                    )
+                }
+            )
 
         start_at = attrs.get(
             "start_at",

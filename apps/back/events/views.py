@@ -1,6 +1,10 @@
 from rest_framework import viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import (
+    AllowAny,
+    IsAuthenticated,
+)
 from rest_framework.response import Response
 
 from accounts.models import User
@@ -93,20 +97,37 @@ class EventViewSet(viewsets.ModelViewSet):
         # Événements privés du client :
         # authentification obligatoire.
         if self.action == "mine":
-            return [IsAuthenticated()]
+            return [
+                IsAuthenticated()
+            ]
+
+        # Cycle de réalisation :
+        # ADMIN métier uniquement.
+        #
+        # Les droits EMPLOYEE seront traités
+        # dans la phase collaboration dédiée.
+        if self.action in [
+            "start",
+            "complete",
+        ]:
+            return [
+                IsBusinessAdmin()
+            ]
 
         # Lecture autorisée à tous.
-        # Le queryset + serializer déterminent ce que
-        # chaque rôle a réellement le droit de consulter.
         if self.action in [
             "list",
             "retrieve",
         ]:
-            return [AllowAny()]
+            return [
+                AllowAny()
+            ]
 
         # Création / modification / suppression :
         # ADMIN uniquement pour l'instant.
-        return [IsBusinessAdmin()]
+        return [
+            IsBusinessAdmin()
+        ]
 
     @action(
         detail=False,
@@ -135,6 +156,7 @@ class EventViewSet(viewsets.ModelViewSet):
                 page,
                 many=True,
             )
+
             return self.get_paginated_response(
                 serializer.data
             )
@@ -145,6 +167,124 @@ class EventViewSet(viewsets.ModelViewSet):
         )
 
         return Response(serializer.data)
+
+    def get_private_event_for_transition(
+        self,
+        expected_status,
+    ):
+        """
+        Retourne un événement privé client
+        uniquement s'il se trouve dans le statut
+        attendu pour la transition demandée.
+
+        Les événements vitrine ne participent
+        jamais au cycle de réalisation client.
+        """
+
+        event = self.get_object()
+
+        if event.client_id is None:
+            raise ValidationError(
+                {
+                    "detail": (
+                        "Le cycle de réalisation "
+                        "est réservé aux événements "
+                        "privés d'un client."
+                    )
+                }
+            )
+
+        if event.status != expected_status:
+            raise ValidationError(
+                {
+                    "detail": (
+                        "Transition de statut "
+                        "non autorisée pour cet événement."
+                    )
+                }
+            )
+
+        return event
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="start",
+    )
+    def start(
+        self,
+        request,
+        pk=None,
+    ):
+        """
+        Démarre la réalisation d'un événement.
+
+        Transition autorisée :
+        ACCEPTED -> IN_PROGRESS
+        """
+
+        event = (
+            self.get_private_event_for_transition(
+                Event.Status.ACCEPTED
+            )
+        )
+
+        event.status = (
+            Event.Status.IN_PROGRESS
+        )
+
+        event.save(
+            update_fields=[
+                "status",
+            ]
+        )
+
+        return Response(
+            {
+                "status":
+                    event.status
+            }
+        )
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="complete",
+    )
+    def complete(
+        self,
+        request,
+        pk=None,
+    ):
+        """
+        Termine la réalisation d'un événement.
+
+        Transition autorisée :
+        IN_PROGRESS -> DONE
+        """
+
+        event = (
+            self.get_private_event_for_transition(
+                Event.Status.IN_PROGRESS
+            )
+        )
+
+        event.status = (
+            Event.Status.DONE
+        )
+
+        event.save(
+            update_fields=[
+                "status",
+            ]
+        )
+
+        return Response(
+            {
+                "status":
+                    event.status
+            }
+        )
 
     def perform_create(self, serializer):
         serializer.save(
