@@ -1,5 +1,7 @@
 from rest_framework import viewsets
-from rest_framework.permissions import AllowAny
+from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
 
 from accounts.models import User
 from accounts.permissions import IsBusinessAdmin
@@ -72,6 +74,11 @@ class EventViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
 
+        # Espace privé du CLIENT :
+        # serializer interne complet.
+        if self.action == "mine":
+            return EventSerializer
+
         # ADMIN / EMPLOYEE :
         # serializer interne complet.
         if self.is_internal_user():
@@ -82,6 +89,11 @@ class EventViewSet(viewsets.ModelViewSet):
         return PublicEventSerializer
 
     def get_permissions(self):
+
+        # Événements privés du client :
+        # authentification obligatoire.
+        if self.action == "mine":
+            return [IsAuthenticated()]
 
         # Lecture autorisée à tous.
         # Le queryset + serializer déterminent ce que
@@ -95,6 +107,44 @@ class EventViewSet(viewsets.ModelViewSet):
         # Création / modification / suppression :
         # ADMIN uniquement pour l'instant.
         return [IsBusinessAdmin()]
+
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="mine",
+    )
+    def mine(self, request):
+        """
+        Retourne uniquement les événements métier privés
+        appartenant au client connecté.
+
+        Les règles de publication de la vitrine
+        ne s'appliquent pas à cette route.
+        """
+
+        queryset = (
+            Event.objects
+            .filter(client=request.user)
+            .order_by("start_at")
+        )
+
+        page = self.paginate_queryset(queryset)
+
+        if page is not None:
+            serializer = self.get_serializer(
+                page,
+                many=True,
+            )
+            return self.get_paginated_response(
+                serializer.data
+            )
+
+        serializer = self.get_serializer(
+            queryset,
+            many=True,
+        )
+
+        return Response(serializer.data)
 
     def perform_create(self, serializer):
         serializer.save(

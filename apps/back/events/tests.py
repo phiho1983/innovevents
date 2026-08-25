@@ -40,6 +40,13 @@ class EventAPITest(TestCase):
             is_staff=True,
         )
 
+        self.other_client_user = User.objects.create_user(
+            username="event_other_client",
+            password="TestPassword123!",
+            role=User.Role.CLIENT,
+            is_staff=False,
+        )
+
         start_at = (
             timezone.now()
             + timedelta(days=10)
@@ -49,6 +56,10 @@ class EventAPITest(TestCase):
             start_at
             + timedelta(hours=2)
         )
+
+        # -------------------------------------------------
+        # ÉVÉNEMENTS VITRINE / PUBLICS
+        # -------------------------------------------------
 
         self.public_event = Event.objects.create(
             title="PUBLIC EVENT",
@@ -98,6 +109,36 @@ class EventAPITest(TestCase):
             client_agreed=False,
         )
 
+        # -------------------------------------------------
+        # VRAIS ÉVÉNEMENTS MÉTIER PRIVÉS DES CLIENTS
+        # -------------------------------------------------
+
+        self.client_private_event = Event.objects.create(
+            title="CLIENT PRIVATE EVENT",
+            city="Lyon",
+            start_at=start_at,
+            end_at=end_at,
+            capacity=40,
+            organizer=self.admin,
+            client=self.client_user,
+            status=Event.Status.DRAFT,
+            visible=False,
+            client_agreed=False,
+        )
+
+        self.other_client_private_event = Event.objects.create(
+            title="OTHER CLIENT PRIVATE EVENT",
+            city="Marseille",
+            start_at=start_at,
+            end_at=end_at,
+            capacity=30,
+            organizer=self.admin,
+            client=self.other_client_user,
+            status=Event.Status.DRAFT,
+            visible=False,
+            client_agreed=False,
+        )
+
     def get_results(self, response):
         if isinstance(response.data, dict):
             return response.data.get(
@@ -143,6 +184,92 @@ class EventAPITest(TestCase):
 
         self.assertNotIn(
             "NO AGREEMENT EVENT",
+            titles,
+        )
+
+        self.assertNotIn(
+            "CLIENT PRIVATE EVENT",
+            titles,
+        )
+
+        self.assertNotIn(
+            "OTHER CLIENT PRIVATE EVENT",
+            titles,
+        )
+
+    def test_authenticated_client_public_list_stays_showcase_only(self):
+        self.client.force_authenticate(
+            user=self.client_user
+        )
+
+        response = self.client.get(
+            "/api/events/"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        results = self.get_results(
+            response
+        )
+
+        titles = {
+            event["title"]
+            for event in results
+        }
+
+        self.assertIn(
+            "PUBLIC EVENT",
+            titles,
+        )
+
+        self.assertNotIn(
+            "CLIENT PRIVATE EVENT",
+            titles,
+        )
+
+        self.assertNotIn(
+            "OTHER CLIENT PRIVATE EVENT",
+            titles,
+        )
+
+    def test_client_can_list_only_own_private_events(self):
+        self.client.force_authenticate(
+            user=self.client_user
+        )
+
+        response = self.client.get(
+            "/api/events/mine/"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        results = self.get_results(
+            response
+        )
+
+        titles = {
+            event["title"]
+            for event in results
+        }
+
+        self.assertIn(
+            "CLIENT PRIVATE EVENT",
+            titles,
+        )
+
+        self.assertNotIn(
+            "OTHER CLIENT PRIVATE EVENT",
+            titles,
+        )
+
+        self.assertNotIn(
+            "PUBLIC EVENT",
             titles,
         )
 
