@@ -1,0 +1,32 @@
+from django.conf import settings
+from django.db import migrations, models
+import django.db.models.deletion
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        migrations.swappable_dependency(
+            settings.AUTH_USER_MODEL
+        ),
+        (
+            "crm",
+            "0002_prospect_desired_date_prospect_event_type_and_more",
+        ),
+    ]
+
+    operations = [
+        migrations.AddField(
+            model_name="prospect",
+            name="converted_client",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=(
+                    django.db.models.deletion.SET_NULL
+                ),
+                related_name="converted_prospects",
+                to=settings.AUTH_USER_MODEL,
+            ),
+        ),
+    ]

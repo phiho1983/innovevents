@@ -328,10 +328,26 @@ class ProspectViewSet(
                 Prospect.Status.QUALIFIED
             )
 
+            prospect.converted_client = (
+                user
+            )
+
             prospect.save(
                 update_fields=[
                     "status",
+                    "converted_client",
                 ]
+            )
+
+            (
+                Quote.objects
+                .filter(
+                    prospect=prospect,
+                    client__isnull=True,
+                )
+                .update(
+                    client=user
+                )
             )
 
             (

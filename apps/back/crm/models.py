@@ -1,5 +1,3 @@
-
-
 # Create your models here.
 from decimal import Decimal
 from django.conf import settings
@@ -23,6 +21,14 @@ class Prospect(models.Model):
     event_type=models.CharField(max_length=50,blank=True)
     desired_date=models.DateField(null=True,blank=True)
     participant_count=models.PositiveIntegerField(null=True,blank=True)
+
+    converted_client = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="converted_prospects",
+    )
 
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.TO_CONTACT)
     created_at = models.DateTimeField(auto_now_add=True)

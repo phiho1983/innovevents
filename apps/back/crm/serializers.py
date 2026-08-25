@@ -110,6 +110,17 @@ class QuoteSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         items_data = validated_data.pop("items", [])
+
+        prospect = validated_data.get("prospect")
+        client = validated_data.get("client")
+
+        if (
+            client is None
+            and prospect is not None
+            and prospect.converted_client_id
+        ):
+            validated_data["client"] = prospect.converted_client
+
         quote = Quote.objects.create(**validated_data)
         for it in items_data:
             QuoteItem.objects.create(quote=quote, **it)
