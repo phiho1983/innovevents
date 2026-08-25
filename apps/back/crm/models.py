@@ -72,6 +72,13 @@ class Quote(models.Model):
         blank=True,
         related_name="quotes",
     )
+    event = models.ForeignKey(
+        "events.Event",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="quotes",
+    )
 
     status = models.CharField(max_length=30, choices=Status.choices, default=Status.DRAFT)
     tva_rate = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("0.20"))

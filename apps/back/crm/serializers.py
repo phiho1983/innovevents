@@ -98,6 +98,7 @@ class QuoteSerializer(serializers.ModelSerializer):
             "id",
             "client",
             "prospect",
+            "event",
             "status",
             "tva_rate",
             "created_at",
@@ -108,13 +109,48 @@ class QuoteSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("status", "created_at")
 
+    def validate(self, attrs):
+        event = attrs.get("event")
+        client = attrs.get("client")
+
+        if event is not None:
+            if event.client_id is None:
+                raise serializers.ValidationError(
+                    {
+                        "event": (
+                            "Le devis doit être rattaché "
+                            "à un événement privé appartenant "
+                            "à un client."
+                        )
+                    }
+                )
+
+            if (
+                client is not None
+                and client.id != event.client_id
+            ):
+                raise serializers.ValidationError(
+                    {
+                        "client": (
+                            "Le client du devis doit correspondre "
+                            "au client propriétaire de l'événement."
+                        )
+                    }
+                )
+
+        return attrs
+
     def create(self, validated_data):
         items_data = validated_data.pop("items", [])
 
+        event = validated_data.get("event")
         prospect = validated_data.get("prospect")
         client = validated_data.get("client")
 
-        if (
+        if event is not None:
+            validated_data["client"] = event.client
+
+        elif (
             client is None
             and prospect is not None
             and prospect.converted_client_id
@@ -122,8 +158,13 @@ class QuoteSerializer(serializers.ModelSerializer):
             validated_data["client"] = prospect.converted_client
 
         quote = Quote.objects.create(**validated_data)
+
         for it in items_data:
-            QuoteItem.objects.create(quote=quote, **it)
+            QuoteItem.objects.create(
+                quote=quote,
+                **it,
+            )
+
         return quote
 
 
