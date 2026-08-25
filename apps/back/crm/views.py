@@ -9,6 +9,7 @@ from django.db import transaction
 from rest_framework import status as drf_status
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import (
     AllowAny,
     IsAuthenticated,
@@ -18,7 +19,10 @@ from rest_framework.response import Response
 from accounts.email_service import (
     send_transactional_email,
 )
-from accounts.permissions import IsBusinessAdmin
+from accounts.permissions import (
+    IsBusinessAdmin,
+    IsClient,
+)
 from accounts.services import (
     create_account_activation_token,
 )
@@ -535,6 +539,12 @@ class QuoteViewSet(
             "accept",
             "refuse",
             "request_change",
+        ]:
+            return [
+                IsClient()
+            ]
+
+        if self.action in [
             "list",
             "retrieve",
         ]:
@@ -559,6 +569,34 @@ class QuoteViewSet(
             client=self.request.user
         )
 
+    def get_decidable_quote(self):
+        """
+        Une décision client n'est autorisée
+        que sur un devis au statut SENT.
+
+        Les devis DRAFT ne sont pas encore
+        soumis au client.
+
+        Une décision déjà prise ne peut pas
+        être remplacée arbitrairement par
+        une autre décision.
+        """
+
+        quote = self.get_object()
+
+        if quote.status != Quote.Status.SENT:
+            raise ValidationError(
+                {
+                    "detail": (
+                        "Seul un devis envoyé "
+                        "peut faire l'objet "
+                        "d'une décision."
+                    )
+                }
+            )
+
+        return quote
+
     @action(
         detail=True,
         methods=["post"],
@@ -568,7 +606,9 @@ class QuoteViewSet(
         request,
         pk=None,
     ):
-        quote = self.get_object()
+        quote = (
+            self.get_decidable_quote()
+        )
 
         quote.status = (
             Quote.Status.ACCEPTED
@@ -610,7 +650,9 @@ class QuoteViewSet(
         request,
         pk=None,
     ):
-        quote = self.get_object()
+        quote = (
+            self.get_decidable_quote()
+        )
 
         quote.status = (
             Quote.Status.REFUSED
@@ -640,7 +682,7 @@ class QuoteViewSet(
         pk=None,
     ):
         quote = (
-            self.get_object()
+            self.get_decidable_quote()
         )
 
         reason = (
