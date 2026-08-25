@@ -620,6 +620,21 @@ class QuoteViewSet(
             ]
         )
 
+        if (
+            quote.event_id
+            and quote.event.status
+            == quote.event.Status.DRAFT
+        ):
+            quote.event.status = (
+                quote.event.Status.ACCEPTED
+            )
+
+            quote.event.save(
+                update_fields=[
+                    "status",
+                ]
+            )
+
         send_mail(
             "Devis accepté",
             (
