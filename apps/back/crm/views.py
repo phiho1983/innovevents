@@ -22,6 +22,7 @@ from accounts.email_service import (
 from accounts.permissions import (
     IsBusinessAdmin,
     IsClient,
+    IsInternalUser,
 )
 from accounts.services import (
     create_account_activation_token,
@@ -104,8 +105,14 @@ class ProspectViewSet(
     - public, pour le formulaire
       de demande de devis.
 
-    Autres opérations :
-    - ADMIN métier uniquement.
+    EMPLOYEE / ADMIN :
+    - consultation
+    - modification des informations
+    - changement de statut
+    - conversion Prospect -> Client
+
+    ADMIN uniquement :
+    - suppression
 
     Les permissions métier reposent
     sur User.role et non sur is_staff.
@@ -123,6 +130,18 @@ class ProspectViewSet(
         if self.action == "create":
             return [
                 AllowAny()
+            ]
+
+        if self.action in [
+            "list",
+            "retrieve",
+            "update",
+            "partial_update",
+            "status",
+            "convert",
+        ]:
+            return [
+                IsInternalUser()
             ]
 
         return [
@@ -195,7 +214,7 @@ class ProspectViewSet(
         methods=["patch"],
         url_path="status",
         permission_classes=[
-            IsBusinessAdmin
+            IsInternalUser
         ],
     )
     def status(
@@ -236,7 +255,7 @@ class ProspectViewSet(
         methods=["post"],
         url_path="convert",
         permission_classes=[
-            IsBusinessAdmin
+            IsInternalUser
         ],
     )
     def convert(
@@ -497,11 +516,14 @@ class QuoteViewSet(
       sur ses propres devis.
 
     EMPLOYEE :
-    - peut consulter tous les devis.
+    - peut consulter tous les devis
+    - peut créer et modifier les devis
+    - peut générer le PDF d'un devis.
 
     ADMIN :
     - peut consulter et administrer
-      tous les devis.
+      tous les devis
+    - peut supprimer les devis.
 
     is_staff n'est jamais utilisé
     comme rôle métier.
@@ -550,6 +572,16 @@ class QuoteViewSet(
         ]:
             return [
                 IsAuthenticated()
+            ]
+
+        if self.action in [
+            "create",
+            "update",
+            "partial_update",
+            "generate_pdf",
+        ]:
+            return [
+                IsInternalUser()
             ]
 
         return [
@@ -739,6 +771,9 @@ class QuoteViewSet(
         detail=True,
         methods=["get"],
         url_path="pdf",
+        permission_classes=[
+            IsInternalUser
+        ],
     )
     def generate_pdf(
         self,
