@@ -1,12 +1,8 @@
-from datetime import timedelta
-
 from django.contrib.auth import get_user_model
 from django.test import TestCase
-from django.utils import timezone
 
 from rest_framework.test import APIClient
 
-from events.models import Event
 from reviews.models import Review
 
 
@@ -27,20 +23,6 @@ class ReviewAccessControlTest(TestCase):
             role=User.Role.CLIENT,
         )
 
-        self.event = Event.objects.create(
-            title="Événement terminé pour contrôle des avis",
-            description="Événement privé utilisé pour les tests d'accès.",
-            city="Paris",
-            start_at=timezone.now() - timedelta(days=2),
-            end_at=timezone.now() - timedelta(days=1),
-            capacity=50,
-            event_type=Event.EventType.CONFERENCE,
-            status=Event.Status.DONE,
-            visible=False,
-            organizer=self.admin,
-            client=self.client_user,
-        )
-
     def api_for(self, user):
         client = APIClient()
 
@@ -58,7 +40,6 @@ class ReviewAccessControlTest(TestCase):
         response = client.post(
             "/api/reviews/",
             {
-                "event": self.event.id,
                 "rating": 5,
                 "content": (
                     "Un administrateur ne doit pas publier cet avis."
@@ -83,7 +64,6 @@ class ReviewAccessControlTest(TestCase):
         response = client.post(
             "/api/reviews/",
             {
-                "event": self.event.id,
                 "rating": 5,
                 "content": (
                     "Un visiteur non connecté ne doit pas publier cet avis."
@@ -104,7 +84,6 @@ class ReviewAccessControlTest(TestCase):
 
     def test_client_cannot_patch_review(self):
         review = Review.objects.create(
-            event=self.event,
             author=self.client_user,
             rating=5,
             content="Avis initial qui ne doit pas être modifiable.",
@@ -142,7 +121,6 @@ class ReviewAccessControlTest(TestCase):
 
     def test_admin_cannot_put_review(self):
         review = Review.objects.create(
-            event=self.event,
             author=self.client_user,
             rating=5,
             content="Avis initial qui ne doit pas être modifiable.",
@@ -155,7 +133,6 @@ class ReviewAccessControlTest(TestCase):
         response = client.put(
             f"/api/reviews/{review.id}/",
             {
-                "event": self.event.id,
                 "rating": 1,
                 "content": "Tentative de remplacement complet de l'avis.",
             },
