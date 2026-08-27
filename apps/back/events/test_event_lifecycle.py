@@ -172,6 +172,58 @@ class EventLifecycleTest(TestCase):
             Event.Status.DONE,
         )
 
+    def test_employee_can_start_accepted_private_event(self):
+        self.api_client.force_authenticate(
+            user=self.employee
+        )
+
+        response = self.api_client.post(
+            (
+                f"/api/events/"
+                f"{self.accepted_event.id}/start/"
+            ),
+            {},
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.accepted_event.refresh_from_db()
+
+        self.assertEqual(
+            self.accepted_event.status,
+            Event.Status.IN_PROGRESS,
+        )
+
+    def test_employee_can_complete_in_progress_private_event(self):
+        self.api_client.force_authenticate(
+            user=self.employee
+        )
+
+        response = self.api_client.post(
+            (
+                f"/api/events/"
+                f"{self.in_progress_event.id}/complete/"
+            ),
+            {},
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.in_progress_event.refresh_from_db()
+
+        self.assertEqual(
+            self.in_progress_event.status,
+            Event.Status.DONE,
+        )
+
     def test_draft_event_cannot_be_started(self):
         self.api_client.force_authenticate(
             user=self.admin
@@ -253,25 +305,6 @@ class EventLifecycleTest(TestCase):
     def test_client_cannot_start_event(self):
         self.api_client.force_authenticate(
             user=self.client_user
-        )
-
-        response = self.api_client.post(
-            (
-                f"/api/events/"
-                f"{self.accepted_event.id}/start/"
-            ),
-            {},
-            format="json",
-        )
-
-        self.assertEqual(
-            response.status_code,
-            403,
-        )
-
-    def test_employee_cannot_start_event_yet(self):
-        self.api_client.force_authenticate(
-            user=self.employee
         )
 
         response = self.api_client.post(

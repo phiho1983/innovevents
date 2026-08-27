@@ -8,7 +8,10 @@ from rest_framework.permissions import (
 from rest_framework.response import Response
 
 from accounts.models import User
-from accounts.permissions import IsBusinessAdmin
+from accounts.permissions import (
+    IsBusinessAdmin,
+    IsInternalUser,
+)
 
 from .models import Event, HomePhoto
 from .serializers import (
@@ -102,16 +105,16 @@ class EventViewSet(viewsets.ModelViewSet):
             ]
 
         # Cycle de réalisation :
-        # ADMIN métier uniquement.
+        # ADMIN et EMPLOYEE.
         #
-        # Les droits EMPLOYEE seront traités
-        # dans la phase collaboration dédiée.
+        # Il s'agit d'actions opérationnelles métier
+        # et non d'administration sensible.
         if self.action in [
             "start",
             "complete",
         ]:
             return [
-                IsBusinessAdmin()
+                IsInternalUser()
             ]
 
         # Lecture autorisée à tous.
