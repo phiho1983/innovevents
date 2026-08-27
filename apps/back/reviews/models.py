@@ -4,6 +4,12 @@ from django.db import models
 
 
 class Review(models.Model):
+    event = models.OneToOneField(
+        "events.Event",
+        on_delete=models.CASCADE,
+        related_name="review",
+    )
+
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
