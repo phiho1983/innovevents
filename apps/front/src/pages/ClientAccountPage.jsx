@@ -3,6 +3,7 @@ import{useNavigate}from"react-router-dom"
 import Navbar from"../components/Navbar"
 import{useAuth}from"../auth/useAuth"
 import{getMyQuotes,quoteAction}from"../api/quotes"
+import{selectUpcomingClientEvents}from"../utils/selectUpcomingClientEvents"
 
 const SLABELS={DRAFT:"Brouillon",SENT:"Envoyé",ACCEPTED:"Accepté",REFUSED:"Refusé",CHANGE_REQUESTED:"Modification demandée"}
 const SCOLORS={DRAFT:"#f5f5f5",SENT:"#cce5ff",ACCEPTED:"#d4edda",REFUSED:"#f8d7da",CHANGE_REQUESTED:"#fff3cd"}
@@ -17,8 +18,10 @@ export default function ClientAccountPage(){
   useEffect(()=>{
     getMyQuotes().then(d=>setQuotes(d.results||d)).catch(console.error).finally(()=>setLoading(false))
     const tok=localStorage.getItem("access_token")
-    fetch(`${API}/api/events/?upcoming=3`,{headers:{"Authorization":`Bearer ${tok}`}})
-      .then(r=>r.json()).then(d=>setEvents((d.results||d).slice(0,3))).catch(()=>{})
+    fetch(`${API}/api/events/mine/`,{headers:{"Authorization":`Bearer ${tok}`}})
+      .then(r=>r.json())
+      .then(d=>setEvents(selectUpcomingClientEvents(d.results||d)))
+      .catch(()=>{})
   },[])
 
   async function doAction(id,action,r=""){
