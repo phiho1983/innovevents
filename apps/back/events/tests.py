@@ -373,7 +373,7 @@ class EventAPITest(TestCase):
             self.admin,
         )
 
-    def test_employee_cannot_create_event(self):
+    def test_employee_can_create_event(self):
         self.client.force_authenticate(
             user=self.employee
         )
@@ -386,17 +386,39 @@ class EventAPITest(TestCase):
         response = self.client.post(
             "/api/events/",
             {
-                "title": "EMPLOYEE EVENT",
+                "title": "EMPLOYEE CREATED EVENT",
                 "city": "Paris",
                 "start_at": start_at.isoformat(),
-                "capacity": 10,
+                "end_at": (
+                    start_at
+                    + timedelta(hours=3)
+                ).isoformat(),
+                "capacity": 60,
+                "event_type": "CONFERENCE",
+                "client": self.client_user.id,
+                "visible": False,
+                "client_agreed": False,
             },
             format="json",
         )
 
         self.assertEqual(
             response.status_code,
-            403,
+            201,
+        )
+
+        event = Event.objects.get(
+            title="EMPLOYEE CREATED EVENT"
+        )
+
+        self.assertEqual(
+            event.organizer,
+            self.employee,
+        )
+
+        self.assertEqual(
+            event.client,
+            self.client_user,
         )
 
     def test_client_with_is_staff_cannot_create_event(self):
@@ -423,6 +445,179 @@ class EventAPITest(TestCase):
         self.assertEqual(
             response.status_code,
             403,
+        )
+
+    def test_employee_can_partially_update_event(self):
+        self.client.force_authenticate(
+            user=self.employee
+        )
+
+        response = self.client.patch(
+            (
+                f"/api/events/"
+                f"{self.client_private_event.id}/"
+            ),
+            {
+                "title": "EMPLOYEE UPDATED EVENT",
+                "city": "Nantes",
+                "capacity": 55,
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.client_private_event.refresh_from_db()
+
+        self.assertEqual(
+            self.client_private_event.title,
+            "EMPLOYEE UPDATED EVENT",
+        )
+
+        self.assertEqual(
+            self.client_private_event.city,
+            "Nantes",
+        )
+
+        self.assertEqual(
+            self.client_private_event.capacity,
+            55,
+        )
+
+    def test_employee_can_fully_update_event(self):
+        self.client.force_authenticate(
+            user=self.employee
+        )
+
+        start_at = (
+            timezone.now()
+            + timedelta(days=25)
+        )
+
+        response = self.client.put(
+            (
+                f"/api/events/"
+                f"{self.client_private_event.id}/"
+            ),
+            {
+                "title": "EMPLOYEE FULL UPDATE",
+                "description": "Événement modifié par un employé.",
+                "city": "Bordeaux",
+                "start_at": start_at.isoformat(),
+                "end_at": (
+                    start_at
+                    + timedelta(hours=5)
+                ).isoformat(),
+                "capacity": 75,
+                "event_type": "CONFERENCE",
+                "theme": "Innovation",
+                "visible": False,
+                "client_agreed": False,
+                "client": self.client_user.id,
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.client_private_event.refresh_from_db()
+
+        self.assertEqual(
+            self.client_private_event.title,
+            "EMPLOYEE FULL UPDATE",
+        )
+
+        self.assertEqual(
+            self.client_private_event.city,
+            "Bordeaux",
+        )
+
+        self.assertEqual(
+            self.client_private_event.capacity,
+            75,
+        )
+
+        self.assertEqual(
+            self.client_private_event.client,
+            self.client_user,
+        )
+
+    def test_employee_cannot_delete_event(self):
+        self.client.force_authenticate(
+            user=self.employee
+        )
+
+        response = self.client.delete(
+            (
+                f"/api/events/"
+                f"{self.client_private_event.id}/"
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            403,
+        )
+
+        self.assertTrue(
+            Event.objects.filter(
+                id=self.client_private_event.id
+            ).exists()
+        )
+
+    def test_client_with_is_staff_cannot_update_event(self):
+        self.client.force_authenticate(
+            user=self.client_user
+        )
+
+        response = self.client.patch(
+            (
+                f"/api/events/"
+                f"{self.client_private_event.id}/"
+            ),
+            {
+                "title": "FORBIDDEN CLIENT UPDATE",
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            403,
+        )
+
+    def test_employee_cannot_bypass_lifecycle_with_status_patch(self):
+        self.client.force_authenticate(
+            user=self.employee
+        )
+
+        response = self.client.patch(
+            (
+                f"/api/events/"
+                f"{self.client_private_event.id}/"
+            ),
+            {
+                "status": Event.Status.DONE,
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            400,
+        )
+
+        self.client_private_event.refresh_from_db()
+
+        self.assertEqual(
+            self.client_private_event.status,
+            Event.Status.DRAFT,
         )
 
     def test_end_date_must_be_after_start_date(self):

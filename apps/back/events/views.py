@@ -106,9 +106,6 @@ class EventViewSet(viewsets.ModelViewSet):
 
         # Cycle de réalisation :
         # ADMIN et EMPLOYEE.
-        #
-        # Il s'agit d'actions opérationnelles métier
-        # et non d'administration sensible.
         if self.action in [
             "start",
             "complete",
@@ -126,8 +123,27 @@ class EventViewSet(viewsets.ModelViewSet):
                 AllowAny()
             ]
 
-        # Création / modification / suppression :
-        # ADMIN uniquement pour l'instant.
+        # Suppression :
+        # ADMIN uniquement.
+        if self.action == "destroy":
+            return [
+                IsBusinessAdmin()
+            ]
+
+        # Exploitation métier :
+        # ADMIN et EMPLOYEE peuvent créer
+        # et modifier les événements.
+        if self.action in [
+            "create",
+            "update",
+            "partial_update",
+        ]:
+            return [
+                IsInternalUser()
+            ]
+
+        # Toute action non prévue reste
+        # réservée à l'ADMIN.
         return [
             IsBusinessAdmin()
         ]
