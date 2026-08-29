@@ -11,6 +11,10 @@ import {
   useAuth,
 } from "../auth/useAuth";
 
+import {
+  getHomePathForUser,
+} from "../auth/roleAccess";
+
 import AuthForm from "../components/auth/AuthForm";
 import Navbar from "../components/Navbar";
 
@@ -39,9 +43,7 @@ export default function LoginPage() {
     user
   ) {
     navigate(
-      user?.is_staff
-        ? "/admin"
-        : "/client",
+      getHomePathForUser(user),
       {
         replace: true,
       }
@@ -86,7 +88,7 @@ export default function LoginPage() {
           ) => {
             const code =
               values.code
-              ?.trim();
+                ?.trim();
 
             if (!code) {
               return (

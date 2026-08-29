@@ -5,14 +5,16 @@ import {
 } from "react-router-dom";
 
 import {
+  AdminOnlyRoute,
   ClientOnlyRoute,
-  StaffOnlyRoute,
+  EmployeeOnlyRoute,
 } from "./auth/RoleRoute";
 
 import ActivateAccountPage from "./pages/ActivateAccountPage";
 import AdminPage from "./pages/AdminPage";
 import ClientAccountPage from "./pages/ClientAccountPage";
 import ContactPage from "./pages/ContactPage";
+import EmployeePage from "./pages/EmployeePage";
 import EventsPage from "./pages/EventsPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import HomePage from "./pages/HomePage";
@@ -89,11 +91,20 @@ export default function App() {
       />
 
       <Route
-        element={<StaffOnlyRoute />}
+        element={<AdminOnlyRoute />}
       >
         <Route
           path="/admin"
           element={<AdminPage />}
+        />
+      </Route>
+
+      <Route
+        element={<EmployeeOnlyRoute />}
+      >
+        <Route
+          path="/employee"
+          element={<EmployeePage />}
         />
       </Route>
 

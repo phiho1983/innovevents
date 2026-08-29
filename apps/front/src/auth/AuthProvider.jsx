@@ -1,6 +1,5 @@
 import {
   useEffect,
-  useMemo,
   useState,
 } from "react";
 
@@ -17,6 +16,12 @@ import {
   verifyLogin2FA as apiVerifyLogin2FA,
 } from "../api/auth";
 
+import {
+  isAdminUser,
+  isClientUser,
+  isEmployeeUser,
+} from "./roleAccess";
+
 
 export function AuthProvider({
   children,
@@ -24,8 +29,31 @@ export function AuthProvider({
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const isAuthenticated = !!user;
-  const isStaff = !!user?.is_staff;
+  const isAuthenticated =
+    Boolean(user);
+
+  const isAdmin =
+    isAdminUser(user);
+
+  const isEmployee =
+    isEmployeeUser(user);
+
+  const isClient =
+    isClientUser(user);
+
+  const isInternal =
+    isAdmin || isEmployee;
+
+  /*
+   * Alias temporaire conservé
+   * pour compatibilité frontend.
+   *
+   * IMPORTANT :
+   * il ne dépend plus de
+   * Django user.is_staff.
+   */
+  const isStaff =
+    isInternal;
 
   async function refreshMe() {
     if (!getAccessToken()) {
@@ -34,7 +62,8 @@ export function AuthProvider({
     }
 
     try {
-      const data = await apiMe();
+      const data =
+        await apiMe();
 
       setUser(data);
 
@@ -59,10 +88,11 @@ export function AuthProvider({
     clearTokens();
     setUser(null);
 
-    const data = await apiLogin(
-      username,
-      password
-    );
+    const data =
+      await apiLogin(
+        username,
+        password
+      );
 
     if (!data?.requires_2fa) {
       throw new Error(
@@ -117,28 +147,22 @@ export function AuthProvider({
         setLoading(false);
       }
     })();
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const value = useMemo(
-    () => ({
-      user,
-      loading,
-      isAuthenticated,
-      isStaff,
-      refreshMe,
-      login,
-      verifyLogin2FA,
-      logout,
-    }),
-    [
-      user,
-      loading,
-      isAuthenticated,
-      isStaff,
-    ]
-  );
+  const value = {
+    user,
+    loading,
+    isAuthenticated,
+    isAdmin,
+    isEmployee,
+    isClient,
+    isInternal,
+    isStaff,
+    refreshMe,
+    login,
+    verifyLogin2FA,
+    logout,
+  };
 
   return (
     <AuthContext.Provider
