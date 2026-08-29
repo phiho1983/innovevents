@@ -181,6 +181,26 @@ export default function EmployeePage() {
     setEventActionId,
   ] = useState(null);
 
+  const [
+    notes,
+    setNotes,
+  ] = useState([]);
+
+  const [
+    notesLoading,
+    setNotesLoading,
+  ] = useState(false);
+
+  const [
+    notesLoaded,
+    setNotesLoaded,
+  ] = useState(false);
+
+  const [
+    notesError,
+    setNotesError,
+  ] = useState("");
+
 
   useEffect(() => {
     let active = true;
@@ -320,6 +340,57 @@ export default function EmployeePage() {
   }, [
     activeTab,
     eventsLoaded,
+  ]);
+
+
+  useEffect(() => {
+    if (
+      activeTab !== "notes"
+      || notesLoaded
+    ) {
+      return;
+    }
+
+    let active = true;
+
+    async function loadNotes() {
+      setNotesLoading(true);
+      setNotesError("");
+
+      try {
+        const data =
+          await apiFetch(
+            "/api/notes/"
+          );
+
+        if (active) {
+          setNotes(
+            normalizeList(data)
+          );
+
+          setNotesLoaded(true);
+        }
+      } catch (loadError) {
+        if (active) {
+          setNotesError(
+            formatError(loadError)
+          );
+        }
+      } finally {
+        if (active) {
+          setNotesLoading(false);
+        }
+      }
+    }
+
+    loadNotes();
+
+    return () => {
+      active = false;
+    };
+  }, [
+    activeTab,
+    notesLoaded,
   ]);
 
 
@@ -552,6 +623,7 @@ export default function EmployeePage() {
             marginBottom: 24,
             borderBottom:
               "1px solid #ddd",
+            flexWrap: "wrap",
           }}
         >
           <TabButton
@@ -594,6 +666,20 @@ export default function EmployeePage() {
             }
           >
             Événements
+          </TabButton>
+
+          <TabButton
+            active={
+              activeTab === "notes"
+            }
+            onClick={
+              () =>
+                setActiveTab(
+                  "notes"
+                )
+            }
+          >
+            Notes
           </TabButton>
         </div>
 
@@ -644,6 +730,18 @@ export default function EmployeePage() {
             }
             onTransition={
               transitionEvent
+            }
+          />
+        )}
+
+        {activeTab === "notes" && (
+          <NotesSection
+            notes={notes}
+            setNotes={setNotes}
+            loading={notesLoading}
+            error={notesError}
+            setError={
+              setNotesError
             }
           />
         )}
@@ -1878,6 +1976,613 @@ function EventCard({
               : "Terminer"}
           </button>
         )}
+    </article>
+  );
+}
+
+
+function NotesSection({
+  notes,
+  setNotes,
+  loading,
+  error,
+  setError,
+}) {
+  const [
+    showCreateForm,
+    setShowCreateForm,
+  ] = useState(false);
+
+  return (
+    <section>
+      <div
+        style={{
+          display: "flex",
+          justifyContent:
+            "space-between",
+          alignItems: "center",
+          gap: 16,
+          marginBottom: 16,
+        }}
+      >
+        <div>
+          <h2
+            style={{
+              marginBottom: 4,
+            }}
+          >
+            Notes internes
+          </h2>
+
+          <p
+            style={{
+              color: "#666",
+              fontSize: 14,
+              margin: 0,
+            }}
+          >
+            Notes collaboratives
+            réservées aux équipes internes.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          className="btn"
+          onClick={
+            () =>
+              setShowCreateForm(
+                (previous) =>
+                  !previous
+              )
+          }
+        >
+          {showCreateForm
+            ? "Annuler"
+            : "+ Nouvelle note"}
+        </button>
+      </div>
+
+      {error && (
+        <ErrorMessage
+          message={error}
+        />
+      )}
+
+      {showCreateForm && (
+        <CreateNoteForm
+          onSuccess={
+            (note) => {
+              setNotes(
+                (previousNotes) => [
+                  note,
+                  ...previousNotes,
+                ]
+              );
+
+              setShowCreateForm(
+                false
+              );
+            }
+          }
+          onError={
+            setError
+          }
+        />
+      )}
+
+      {loading && (
+        <p>
+          Chargement...
+        </p>
+      )}
+
+      {!loading
+        && notes.length === 0
+        && (
+          <p
+            style={{
+              color: "#888",
+            }}
+          >
+            Aucune note interne.
+          </p>
+        )}
+
+      {!loading
+        && notes.map(
+          (note) => (
+            <NoteCard
+              key={note.id}
+              note={note}
+              onUpdate={
+                (updatedNote) => {
+                  setNotes(
+                    (previousNotes) =>
+                      previousNotes.map(
+                        (currentNote) =>
+                          currentNote.id
+                            === updatedNote.id
+                            ? updatedNote
+                            : currentNote
+                      )
+                  );
+                }
+              }
+              onError={
+                setError
+              }
+            />
+          )
+        )}
+    </section>
+  );
+}
+
+
+function CreateNoteForm({
+  onSuccess,
+  onError,
+}) {
+  const [
+    clientId,
+    setClientId,
+  ] = useState("");
+
+  const [
+    content,
+    setContent,
+  ] = useState("");
+
+  const [
+    pinned,
+    setPinned,
+  ] = useState(false);
+
+  const [
+    submitting,
+    setSubmitting,
+  ] = useState(false);
+
+
+  async function submit(
+    event,
+  ) {
+    event.preventDefault();
+
+    onError("");
+    setSubmitting(true);
+
+    const payload = {
+      client:
+        Number(clientId),
+      content:
+        content.trim(),
+      pinned,
+    };
+
+    try {
+      const note =
+        await apiFetch(
+          "/api/notes/",
+          {
+            method: "POST",
+            body:
+              JSON.stringify(
+                payload
+              ),
+          }
+        );
+
+      onSuccess(
+        note
+      );
+    } catch (creationError) {
+      onError(
+        formatError(
+          creationError
+        )
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+
+  return (
+    <form
+      onSubmit={submit}
+      style={{
+        border:
+          "1px solid #ddd",
+        borderRadius: 8,
+        padding: 16,
+        marginBottom: 20,
+        background: "#f9f9f9",
+      }}
+    >
+      <h3
+        style={{
+          marginTop: 0,
+        }}
+      >
+        Nouvelle note
+      </h3>
+
+      <div
+        style={{
+          marginBottom: 12,
+        }}
+      >
+        <label
+          htmlFor="note-client-id"
+          style={{
+            display: "block",
+            marginBottom: 4,
+          }}
+        >
+          Client ID
+        </label>
+
+        <input
+          id="note-client-id"
+          type="number"
+          min="1"
+          required
+          value={clientId}
+          onChange={
+            (event) =>
+              setClientId(
+                event.target.value
+              )
+          }
+        />
+      </div>
+
+      <div
+        style={{
+          marginBottom: 12,
+        }}
+      >
+        <label
+          htmlFor="note-content"
+          style={{
+            display: "block",
+            marginBottom: 4,
+          }}
+        >
+          Contenu
+        </label>
+
+        <textarea
+          id="note-content"
+          required
+          rows={4}
+          value={content}
+          onChange={
+            (event) =>
+              setContent(
+                event.target.value
+              )
+          }
+          style={{
+            width: "100%",
+            boxSizing: "border-box",
+          }}
+        />
+      </div>
+
+      <label
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          marginBottom: 16,
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={pinned}
+          onChange={
+            (event) =>
+              setPinned(
+                event.target.checked
+              )
+          }
+        />
+
+        Épingler la note
+      </label>
+
+      <button
+        type="submit"
+        className="btn"
+        disabled={submitting}
+      >
+        {submitting
+          ? "Création..."
+          : "Créer la note"}
+      </button>
+    </form>
+  );
+}
+
+
+function NoteCard({
+  note,
+  onUpdate,
+  onError,
+}) {
+  const [
+    editing,
+    setEditing,
+  ] = useState(false);
+
+  const [
+    content,
+    setContent,
+  ] = useState(
+    note.content
+  );
+
+  const [
+    pinned,
+    setPinned,
+  ] = useState(
+    Boolean(
+      note.pinned
+    )
+  );
+
+  const [
+    submitting,
+    setSubmitting,
+  ] = useState(false);
+
+
+  async function save() {
+    onError("");
+    setSubmitting(true);
+
+    const payload = {
+      content:
+        content.trim(),
+      pinned,
+    };
+
+    try {
+      const updatedNote =
+        await apiFetch(
+          `/api/notes/${note.id}/`,
+          {
+            method: "PATCH",
+            body:
+              JSON.stringify(
+                payload
+              ),
+          }
+        );
+
+      onUpdate(
+        updatedNote
+      );
+
+      setEditing(false);
+    } catch (updateError) {
+      onError(
+        formatError(
+          updateError
+        )
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+
+  function cancelEdit() {
+    setContent(
+      note.content
+    );
+
+    setPinned(
+      Boolean(
+        note.pinned
+      )
+    );
+
+    setEditing(false);
+  }
+
+
+  return (
+    <article
+      aria-label={
+        `Note #${note.id}`
+      }
+      style={{
+        border:
+          note.pinned
+            ? "1px solid #e4c96b"
+            : "1px solid #eee",
+        borderRadius: 8,
+        padding: 16,
+        marginBottom: 12,
+        background:
+          note.pinned
+            ? "#fffdf2"
+            : "#fff",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent:
+            "space-between",
+          gap: 16,
+          marginBottom: 10,
+        }}
+      >
+        <div>
+          <strong>
+            Note #{note.id}
+          </strong>
+
+          <div
+            style={{
+              fontSize: 12,
+              color: "#777",
+              marginTop: 3,
+            }}
+          >
+            Client #
+            {note.client ?? "—"}
+            {" · "}
+            Auteur #
+            {note.author ?? "—"}
+          </div>
+        </div>
+
+        {note.pinned && (
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          >
+            Épinglée
+          </span>
+        )}
+      </div>
+
+      {!editing && (
+        <>
+          <p
+            style={{
+              whiteSpace:
+                "pre-wrap",
+              marginBottom: 10,
+            }}
+          >
+            {note.content}
+          </p>
+
+          <div
+            style={{
+              fontSize: 12,
+              color: "#888",
+              marginBottom: 10,
+            }}
+          >
+            {note.created_at
+              ? new Date(
+                  note.created_at
+                ).toLocaleString(
+                  "fr-FR"
+                )
+              : "Date inconnue"}
+          </div>
+
+          <button
+            type="button"
+            onClick={
+              () =>
+                setEditing(true)
+            }
+          >
+            Modifier
+          </button>
+        </>
+      )}
+
+      {editing && (
+        <div>
+          <div
+            style={{
+              marginBottom: 12,
+            }}
+          >
+            <label
+              htmlFor={
+                `note-content-${note.id}`
+              }
+              style={{
+                display: "block",
+                marginBottom: 4,
+              }}
+            >
+              Contenu
+            </label>
+
+            <textarea
+              id={
+                `note-content-${note.id}`
+              }
+              rows={4}
+              value={content}
+              onChange={
+                (event) =>
+                  setContent(
+                    event.target.value
+                  )
+              }
+              style={{
+                width: "100%",
+                boxSizing:
+                  "border-box",
+              }}
+            />
+          </div>
+
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              marginBottom: 12,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={pinned}
+              onChange={
+                (event) =>
+                  setPinned(
+                    event.target
+                      .checked
+                  )
+              }
+            />
+
+            Épingler la note
+          </label>
+
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+            }}
+          >
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={save}
+            >
+              {submitting
+                ? "Enregistrement..."
+                : "Enregistrer"}
+            </button>
+
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={cancelEdit}
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
     </article>
   );
 }
