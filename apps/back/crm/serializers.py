@@ -57,7 +57,7 @@ class ProspectAdminSerializer(serializers.ModelSerializer):
     class Meta:
         model = Prospect
         fields = "__all__"
-        read_only_fields = ("created_at",)
+        read_only_fields = ("created_at", "converted_client")
 
 
 class ProspectStatusSerializer(serializers.ModelSerializer):
