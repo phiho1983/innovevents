@@ -969,13 +969,19 @@ class NoteViewSet(
     viewsets.ModelViewSet
 ):
     """
-    Notes internes.
+    Notes internes collaboratives.
 
-    Accès ADMIN métier uniquement
-    pour le moment.
+    EMPLOYEE / ADMIN :
+    - consultation
+    - création
+    - modification
 
-    La collaboration EMPLOYEE
-    sera traitée dans la phase dédiée.
+    ADMIN uniquement :
+    - suppression
+
+    L'auteur d'une note est toujours
+    imposé par le backend à la création
+    et ne peut pas être modifié ensuite.
     """
 
     queryset = (
@@ -990,9 +996,21 @@ class NoteViewSet(
         NoteSerializer
     )
 
-    permission_classes = [
-        IsBusinessAdmin
-    ]
+    def get_permissions(self):
+        if self.action in [
+            "list",
+            "retrieve",
+            "create",
+            "update",
+            "partial_update",
+        ]:
+            return [
+                IsInternalUser()
+            ]
+
+        return [
+            IsBusinessAdmin()
+        ]
 
     def perform_create(
         self,
