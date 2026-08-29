@@ -10,6 +10,10 @@ import {
 } from "../auth/useAuth";
 
 import {
+  apiFetch,
+} from "../api/client";
+
+import {
   convertProspect,
   getProspects,
   updateProspectStatus,
@@ -46,6 +50,23 @@ const QUOTE_STATUS_LABELS = {
 };
 
 
+const EVENT_STATUS_LABELS = {
+  DRAFT: "Brouillon",
+  ACCEPTED: "Accepté",
+  IN_PROGRESS: "En cours",
+  DONE: "Terminé",
+  CANCELLED: "Annulé",
+};
+
+
+const EVENT_TYPE_LABELS = {
+  SEMINAR: "Séminaire",
+  CONFERENCE: "Conférence",
+  PARTY: "Soirée d'entreprise",
+  OTHER: "Autre",
+};
+
+
 function normalizeList(data) {
   if (Array.isArray(data)) {
     return data;
@@ -62,6 +83,10 @@ function formatError(error) {
 
   if (typeof error === "string") {
     return error;
+  }
+
+  if (error.message) {
+    return error.message;
   }
 
   if (error.detail) {
@@ -130,6 +155,31 @@ export default function EmployeePage() {
     quotesError,
     setQuotesError,
   ] = useState("");
+
+  const [
+    events,
+    setEvents,
+  ] = useState([]);
+
+  const [
+    eventsLoading,
+    setEventsLoading,
+  ] = useState(false);
+
+  const [
+    eventsLoaded,
+    setEventsLoaded,
+  ] = useState(false);
+
+  const [
+    eventsError,
+    setEventsError,
+  ] = useState("");
+
+  const [
+    eventActionId,
+    setEventActionId,
+  ] = useState(null);
 
 
   useEffect(() => {
@@ -212,6 +262,64 @@ export default function EmployeePage() {
   }, [
     activeTab,
     quotesLoaded,
+  ]);
+
+
+  useEffect(() => {
+    if (
+      activeTab !== "events"
+      || eventsLoaded
+    ) {
+      return;
+    }
+
+    let active = true;
+
+    async function loadEvents() {
+      setEventsLoading(true);
+      setEventsError("");
+
+      try {
+        const data =
+          await apiFetch(
+            "/api/events/"
+          );
+
+        if (active) {
+          const privateEvents =
+            normalizeList(data).filter(
+              (event) =>
+                event.client !== null
+                && event.client !== undefined
+            );
+
+          setEvents(
+            privateEvents
+          );
+
+          setEventsLoaded(true);
+        }
+      } catch (loadError) {
+        if (active) {
+          setEventsError(
+            formatError(loadError)
+          );
+        }
+      } finally {
+        if (active) {
+          setEventsLoading(false);
+        }
+      }
+    }
+
+    loadEvents();
+
+    return () => {
+      active = false;
+    };
+  }, [
+    activeTab,
+    eventsLoaded,
   ]);
 
 
@@ -362,6 +470,48 @@ export default function EmployeePage() {
   }
 
 
+  async function transitionEvent(
+    eventId,
+    action,
+  ) {
+    setEventsError("");
+    setEventActionId(eventId);
+
+    try {
+      const result =
+        await apiFetch(
+          `/api/events/${eventId}/${action}/`,
+          {
+            method: "POST",
+          }
+        );
+
+      setEvents(
+        (previousEvents) =>
+          previousEvents.map(
+            (event) =>
+              event.id === eventId
+                ? {
+                    ...event,
+                    status:
+                      result?.status
+                      || event.status,
+                  }
+                : event
+          )
+      );
+    } catch (transitionError) {
+      setEventsError(
+        formatError(
+          transitionError
+        )
+      );
+    } finally {
+      setEventActionId(null);
+    }
+  }
+
+
   return (
     <>
       <Navbar />
@@ -404,59 +554,47 @@ export default function EmployeePage() {
               "1px solid #ddd",
           }}
         >
-          <button
-            type="button"
+          <TabButton
+            active={
+              activeTab === "prospects"
+            }
             onClick={
               () =>
                 setActiveTab(
                   "prospects"
                 )
             }
-            style={{
-              padding: "9px 16px",
-              border: "none",
-              background: "none",
-              cursor: "pointer",
-              fontWeight:
-                activeTab
-                === "prospects"
-                  ? "600"
-                  : "400",
-              borderBottom:
-                activeTab
-                === "prospects"
-                  ? "2px solid #000"
-                  : "2px solid transparent",
-            }}
           >
             Prospects
-          </button>
+          </TabButton>
 
-          <button
-            type="button"
+          <TabButton
+            active={
+              activeTab === "quotes"
+            }
             onClick={
               () =>
                 setActiveTab(
                   "quotes"
                 )
             }
-            style={{
-              padding: "9px 16px",
-              border: "none",
-              background: "none",
-              cursor: "pointer",
-              fontWeight:
-                activeTab === "quotes"
-                  ? "600"
-                  : "400",
-              borderBottom:
-                activeTab === "quotes"
-                  ? "2px solid #000"
-                  : "2px solid transparent",
-            }}
           >
             Devis
-          </button>
+          </TabButton>
+
+          <TabButton
+            active={
+              activeTab === "events"
+            }
+            onClick={
+              () =>
+                setActiveTab(
+                  "events"
+                )
+            }
+          >
+            Événements
+          </TabButton>
         </div>
 
         {activeTab === "prospects" && (
@@ -495,8 +633,52 @@ export default function EmployeePage() {
             }
           />
         )}
+
+        {activeTab === "events" && (
+          <EventsSection
+            events={events}
+            loading={eventsLoading}
+            error={eventsError}
+            actionId={
+              eventActionId
+            }
+            onTransition={
+              transitionEvent
+            }
+          />
+        )}
       </main>
     </>
+  );
+}
+
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        padding: "9px 16px",
+        border: "none",
+        background: "none",
+        cursor: "pointer",
+        fontWeight:
+          active
+            ? "600"
+            : "400",
+        borderBottom:
+          active
+            ? "2px solid #000"
+            : "2px solid transparent",
+      }}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -528,19 +710,9 @@ function ProspectsSection({
       </p>
 
       {error && (
-        <div
-          role="alert"
-          style={{
-            padding: 12,
-            marginBottom: 16,
-            border:
-              "1px solid #f5c2c7",
-            borderRadius: 6,
-            background: "#f8d7da",
-          }}
-        >
-          {error}
-        </div>
+        <ErrorMessage
+          message={error}
+        />
       )}
 
       {loading && (
@@ -875,19 +1047,9 @@ function QuotesSection({
       </div>
 
       {error && (
-        <div
-          role="alert"
-          style={{
-            padding: 12,
-            marginBottom: 16,
-            border:
-              "1px solid #f5c2c7",
-            borderRadius: 6,
-            background: "#f8d7da",
-          }}
-        >
-          {error}
-        </div>
+        <ErrorMessage
+          message={error}
+        />
       )}
 
       {showCreateForm && (
@@ -1491,5 +1653,252 @@ function CreateQuoteForm({
           : "Créer le devis"}
       </button>
     </form>
+  );
+}
+
+
+function EventsSection({
+  events,
+  loading,
+  error,
+  actionId,
+  onTransition,
+}) {
+  return (
+    <section>
+      <h2>
+        Événements privés
+      </h2>
+
+      <p
+        style={{
+          color: "#666",
+          fontSize: 14,
+        }}
+      >
+        Suivi de la réalisation
+        des événements appartenant
+        aux clients.
+      </p>
+
+      {error && (
+        <ErrorMessage
+          message={error}
+        />
+      )}
+
+      {loading && (
+        <p>
+          Chargement...
+        </p>
+      )}
+
+      {!loading
+        && events.length === 0
+        && (
+          <p
+            style={{
+              color: "#888",
+            }}
+          >
+            Aucun événement privé.
+          </p>
+        )}
+
+      {!loading
+        && events.map(
+          (event) => (
+            <EventCard
+              key={event.id}
+              event={event}
+              busy={
+                actionId === event.id
+              }
+              onTransition={
+                onTransition
+              }
+            />
+          )
+        )}
+    </section>
+  );
+}
+
+
+function EventCard({
+  event,
+  busy,
+  onTransition,
+}) {
+  return (
+    <article
+      aria-label={
+        event.title
+      }
+      style={{
+        border:
+          "1px solid #eee",
+        borderRadius: 8,
+        padding: 16,
+        marginBottom: 12,
+        background: "#fff",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent:
+            "space-between",
+          alignItems:
+            "flex-start",
+          gap: 16,
+          marginBottom: 10,
+        }}
+      >
+        <div>
+          <h3
+            style={{
+              margin: 0,
+              marginBottom: 4,
+            }}
+          >
+            {event.title}
+          </h3>
+
+          <div
+            style={{
+              color: "#666",
+              fontSize: 13,
+            }}
+          >
+            {event.city || "—"}
+            {" · "}
+            {
+              EVENT_TYPE_LABELS[
+                event.event_type
+              ]
+              || event.event_type
+              || "Autre"
+            }
+          </div>
+        </div>
+
+        <strong>
+          {
+            EVENT_STATUS_LABELS[
+              event.status
+            ]
+            || event.status
+          }
+        </strong>
+      </div>
+
+      {event.description && (
+        <p
+          style={{
+            fontSize: 13,
+            color: "#555",
+          }}
+        >
+          {event.description}
+        </p>
+      )}
+
+      <div
+        style={{
+          fontSize: 13,
+          color: "#666",
+          marginBottom: 10,
+        }}
+      >
+        <div>
+          Début :{" "}
+          {event.start_at
+            ? new Date(
+                event.start_at
+              ).toLocaleString(
+                "fr-FR"
+              )
+            : "—"}
+        </div>
+
+        <div>
+          Fin :{" "}
+          {event.end_at
+            ? new Date(
+                event.end_at
+              ).toLocaleString(
+                "fr-FR"
+              )
+            : "—"}
+        </div>
+
+        <div>
+          Capacité :{" "}
+          {event.capacity ?? "—"}
+        </div>
+      </div>
+
+      {event.status
+        === "ACCEPTED"
+        && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={
+              () =>
+                onTransition(
+                  event.id,
+                  "start"
+                )
+            }
+          >
+            {busy
+              ? "Démarrage..."
+              : "Démarrer"}
+          </button>
+        )}
+
+      {event.status
+        === "IN_PROGRESS"
+        && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={
+              () =>
+                onTransition(
+                  event.id,
+                  "complete"
+                )
+            }
+          >
+            {busy
+              ? "Finalisation..."
+              : "Terminer"}
+          </button>
+        )}
+    </article>
+  );
+}
+
+
+function ErrorMessage({
+  message,
+}) {
+  return (
+    <div
+      role="alert"
+      style={{
+        padding: 12,
+        marginBottom: 16,
+        border:
+          "1px solid #f5c2c7",
+        borderRadius: 6,
+        background: "#f8d7da",
+      }}
+    >
+      {message}
+    </div>
   );
 }
