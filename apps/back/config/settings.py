@@ -194,6 +194,22 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 
+# -------------------------
+# MEDIA FILES
+# -------------------------
+
+# Développement local :
+# les fichiers envoyés sont conservés dans /media/.
+#
+# En production :
+# les visuels Home sont envoyés vers Cloudinary
+# lorsque CLOUDINARY_URL est définie.
+
+MEDIA_URL = "/media/"
+
+MEDIA_ROOT = BASE_DIR / "media"
+
+
 STORAGES = {
     "default": {
         "BACKEND": (
@@ -292,6 +308,7 @@ THANK_YOU_MESSAGE = (
     "Merci ! Votre demande de devis a bien été envoyée. "
     "Nous revenons vers vous rapidement."
 )
+
 
 # -------------------------
 # CORS / CSRF

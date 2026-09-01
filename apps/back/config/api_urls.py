@@ -4,17 +4,28 @@ from events.views import (
     EventViewSet,
     HomePhotoViewSet,
 )
+
+from events.home_hero_views import (
+    HomeHeroViewSet,
+)
+
 from bookings.views import BookingViewSet
+
 from crm.views import (
     ProspectViewSet,
     QuoteViewSet,
     NoteViewSet,
 )
+
 from reviews.views import ReviewViewSet
-from accounts.views import UserAdminRightsViewSet
+
+from accounts.views import (
+    UserAdminRightsViewSet,
+)
 
 
 router = DefaultRouter()
+
 
 router.register(
     "events",
@@ -26,6 +37,12 @@ router.register(
     "home-photos",
     HomePhotoViewSet,
     basename="home-photo",
+)
+
+router.register(
+    "home-hero",
+    HomeHeroViewSet,
+    basename="home-hero",
 )
 
 router.register(

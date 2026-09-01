@@ -105,11 +105,11 @@ class Event(models.Model):
 
 class HomePhoto(models.Model):
     """
-    Photo d'exemple affichée dans le carrousel
+    Photo affichée dans le carrousel
     de la page d'accueil.
 
-    Les 12 slots correspondent aux 12 emplacements
-    actuels du carrousel.
+    Les 12 slots correspondent aux
+    12 emplacements du carrousel.
     """
 
     slot = models.PositiveSmallIntegerField(
@@ -143,4 +143,41 @@ class HomePhoto(models.Model):
         ordering = ["slot"]
 
     def __str__(self):
-        return f"Photo accueil - emplacement {self.slot}"
+        return (
+            f"Photo accueil - emplacement {self.slot}"
+        )
+
+
+class HomeHero(models.Model):
+    """
+    Image principale affichée dans le Hero
+    de la page d'accueil.
+
+    Une seule ligne HomeHero doit exister.
+    """
+
+    image_url = models.URLField(
+        max_length=500,
+        blank=True,
+    )
+
+    cloudinary_public_id = models.CharField(
+        max_length=255,
+        blank=True,
+    )
+
+    alt_text = models.CharField(
+        max_length=200,
+        blank=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return "Hero de la page d'accueil"

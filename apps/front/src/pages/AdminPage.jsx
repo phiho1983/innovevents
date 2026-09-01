@@ -1,6 +1,8 @@
 import{useState,useEffect}from"react"
 import{useNavigate}from"react-router-dom"
 import Navbar from"../components/Navbar"
+import HomeHeroAdmin from"../components/admin/HomeHeroAdmin"
+import HomePhotosAdminTab from"../components/admin/HomePhotosAdminTab"
 import{useAuth}from"../auth/useAuth"
 import{getProspects,updateProspectStatus,convertProspect}from"../api/prospects"
 import{getQuotes,createQuote}from"../api/quotes"
@@ -22,7 +24,7 @@ export default function AdminPage(){
         <button className="btn" onClick={()=>{logout();nav("/")}}>Déconnexion</button>
       </div>
       <div style={{display:"flex",gap:4,marginBottom:20,borderBottom:"1px solid #eee"}}>
-        {[["prospects","Prospects"],["quotes","Devis"],["reviews","Avis"],["users","Utilisateurs"],["notes","Notes"]].map(([k,l])=>(
+        {[["prospects","Prospects"],["quotes","Devis"],["reviews","Avis"],["users","Utilisateurs"],["notes","Notes"],["home","Accueil"]].map(([k,l])=>(
           <button key={k} onClick={()=>setTab(k)} style={{padding:"8px 16px",border:"none",background:"none",cursor:"pointer",fontWeight:tab===k?"600":"400",borderBottom:tab===k?"2px solid #000":"none",marginBottom:-1}}>{l}</button>
         ))}
       </div>
@@ -31,6 +33,10 @@ export default function AdminPage(){
       {tab==="reviews"&&<ReviewsAdminTab/>}
       {tab==="users"&&<UsersRightsTab currentUser={user}/>}
       {tab==="notes"&&<NotesTab/>}
+      {tab==="home"&&<>
+        <HomeHeroAdmin/>
+        <HomePhotosAdminTab/>
+      </>}
     </main>
   </>)
 }

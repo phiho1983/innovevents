@@ -8,364 +8,75 @@ from PIL import Image, UnidentifiedImageError
 from django.conf import settings
 from django.core.files.storage import default_storage
 
-from rest_framework import mixins, viewsets
+from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import (
-    AllowAny,
-    IsAuthenticated,
-)
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
-from accounts.models import User
-from accounts.permissions import (
-    IsBusinessAdmin,
-    IsInternalUser,
-)
+from accounts.permissions import IsBusinessAdmin
 
-from .models import Event, HomePhoto
-from .serializers import (
-    EventSerializer,
-    PublicEventSerializer,
-    HomePhotoSerializer,
-)
+from .models import HomeHero
+from .home_hero_serializers import HomeHeroSerializer
 
 
-class EventViewSet(viewsets.ModelViewSet):
+class HomeHeroViewSet(viewsets.GenericViewSet):
+    """
+    Gestion de l'image principale de la Home.
 
-    def is_internal_user(self):
-        user = self.request.user
+    GET /api/home-hero/
+        Lecture publique.
 
-        return bool(
-            user
-            and user.is_authenticated
-            and (
-                user.is_superuser
-                or user.role in (
-                    User.Role.ADMIN,
-                    User.Role.EMPLOYEE,
-                )
-            )
-        )
+    POST /api/home-hero/upload/
+        Upload réservé à l'ADMIN.
 
-    def get_queryset(self):
-        qs = Event.objects.all().order_by("start_at")
+    Stockage :
+        local sans CLOUDINARY_URL ;
+        Cloudinary avec CLOUDINARY_URL.
 
-        # VISITEUR et CLIENT :
-        # uniquement les événements réellement publics.
-        #
-        # ADMIN et EMPLOYEE :
-        # accès à tous les événements.
-        if not self.is_internal_user():
-            qs = (
-                qs.filter(
-                    visible=True,
-                    client_agreed=True,
-                )
-                .exclude(
-                    status=Event.Status.DRAFT,
-                )
-            )
+    Remplacement :
+        le nouveau média est créé avant
+        de supprimer l'ancien.
+    """
 
-        event_type = self.request.query_params.get("event_type")
-        if event_type:
-            qs = qs.filter(event_type=event_type)
+    serializer_class = HomeHeroSerializer
 
-        theme = self.request.query_params.get("theme")
-        if theme:
-            qs = qs.filter(theme__icontains=theme)
-
-        start_after = self.request.query_params.get("start_after")
-        if start_after:
-            qs = qs.filter(start_at__date__gte=start_after)
-
-        start_before = self.request.query_params.get("start_before")
-        if start_before:
-            qs = qs.filter(start_at__date__lte=start_before)
-
-        upcoming = self.request.query_params.get("upcoming")
-        if upcoming:
-            qs = qs.order_by("start_at")[:int(upcoming)]
-
-        return qs
-
-    def get_serializer_class(self):
-
-        # Espace privé du CLIENT :
-        # serializer interne complet.
-        if self.action == "mine":
-            return EventSerializer
-
-        # ADMIN / EMPLOYEE :
-        # serializer interne complet.
-        if self.is_internal_user():
-            return EventSerializer
-
-        # VISITEUR / CLIENT :
-        # serializer public limité.
-        return PublicEventSerializer
 
     def get_permissions(self):
-
-        # Événements privés du client :
-        # authentification obligatoire.
-        if self.action == "mine":
-            return [
-                IsAuthenticated()
-            ]
-
-        # Cycle de réalisation :
-        # ADMIN et EMPLOYEE.
-        if self.action in [
-            "start",
-            "complete",
-        ]:
-            return [
-                IsInternalUser()
-            ]
-
-        # Lecture autorisée à tous.
-        if self.action in [
-            "list",
-            "retrieve",
-        ]:
+        if self.action == "list":
             return [
                 AllowAny()
             ]
 
-        # Suppression :
-        # ADMIN uniquement.
-        if self.action == "destroy":
-            return [
-                IsBusinessAdmin()
-            ]
-
-        # Exploitation métier :
-        # ADMIN et EMPLOYEE peuvent créer
-        # et modifier les événements.
-        if self.action in [
-            "create",
-            "update",
-            "partial_update",
-        ]:
-            return [
-                IsInternalUser()
-            ]
-
-        # Toute action non prévue reste
-        # réservée à l'ADMIN.
         return [
             IsBusinessAdmin()
         ]
 
-    @action(
-        detail=False,
-        methods=["get"],
-        url_path="mine",
-    )
-    def mine(self, request):
-        """
-        Retourne uniquement les événements métier privés
-        appartenant au client connecté.
 
-        Les règles de publication de la vitrine
-        ne s'appliquent pas à cette route.
-        """
-
-        queryset = (
-            Event.objects
-            .filter(client=request.user)
-            .order_by("start_at")
+    def list(self, request):
+        hero = (
+            HomeHero.objects
+            .first()
         )
 
-        page = self.paginate_queryset(queryset)
-
-        if page is not None:
-            serializer = self.get_serializer(
-                page,
-                many=True,
-            )
-
-            return self.get_paginated_response(
-                serializer.data
+        if hero is None:
+            return Response(
+                {
+                    "id": None,
+                    "image_url": "",
+                    "alt_text": "",
+                    "updated_at": None,
+                }
             )
 
         serializer = self.get_serializer(
-            queryset,
-            many=True,
-        )
-
-        return Response(serializer.data)
-
-    def get_private_event_for_transition(
-        self,
-        expected_status,
-    ):
-        """
-        Retourne un événement privé client
-        uniquement s'il se trouve dans le statut
-        attendu pour la transition demandée.
-
-        Les événements vitrine ne participent
-        jamais au cycle de réalisation client.
-        """
-
-        event = self.get_object()
-
-        if event.client_id is None:
-            raise ValidationError(
-                {
-                    "detail": (
-                        "Le cycle de réalisation "
-                        "est réservé aux événements "
-                        "privés d'un client."
-                    )
-                }
-            )
-
-        if event.status != expected_status:
-            raise ValidationError(
-                {
-                    "detail": (
-                        "Transition de statut "
-                        "non autorisée pour cet événement."
-                    )
-                }
-            )
-
-        return event
-
-    @action(
-        detail=True,
-        methods=["post"],
-        url_path="start",
-    )
-    def start(
-        self,
-        request,
-        pk=None,
-    ):
-        """
-        Démarre la réalisation d'un événement.
-
-        Transition autorisée :
-        ACCEPTED -> IN_PROGRESS
-        """
-
-        event = (
-            self.get_private_event_for_transition(
-                Event.Status.ACCEPTED
-            )
-        )
-
-        event.status = (
-            Event.Status.IN_PROGRESS
-        )
-
-        event.save(
-            update_fields=[
-                "status",
-            ]
+            hero
         )
 
         return Response(
-            {
-                "status":
-                    event.status
-            }
+            serializer.data
         )
 
-    @action(
-        detail=True,
-        methods=["post"],
-        url_path="complete",
-    )
-    def complete(
-        self,
-        request,
-        pk=None,
-    ):
-        """
-        Termine la réalisation d'un événement.
-
-        Transition autorisée :
-        IN_PROGRESS -> DONE
-        """
-
-        event = (
-            self.get_private_event_for_transition(
-                Event.Status.IN_PROGRESS
-            )
-        )
-
-        event.status = (
-            Event.Status.DONE
-        )
-
-        event.save(
-            update_fields=[
-                "status",
-            ]
-        )
-
-        return Response(
-            {
-                "status":
-                    event.status
-            }
-        )
-
-    def perform_create(self, serializer):
-        serializer.save(
-            organizer=self.request.user
-        )
-
-
-class HomePhotoViewSet(
-    mixins.ListModelMixin,
-    mixins.RetrieveModelMixin,
-    mixins.UpdateModelMixin,
-    viewsets.GenericViewSet,
-):
-    """
-    Gestion des 12 emplacements du carrousel Home.
-
-    Lecture :
-    - publique.
-
-    Modification / upload :
-    - ADMIN uniquement.
-
-    Stockage :
-    - local lorsque CLOUDINARY_URL est absente ;
-    - Cloudinary lorsqu'elle est présente.
-
-    Remplacement :
-    - la nouvelle image est enregistrée en premier ;
-    - la BDD est ensuite mise à jour ;
-    - l'ancien média est supprimé uniquement après succès ;
-    - si la mise à jour BDD échoue, le nouveau média
-      est supprimé et l'ancien reste intact.
-    """
-
-    serializer_class = HomePhotoSerializer
-    pagination_class = None
-
-    def get_queryset(self):
-        return HomePhoto.objects.all().order_by("slot")
-
-    def get_permissions(self):
-        if self.action in [
-            "list",
-            "retrieve",
-        ]:
-            return [
-                AllowAny()
-            ]
-
-        return [
-            IsBusinessAdmin()
-        ]
 
     def validate_uploaded_image(
         self,
@@ -438,6 +149,7 @@ class HomePhotoViewSet(
             image_format
         ]
 
+
     def should_use_cloudinary(self):
         return bool(
             os.getenv(
@@ -445,6 +157,7 @@ class HomePhotoViewSet(
                 "",
             ).strip()
         )
+
 
     def upload_to_cloudinary(
         self,
@@ -454,9 +167,12 @@ class HomePhotoViewSet(
 
         return cloudinary.uploader.upload(
             uploaded_file,
-            folder="innovevents/home/carousel",
+            folder=(
+                "innovevents/home/hero"
+            ),
             resource_type="image",
         )
+
 
     def delete_from_cloudinary(
         self,
@@ -473,13 +189,14 @@ class HomePhotoViewSet(
             invalidate=True,
         )
 
+
     def upload_to_local_storage(
         self,
         uploaded_file,
         extension,
     ):
         filename = (
-            "home/carousel/"
+            "home/hero/"
             f"{uuid.uuid4().hex}."
             f"{extension}"
         )
@@ -488,6 +205,7 @@ class HomePhotoViewSet(
             filename,
             uploaded_file,
         )
+
 
     def get_local_storage_name_from_url(
         self,
@@ -526,6 +244,7 @@ class HomePhotoViewSet(
 
         return storage_name or None
 
+
     def delete_local_file(
         self,
         storage_name,
@@ -542,9 +261,8 @@ class HomePhotoViewSet(
                 )
 
         except OSError:
-            # Le remplacement reste réussi même si
-            # le nettoyage de l'ancien fichier échoue.
             pass
+
 
     def cleanup_new_media_after_failure(
         self,
@@ -552,12 +270,6 @@ class HomePhotoViewSet(
         saved_name,
         public_id,
     ):
-        """
-        Si l'enregistrement BDD échoue après avoir
-        créé le nouveau média, supprimer ce nouveau
-        média pour éviter un fichier orphelin.
-        """
-
         if use_cloudinary:
             if public_id:
                 try:
@@ -574,6 +286,7 @@ class HomePhotoViewSet(
                 saved_name
             )
 
+
     def cleanup_previous_media(
         self,
         old_image_url,
@@ -581,11 +294,6 @@ class HomePhotoViewSet(
         new_image_url,
         new_public_id,
     ):
-        """
-        Supprime l'ancien média uniquement après
-        réussite du nouvel upload et de la mise à jour BDD.
-        """
-
         if old_public_id:
             if (
                 old_public_id
@@ -621,24 +329,29 @@ class HomePhotoViewSet(
                 old_storage_name
             )
 
+
     @action(
-        detail=True,
+        detail=False,
         methods=["post"],
         url_path="upload",
     )
     def upload(
         self,
         request,
-        pk=None,
     ):
-        photo = self.get_object()
+        hero, _ = (
+            HomeHero.objects
+            .get_or_create(
+                pk=1
+            )
+        )
 
         old_image_url = (
-            photo.image_url
+            hero.image_url
         )
 
         old_public_id = (
-            photo.cloudinary_public_id
+            hero.cloudinary_public_id
         )
 
         uploaded_file = (
@@ -740,7 +453,7 @@ class HomePhotoViewSet(
             )
 
         serializer = self.get_serializer(
-            photo,
+            hero,
             data=update_data,
             partial=True,
         )

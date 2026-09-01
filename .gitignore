@@ -1,0 +1,66 @@
+# -------------------------
+# Python
+# -------------------------
+
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+.venv/
+venv/
+env/
+
+
+# -------------------------
+# Django
+# -------------------------
+
+apps/back/db.sqlite3
+apps/back/staticfiles/
+apps/back/media/
+
+
+# -------------------------
+# Node / Vite
+# -------------------------
+
+node_modules/
+apps/front/node_modules/
+apps/front/dist/
+
+
+# -------------------------
+# Variables d'environnement
+# -------------------------
+
+.env
+*.env
+!.env.example
+
+
+# -------------------------
+# Coverage / tests
+# -------------------------
+
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+
+
+# -------------------------
+# IDE
+# -------------------------
+
+.vscode/
+.idea/
+
+
+# -------------------------
+# OS
+# -------------------------
+
+.DS_Store
+Thumbs.db
+Desktop.ini

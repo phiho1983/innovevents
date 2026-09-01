@@ -1,25 +1,165 @@
+import {
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  getHomePhotos,
+} from "../../api/homePhotos";
+
 import EventPhotosCarousel from "./EventPhotosCarousel";
 
+
+function makeDefaultPhotos() {
+  return Array.from(
+    {
+      length: 12,
+    },
+    (_, index) => {
+      const slot =
+        index + 1;
+
+      const placeholderNumber =
+        (index % 6) + 1;
+
+      return {
+        id: slot,
+        url: null,
+        title:
+          `Event - ${String(slot).padStart(2, "0")}`,
+        placeholder:
+          `p${placeholderNumber}`,
+      };
+    }
+  );
+}
+
+
+function buildCarouselPhotos(
+  apiPhotos
+) {
+  const defaults =
+    makeDefaultPhotos();
+
+  const photosBySlot =
+    new Map(
+      apiPhotos.map(
+        (photo) => [
+          Number(
+            photo.slot
+          ),
+          photo,
+        ]
+      )
+    );
+
+  return defaults.map(
+    (
+      defaultPhoto,
+      index
+    ) => {
+      const slot =
+        index + 1;
+
+      const apiPhoto =
+        photosBySlot.get(
+          slot
+        );
+
+      if (!apiPhoto) {
+        return defaultPhoto;
+      }
+
+      return {
+        ...defaultPhoto,
+
+        url:
+          apiPhoto.image_url ||
+          null,
+
+        title:
+          apiPhoto.alt_text ||
+          defaultPhoto.title,
+      };
+    }
+  );
+}
+
+
 export default function HomeEventPhotos() {
-  const photos = [
-    { id: 1, url: null, title: "Event - 01", placeholder: "p1" },
-    { id: 2, url: null, title: "Event - 02", placeholder: "p2" },
-    { id: 3, url: null, title: "Event - 03", placeholder: "p3" },
-    { id: 4, url: null, title: "Event - 04", placeholder: "p4" },
-    { id: 5, url: null, title: "Event - 05", placeholder: "p5" },
-    { id: 6, url: null, title: "Event - 06", placeholder: "p6" },
-    { id: 7, url: null, title: "Event - 07", placeholder: "p1" },
-    { id: 8, url: null, title: "Event - 08", placeholder: "p2" },
-    { id: 9, url: null, title: "Event - 09", placeholder: "p3" },
-    { id: 10, url: null, title: "Event - 10", placeholder: "p4" },
-    { id: 11, url: null, title: "Event - 11", placeholder: "p5" },
-    { id: 12, url: null, title: "Event - 12", placeholder: "p6" },
-  ];
+  const [
+    photos,
+    setPhotos,
+  ] = useState(
+    () =>
+      makeDefaultPhotos()
+  );
+
+
+  useEffect(
+    () => {
+      let active =
+        true;
+
+      async function loadPhotos() {
+        try {
+          const data =
+            await getHomePhotos();
+
+          if (!active) {
+            return;
+          }
+
+          setPhotos(
+            buildCarouselPhotos(
+              Array.isArray(
+                data
+              )
+                ? data
+                : []
+            )
+          );
+        } catch {
+          if (!active) {
+            return;
+          }
+
+          setPhotos(
+            makeDefaultPhotos()
+          );
+        }
+      }
+
+      loadPhotos();
+
+      return () => {
+        active = false;
+      };
+    },
+    []
+  );
+
 
   return (
-    <section style={{ padding: "0 16px" }}>
-      <h2 style={{ margin: "16px 0" }}>Photos d’évènements</h2>
-      <EventPhotosCarousel photos={photos} speed={18} />
+    <section
+      style={{
+        padding:
+          "0 16px",
+      }}
+    >
+      <h2
+        style={{
+          margin:
+            "16px 0",
+        }}
+      >
+        Photos d’évènements
+      </h2>
+
+      <EventPhotosCarousel
+        photos={photos}
+        speed={18}
+      />
     </section>
   );
 }
