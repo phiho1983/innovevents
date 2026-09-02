@@ -1,116 +1,633 @@
-/* ===== Carousel ===== */
+/* ========================================================= */
+/* INNOV'EVENTS — REALISATIONS CAROUSEL                     */
+/* Phase 5 — Premium staging                                */
+/* ========================================================= */
+
+
+/* ========================================================= */
+/* Section                                                   */
+/* ========================================================= */
+
+.home-realizations {
+  margin-top: clamp(80px, 10vw, 150px);
+  margin-bottom: clamp(100px, 12vw, 180px);
+}
+
+.home-realizations-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+
+  gap: 40px;
+
+  margin-bottom: 42px;
+}
+
+.home-realizations-eyebrow {
+  margin: 0 0 14px;
+
+  color: var(--color-accent);
+
+  font-size: 12px;
+  font-weight: 800;
+
+  letter-spacing: 0.18em;
+
+  text-transform: uppercase;
+}
+
+.home-realizations-title {
+  margin: 0;
+
+  color: var(--color-text);
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    ui-serif,
+    serif;
+
+  font-size:
+    clamp(42px, 5vw, 68px);
+
+  font-weight: 500;
+
+  line-height: 1;
+
+  letter-spacing: -0.045em;
+}
+
+.home-realizations-link {
+  display: inline-flex;
+  align-items: center;
+
+  gap: 8px;
+
+  flex-shrink: 0;
+
+  padding-bottom: 4px;
+
+  color: var(--color-text);
+
+  border-bottom:
+    1px solid var(--color-line-strong);
+
+  font-size: 14px;
+  font-weight: 700;
+
+  transition:
+    color var(--transition-base),
+    border-color var(--transition-base),
+    transform var(--transition-base);
+}
+
+.home-realizations-link:hover {
+  color: var(--color-accent);
+
+  border-color: var(--color-accent);
+
+  transform: translateX(3px);
+}
+
+
+/* ========================================================= */
+/* Carousel viewport                                        */
+/* ========================================================= */
 
 .epcViewport {
   width: 100%;
+
   overflow-x: auto;
   overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  margin-top: 30px;
 
-  /* ne bloque pas le scroll vertical */
+  -webkit-overflow-scrolling: touch;
+
   touch-action: pan-y;
 
   scrollbar-width: none;
+
+  cursor: grab;
 }
+
+.epcViewport:active {
+  cursor: grabbing;
+}
+
 .epcViewport::-webkit-scrollbar {
   display: none;
 }
 
+
+/* ========================================================= */
+/* Track                                                     */
+/* ========================================================= */
+
 .epcTrack {
   display: flex;
-  gap: 18px;
-  padding: 18px;
+
+  gap: clamp(16px, 2vw, 26px);
+
+  padding:
+    4px 0 20px;
 }
 
+
+/* ========================================================= */
+/* Card                                                      */
+/* ========================================================= */
+
 .epcCard {
+  position: relative;
+
   flex: 0 0 auto;
-  width: min(70vw, 300px);
-  border: 0;
+
+  width:
+    clamp(280px, 31vw, 430px);
+
   padding: 0;
-  background: transparent;
-  cursor: pointer;
-  border-radius: 14px;
+
   overflow: hidden;
-  transition: transform 220ms ease;
+
+  border: 0;
+  border-radius: var(--radius-md);
+
+  background: transparent;
+
+  cursor: pointer;
+
+  text-align: left;
+
+  box-shadow:
+    0 8px 30px rgba(23, 22, 20, 0.06);
+
+  transition:
+    transform var(--transition-base),
+    box-shadow var(--transition-base);
 }
 
 .epcCard:hover {
-  transform: scale(1.04);
+  transform: translateY(-6px);
+
+  box-shadow:
+    0 22px 50px rgba(23, 22, 20, 0.14);
 }
 
-.epcCard img {
+.epcCard:focus-visible {
+  outline:
+    2px solid var(--color-accent);
+
+  outline-offset: 5px;
+}
+
+
+/* ========================================================= */
+/* Media                                                     */
+/* ========================================================= */
+
+.epcMedia {
+  position: relative;
+
   width: 100%;
-  height: auto;
-  display: block;
-  user-select: none;
+  height:
+    clamp(360px, 38vw, 500px);
+
+  overflow: hidden;
+
+  border-radius: inherit;
+
+  background:
+    var(--color-surface-soft);
 }
 
-/* ===== Pastel rectangles ===== */
+.epcMedia img {
+  width: 100%;
+  height: 100%;
 
-.epcPlaceholder {
-  height: 260px;
-  border-radius: 14px;
+  object-fit: cover;
+
+  user-select: none;
+
+  transition:
+    transform 700ms ease;
+}
+
+.epcCard:hover .epcMedia img {
+  transform: scale(1.035);
+}
+
+
+/* ========================================================= */
+/* Overlay                                                   */
+/* ========================================================= */
+
+.epcCardOverlay {
+  position: absolute;
+
+  inset: 0;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+
+  gap: 6px;
+
+  padding: 26px;
+
+  color: #fff;
+
+  background:
+    linear-gradient(
+      to top,
+      rgba(16, 15, 13, 0.82) 0%,
+      rgba(16, 15, 13, 0.28) 38%,
+      rgba(16, 15, 13, 0) 68%
+    );
+
+  opacity: 0;
+
+  transition:
+    opacity var(--transition-base);
+}
+
+.epcCard:hover .epcCardOverlay,
+.epcCard:focus-visible .epcCardOverlay {
+  opacity: 1;
+}
+
+.epcCardNumber {
+  color:
+    rgba(255, 255, 255, 0.72);
+
+  font-size: 11px;
+  font-weight: 700;
+
+  letter-spacing: 0.14em;
+}
+
+.epcCardTitle {
+  max-width: 85%;
+
+  color: #fff;
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    ui-serif,
+    serif;
+
+  font-size: clamp(22px, 2vw, 30px);
+
+  font-weight: 500;
+
+  line-height: 1.08;
+
+  letter-spacing: -0.025em;
+}
+
+.epcCardArrow {
+  position: absolute;
+
+  right: 24px;
+  bottom: 26px;
+
   display: grid;
   place-items: center;
-  font-weight: 700;
-  opacity: 0.85;
+
+  width: 38px;
+  height: 38px;
+
+  border:
+    1px solid rgba(255, 255, 255, 0.55);
+
+  border-radius: 50%;
+
+  color: #fff;
+
+  font-size: 18px;
 }
 
-/* couleurs pastel (tu changes si tu veux) */
-.p1 { background: #e54093; }
-.p2 { background: #641d58; }
-.p3 { background: #6df10e; }
-.p4 { background: #fff2cc; }
-.p5 { background: #e9ddff; }
-.p6 { background: #6adb9d; }
 
-/* ===== Modal ===== */
+/* ========================================================= */
+/* Placeholder premium                                      */
+/* ========================================================= */
+
+.epcPlaceholder {
+  position: relative;
+
+  width: 100%;
+  height: 100%;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+
+  padding: 24px;
+
+  border:
+    1px solid var(--color-line);
+
+  background:
+    linear-gradient(
+      145deg,
+      var(--color-surface-soft),
+      #e8e1d7
+    );
+
+  color: var(--color-muted);
+}
+
+.epcPlaceholder::before {
+  content: "";
+
+  position: absolute;
+
+  width: 160px;
+  height: 160px;
+
+  right: -50px;
+  top: -50px;
+
+  border-radius: 50%;
+
+  background:
+    rgba(238, 90, 43, 0.09);
+}
+
+.epcPlaceholderIndex {
+  position: relative;
+
+  z-index: 1;
+
+  color: var(--color-accent);
+
+  font-size: 11px;
+  font-weight: 800;
+
+  letter-spacing: 0.16em;
+}
+
+.epcPlaceholderLabel {
+  position: relative;
+
+  z-index: 1;
+
+  color: var(--color-text-soft);
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    ui-serif,
+    serif;
+
+  font-size:
+    clamp(22px, 2.2vw, 30px);
+
+  font-weight: 500;
+
+  letter-spacing: -0.025em;
+}
+
+
+/* Pas de couleurs pastel historiques */
+
+.p1,
+.p2,
+.p3,
+.p4,
+.p5,
+.p6 {
+  background: transparent;
+}
+
+
+/* ========================================================= */
+/* Modal                                                     */
+/* ========================================================= */
 
 .epcModalOverlay {
   position: fixed;
+
   inset: 0;
+
   z-index: 9999;
-  background: rgba(0, 0, 0, 0.84);
+
   display: grid;
   place-items: center;
+
   padding: 24px;
+
+  background:
+    rgba(17, 16, 14, 0.92);
+
+  backdrop-filter: blur(8px);
 }
 
 .epcModalContent {
   position: relative;
-  max-width: min(92vw, 1200px);
-  max-height: 88vh;
+
+  width: fit-content;
+
+  max-width:
+    min(92vw, 1280px);
+
+  max-height: 90vh;
 }
 
 .epcModalImg {
   max-width: 100%;
-  max-height: 88vh;
-  display: block;
-  border-radius: 14px;
+  max-height: 84vh;
+
+  object-fit: contain;
+
+  border-radius:
+    var(--radius-md);
+
+  box-shadow:
+    0 30px 90px rgba(0, 0, 0, 0.35);
 }
 
 .epcCloseBtn {
   position: absolute;
-  top: -14px;
-  right: -14px;
-  width: 38px;
-  height: 38px;
-  border-radius: 999px;
-  border: 0;
-  cursor: pointer;
-  background: #fff;
-  font-size: 18px;
-  line-height: 1;
-}
 
-/* placeholder en modal */
-.epcModalPlaceholder {
-  width: min(92vw, 1200px);
-  height: min(70vh, 700px);
-  border-radius: 14px;
+  z-index: 2;
+
+  top: -16px;
+  right: -16px;
+
   display: grid;
   place-items: center;
-  font-size: 22px;
-  font-weight: 800;
-  color: rgba(0,0,0,0.75);
+
+  width: 42px;
+  height: 42px;
+
+  padding: 0;
+
+  border: 0;
+  border-radius: 50%;
+
+  background:
+    var(--color-surface);
+
+  color:
+    var(--color-text);
+
+  font-size: 25px;
+
+  line-height: 1;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.22);
+
+  transition:
+    transform var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.epcCloseBtn:hover {
+  background:
+    var(--color-accent);
+
+  color: #fff;
+
+  transform: scale(1.05);
+}
+
+.epcModalPlaceholder {
+  width:
+    min(88vw, 900px);
+
+  height:
+    min(68vh, 650px);
+
+  display: grid;
+  place-items: center;
+
+  padding: 30px;
+
+  border:
+    1px solid rgba(255, 255, 255, 0.12);
+
+  border-radius:
+    var(--radius-md);
+
+  background:
+    var(--color-surface-soft);
+
+  color:
+    var(--color-text);
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    ui-serif,
+    serif;
+
+  font-size:
+    clamp(28px, 4vw, 48px);
+
+  font-weight: 500;
+}
+
+.epcModalCaption {
+  margin-top: 14px;
+
+  color:
+    rgba(255, 255, 255, 0.82);
+
+  font-size: 13px;
+}
+
+
+/* ========================================================= */
+/* Responsive — tablette                                    */
+/* ========================================================= */
+
+@media (max-width: 900px) {
+  .home-realizations-header {
+    align-items: flex-start;
+
+    flex-direction: column;
+
+    gap: 24px;
+  }
+
+  .epcCard {
+    width:
+      min(72vw, 390px);
+  }
+
+  .epcMedia {
+    height:
+      min(95vw, 480px);
+  }
+
+  .epcCardOverlay {
+    opacity: 1;
+
+    background:
+      linear-gradient(
+        to top,
+        rgba(16, 15, 13, 0.75) 0%,
+        rgba(16, 15, 13, 0.18) 42%,
+        rgba(16, 15, 13, 0) 70%
+      );
+  }
+}
+
+
+/* ========================================================= */
+/* Responsive — mobile                                      */
+/* ========================================================= */
+
+@media (max-width: 600px) {
+  .home-realizations {
+    margin-top: 80px;
+    margin-bottom: 110px;
+  }
+
+  .home-realizations-title {
+    font-size:
+      clamp(38px, 11vw, 50px);
+  }
+
+  .home-realizations-title br {
+    display: none;
+  }
+
+  .epcTrack {
+    gap: 14px;
+  }
+
+  .epcCard {
+    width:
+      min(82vw, 340px);
+  }
+
+  .epcMedia {
+    height:
+      min(112vw, 430px);
+  }
+
+  .epcCardOverlay {
+    padding: 20px;
+  }
+
+  .epcCardArrow {
+    right: 20px;
+    bottom: 20px;
+
+    width: 34px;
+    height: 34px;
+  }
+
+  .epcModalOverlay {
+    padding: 16px;
+  }
+
+  .epcCloseBtn {
+    top: 10px;
+    right: 10px;
+  }
 }

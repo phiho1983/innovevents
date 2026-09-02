@@ -4,6 +4,8 @@ import {
   useState,
 } from "react";
 
+import "./AuthForm.css";
+
 
 export default function AuthForm({
   title,
@@ -16,37 +18,54 @@ export default function AuthForm({
   footer,
   initialValues,
 }) {
-  const defaultValues = useMemo(
-    () =>
-      Object.fromEntries(
-        fields.map(
-          (field) => [
-            field.name,
-            "",
-          ]
-        )
-      ),
-    [fields]
+  const defaultValues =
+    useMemo(
+      () =>
+        Object.fromEntries(
+          fields.map(
+            (field) => [
+              field.name,
+              "",
+            ]
+          )
+        ),
+      [fields]
+    );
+
+
+  const [
+    values,
+    setValues,
+  ] = useState(
+    () => ({
+      ...defaultValues,
+      ...(initialValues || {}),
+    })
   );
 
-  const [values, setValues] =
-    useState(() => ({
-      ...defaultValues,
-      ...(initialValues || {}),
-    }));
 
-  const [err, setErr] =
-    useState(null);
+  const [
+    err,
+    setErr,
+  ] = useState(null);
 
-  const [loading, setLoading] =
-    useState(false);
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
+
 
   useEffect(() => {
-    setValues((previousValues) => ({
-      ...defaultValues,
-      ...previousValues,
-      ...(initialValues || {}),
-    }));
+    setValues(
+      (
+        previousValues
+      ) => ({
+        ...defaultValues,
+        ...previousValues,
+        ...(initialValues || {}),
+      })
+    );
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -54,17 +73,21 @@ export default function AuthForm({
     initialValues,
   ]);
 
+
   function set(
     name,
     value
   ) {
     setValues(
-      (previousValues) => ({
+      (
+        previousValues
+      ) => ({
         ...previousValues,
         [name]: value,
       })
     );
   }
+
 
   async function handleSubmit(
     event
@@ -73,13 +96,19 @@ export default function AuthForm({
 
     setErr(null);
 
+
     const message =
-      validate?.(values);
+      validate?.(
+        values
+      );
+
 
     if (message) {
       setErr(message);
+
       return;
     }
+
 
     try {
       setLoading(true);
@@ -89,198 +118,201 @@ export default function AuthForm({
       );
     } catch (error) {
       setErr(
-        error?.message
-        || "Erreur"
+        error?.message ||
+          "Une erreur est survenue."
       );
     } finally {
       setLoading(false);
     }
   }
 
+
   return (
-    <div
-      style={{
-        padding: 24,
-        maxWidth: 520,
-        margin: "0 auto",
-      }}
-    >
-      {title && (
-        <h2
-          style={{
-            margin: 0,
-          }}
-        >
-          {title}
-        </h2>
-      )}
+    <main className="authPage">
+      <div className="container authLayout">
+        <section className="authVisual">
+          <div className="authVisualContent">
+            <p className="authEyebrow">
+              Innov&apos;Events
+            </p>
 
-      {subtitle && (
-        <p
-          style={{
-            marginTop: 8,
-            color:
-              subtitleColor
-              || "#555",
-          }}
-        >
-          {subtitle}
-        </p>
-      )}
+            <h2 className="authVisualTitle">
+              Votre espace
+              <br />
+              <em>événementiel.</em>
+            </h2>
 
-      <form
-        onSubmit={
-          handleSubmit
-        }
-        style={{
-          display: "grid",
-          gap: 10,
-          marginTop: 16,
-        }}
-      >
-        {fields.map(
-          (field) => (
-            <div
-              key={
-                field.name
-              }
-              style={{
-                display:
-                  "grid",
-                gap: 6,
-              }}
-            >
-              <label
-                htmlFor={
-                  field.name
-                }
-                style={{
-                  fontWeight:
-                    700,
-                  fontSize:
-                    12,
-                }}
-              >
-                {
-                  field.label
-                }
-              </label>
-
-              <input
-                id={
-                  field.name
-                }
-                type={
-                  field.type
-                  || "text"
-                }
-                value={
-                  values[
-                    field.name
-                  ] ?? ""
-                }
-                onChange={(
-                  event
-                ) =>
-                  set(
-                    field.name,
-                    event
-                      .target
-                      .value
-                  )
-                }
-                required={
-                  field.required
-                  !== false
-                }
-                autoComplete={
-                  field.autoComplete
-                }
-                placeholder={
-                  field.placeholder
-                }
-                inputMode={
-                  field.inputMode
-                }
-                maxLength={
-                  field.maxLength
-                }
-                pattern={
-                  field.pattern
-                }
-                disabled={
-                  loading
-                }
-                style={{
-                  height: 42,
-                  borderRadius:
-                    10,
-                  border:
-                    "1px solid #ddd",
-                  padding:
-                    "0 12px",
-                  outline:
-                    "none",
-                  opacity:
-                    loading
-                    ? 0.8
-                    : 1,
-                }}
-              />
-            </div>
-          )
-        )}
-
-        {err && (
-          <p
-            style={{
-              color:
-                "crimson",
-              margin: 0,
-              fontSize:
-                12,
-            }}
-          >
-            {err}
-          </p>
-        )}
-
-        <button
-          type="submit"
-          disabled={
-            loading
-          }
-          style={{
-            height: 44,
-            borderRadius:
-              12,
-            cursor:
-              loading
-              ? "not-allowed"
-              : "pointer",
-            opacity:
-              loading
-              ? 0.8
-              : 1,
-          }}
-        >
-          {
-            loading
-            ? "..."
-            : submitLabel
-          }
-        </button>
-
-        {footer ? (
-          <div
-            style={{
-              marginTop: 6,
-            }}
-          >
-            {footer}
+            <p className="authVisualText">
+              Retrouvez vos échanges,
+              vos projets et vos événements
+              dans un espace sécurisé.
+            </p>
           </div>
-        ) : null}
-      </form>
-    </div>
+
+          <div
+            className="authVisualDecoration"
+            aria-hidden="true"
+          >
+            <span>01</span>
+            <span>02</span>
+            <span>03</span>
+          </div>
+        </section>
+
+
+        <section className="authCard">
+          <div className="authCardHeader">
+            <p className="authCardEyebrow">
+              Espace sécurisé
+            </p>
+
+            {title && (
+              <h1 className="authTitle">
+                {title}
+              </h1>
+            )}
+
+
+            {subtitle && (
+              <div
+                className="authSubtitle"
+                style={
+                  subtitleColor
+                    ? {
+                        color:
+                          subtitleColor,
+                      }
+                    : undefined
+                }
+              >
+                {subtitle}
+              </div>
+            )}
+          </div>
+
+
+          <form
+            onSubmit={
+              handleSubmit
+            }
+            className="authForm"
+          >
+            {fields.map(
+              (field) => (
+                <div
+                  key={
+                    field.name
+                  }
+                  className="authField"
+                >
+                  <label
+                    htmlFor={
+                      field.name
+                    }
+                    className="authLabel"
+                  >
+                    {
+                      field.label
+                    }
+                  </label>
+
+
+                  <input
+                    id={
+                      field.name
+                    }
+                    type={
+                      field.type ||
+                      "text"
+                    }
+                    value={
+                      values[
+                        field.name
+                      ] ?? ""
+                    }
+                    onChange={(
+                      event
+                    ) =>
+                      set(
+                        field.name,
+                        event
+                          .target
+                          .value
+                      )
+                    }
+                    required={
+                      field.required !==
+                      false
+                    }
+                    autoComplete={
+                      field.autoComplete
+                    }
+                    placeholder={
+                      field.placeholder
+                    }
+                    inputMode={
+                      field.inputMode
+                    }
+                    maxLength={
+                      field.maxLength
+                    }
+                    pattern={
+                      field.pattern
+                    }
+                    disabled={
+                      loading
+                    }
+                    className="authInput"
+                  />
+                </div>
+              )
+            )}
+
+
+            {err && (
+              <div
+                className="authError"
+                role="alert"
+              >
+                {err}
+              </div>
+            )}
+
+
+            <button
+              type="submit"
+              disabled={
+                loading
+              }
+              className="authBtn"
+            >
+              <span>
+                {
+                  loading
+                    ? "En cours..."
+                    : submitLabel
+                }
+              </span>
+
+              {!loading && (
+                <span
+                  aria-hidden="true"
+                  className="authBtnArrow"
+                >
+                  →
+                </span>
+              )}
+            </button>
+
+
+            {footer && (
+              <div className="authFooter">
+                {footer}
+              </div>
+            )}
+          </form>
+        </section>
+      </div>
+    </main>
   );
 }

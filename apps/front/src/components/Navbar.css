@@ -1,0 +1,361 @@
+/* ========================================================= */
+/* INNOV'EVENTS — NAVBAR RESPONSIVE                          */
+/* ========================================================= */
+
+.navbar {
+  position: relative;
+
+  z-index: 100;
+
+  width: 100%;
+
+  padding:
+    26px 0;
+
+  background:
+    var(--color-bg);
+}
+
+.navbarInner {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 30px;
+}
+
+
+/* ========================================================= */
+/* Logo                                                      */
+/* ========================================================= */
+
+.brandBtn {
+  position: relative;
+
+  z-index: 102;
+
+  display: inline-flex;
+  align-items: center;
+
+  flex-shrink: 0;
+
+  color:
+    var(--color-text);
+
+  font-size: 23px;
+  font-weight: 800;
+
+  line-height: 1;
+
+  letter-spacing:
+    -0.045em;
+}
+
+.brandAccent {
+  color:
+    var(--color-accent);
+}
+
+
+/* ========================================================= */
+/* Navigation desktop                                       */
+/* ========================================================= */
+
+.navlinks {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+
+  gap:
+    clamp(16px, 2vw, 28px);
+
+  margin-left: auto;
+
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.navlinks a:not(.btn) {
+  position: relative;
+
+  color:
+    var(--color-text);
+}
+
+.navlinks a:not(.btn)::after {
+  content: "";
+
+  position: absolute;
+
+  left: 0;
+  right: 0;
+
+  bottom: -6px;
+
+  height: 1px;
+
+  background:
+    var(--color-accent);
+
+  transform:
+    scaleX(0);
+
+  transform-origin:
+    right;
+
+  transition:
+    transform var(--transition-base);
+}
+
+.navlinks a:not(.btn):hover::after {
+  transform:
+    scaleX(1);
+
+  transform-origin:
+    left;
+}
+
+.navProjectButton {
+  white-space: nowrap;
+}
+
+.navLogout {
+  min-height: 42px;
+
+  padding:
+    9px 15px;
+}
+
+
+/* ========================================================= */
+/* Hamburger                                                 */
+/* ========================================================= */
+
+.navToggle {
+  display: none;
+
+  position: relative;
+
+  z-index: 102;
+
+  width: 44px;
+  height: 44px;
+
+  padding: 0;
+
+  border:
+    1px solid var(--color-line);
+
+  border-radius:
+    50%;
+
+  background:
+    transparent;
+
+  cursor: pointer;
+}
+
+.navToggle span {
+  position: absolute;
+
+  left: 12px;
+
+  width: 18px;
+  height: 1.5px;
+
+  background:
+    var(--color-text);
+
+  transition:
+    top 240ms ease,
+    transform 240ms ease;
+}
+
+.navToggle span:first-child {
+  top: 17px;
+}
+
+.navToggle span:last-child {
+  top: 24px;
+}
+
+.navToggleOpen span:first-child {
+  top: 21px;
+
+  transform:
+    rotate(45deg);
+}
+
+.navToggleOpen span:last-child {
+  top: 21px;
+
+  transform:
+    rotate(-45deg);
+}
+
+
+/* ========================================================= */
+/* Tablet / mobile                                           */
+/* ========================================================= */
+
+@media (max-width: 900px) {
+  .navbar {
+    padding:
+      20px 0;
+  }
+
+  .navbarInner {
+    align-items: center;
+
+    flex-direction: row;
+  }
+
+  .navToggle {
+    display: block;
+  }
+
+  .navlinks {
+    position: absolute;
+
+    z-index: 101;
+
+    left:
+      calc(var(--gutter) * -1);
+
+    right:
+      calc(var(--gutter) * -1);
+
+    top:
+      calc(100% + 20px);
+
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+
+    gap: 0;
+
+    padding:
+      26px
+      var(--gutter)
+      30px;
+
+    background:
+      var(--color-bg);
+
+    border-top:
+      1px solid var(--color-line);
+
+    border-bottom:
+      1px solid var(--color-line);
+
+    box-shadow:
+      0 24px 45px
+      rgba(23, 22, 20, 0.08);
+
+    opacity: 0;
+
+    visibility: hidden;
+
+    pointer-events: none;
+
+    transform:
+      translateY(-12px);
+
+    transition:
+      opacity 220ms ease,
+      visibility 220ms ease,
+      transform 220ms ease;
+  }
+
+  .navlinksOpen {
+    opacity: 1;
+
+    visibility: visible;
+
+    pointer-events: auto;
+
+    transform:
+      translateY(0);
+  }
+
+  .navlinks a:not(.btn) {
+    display: flex;
+    align-items: center;
+
+    min-height: 54px;
+
+    border-bottom:
+      1px solid var(--color-line);
+
+    font-family:
+      Georgia,
+      "Times New Roman",
+      ui-serif,
+      serif;
+
+    font-size: 24px;
+    font-weight: 500;
+
+    letter-spacing:
+      -0.025em;
+  }
+
+  .navlinks a:not(.btn)::after {
+    display: none;
+  }
+
+  .navLogout {
+    width: 100%;
+
+    margin-top: 20px;
+  }
+
+  .navProjectButton {
+    width: 100%;
+
+    min-height: 54px;
+
+    margin-top: 20px;
+  }
+}
+
+
+/* ========================================================= */
+/* Petit mobile                                              */
+/* ========================================================= */
+
+@media (max-width: 520px) {
+  .navbar {
+    padding:
+      17px 0;
+  }
+
+  .brandBtn {
+    font-size: 21px;
+  }
+
+  .navToggle {
+    width: 42px;
+    height: 42px;
+  }
+
+  .navToggle span {
+    left: 11px;
+  }
+
+  .navlinks {
+    top:
+      calc(100% + 17px);
+
+    padding-top: 20px;
+    padding-bottom: 24px;
+  }
+
+  .navlinks a:not(.btn) {
+    min-height: 51px;
+
+    font-size: 22px;
+  }
+}

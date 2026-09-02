@@ -1,16 +1,30 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import {
+  useState,
+} from "react";
+
+import {
+  useNavigate,
+} from "react-router-dom";
 
 import Navbar from "../components/Navbar";
+
+import "./QuoteRequestPage.css";
+
 
 const API =
   import.meta.env.VITE_API_URL ||
   "http://localhost:8000";
 
-export default function QuoteRequestPage() {
-  const navigate = useNavigate();
 
-  const [form, setForm] = useState({
+export default function QuoteRequestPage() {
+  const navigate =
+    useNavigate();
+
+
+  const [
+    form,
+    setForm,
+  ] = useState({
     first_name: "",
     last_name: "",
     email: "",
@@ -20,41 +34,70 @@ export default function QuoteRequestPage() {
     message: "",
   });
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
-  function onChange(e) {
-    const { name, value } = e.target;
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
 
-    setForm((previousForm) => ({
-      ...previousForm,
-      [name]: value,
-    }));
+  const [
+    error,
+    setError,
+  ] = useState("");
+
+
+  function onChange(event) {
+    const {
+      name,
+      value,
+    } = event.target;
+
+
+    setForm(
+      (
+        previousForm
+      ) => ({
+        ...previousForm,
+        [name]: value,
+      })
+    );
   }
 
-  async function onSubmit(e) {
-    e.preventDefault();
+
+  async function onSubmit(event) {
+    event.preventDefault();
 
     setLoading(true);
     setError("");
 
+
     try {
-      const response = await fetch(
-        `${API}/api/prospects/`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify(form),
-        }
-      );
+      const response =
+        await fetch(
+          `${API}/api/prospects/`,
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify(
+                form
+              ),
+          }
+        );
+
 
       const data =
         await response
           .json()
-          .catch(() => null);
+          .catch(
+            () => null
+          );
+
 
       if (!response.ok) {
         throw (
@@ -65,193 +108,340 @@ export default function QuoteRequestPage() {
         );
       }
 
-      navigate("/", {
-        replace: true,
-        state: {
-          quoteSuccess: (
-            "Votre demande de devis a bien "
-            + "été envoyée. Notre équipe vous "
-            + "contactera prochainement."
-          ),
-        },
-      });
-    } catch (err) {
+
+      navigate(
+        "/",
+        {
+          replace: true,
+
+          state: {
+            quoteSuccess:
+              (
+                "Votre demande de devis a bien "
+                + "été envoyée. Notre équipe vous "
+                + "contactera prochainement."
+              ),
+          },
+        }
+      );
+    } catch (submitError) {
       console.error(
         "Erreur envoi demande :",
-        err
+        submitError
       );
 
+
       setError(
-        formatApiError(err)
+        formatApiError(
+          submitError
+        )
       );
+
 
       setLoading(false);
     }
   }
 
+
   return (
     <>
       <Navbar />
 
-      <main className="container">
-        <div className="quoteWrap">
-          <h2 className="quoteTitle">
-            Demande de devis
-          </h2>
 
-          <p className="quoteSub">
-            Remplissez ce formulaire,
-            nous revenons vers vous rapidement.
-          </p>
+      <main className="quotePage">
+        <div className="container quotePageInner">
+          {/* ============================================= */}
+          {/* Introduction                                  */}
+          {/* ============================================= */}
 
-          <form
-            onSubmit={onSubmit}
-            className="quoteForm"
-          >
-            <div className="quoteGrid2">
-              <Field label="Prénom">
-                <Input
-                  name="first_name"
-                  value={
-                    form.first_name
-                  }
-                  onChange={
-                    onChange
-                  }
-                  required
-                />
-              </Field>
+          <section className="quoteIntro">
+            <p className="quoteEyebrow">
+              Votre projet
+            </p>
 
-              <Field label="Nom">
-                <Input
-                  name="last_name"
-                  value={
-                    form.last_name
-                  }
-                  onChange={
-                    onChange
-                  }
-                  required
-                />
-              </Field>
-            </div>
+            <h1 className="quoteHeroTitle">
+              Imaginons
+              <br />
+              votre prochain
+              <br />
 
-            <div className="quoteGrid2">
-              <Field label="Email">
-                <Input
-                  name="email"
-                  type="email"
-                  value={
-                    form.email
-                  }
-                  onChange={
-                    onChange
-                  }
-                  required
-                />
-              </Field>
+              <em>
+                événement.
+              </em>
+            </h1>
 
-              <Field label="Téléphone">
-                <Input
-                  name="phone"
-                  value={
-                    form.phone
-                  }
-                  onChange={
-                    onChange
-                  }
-                />
-              </Field>
-            </div>
+            <p className="quoteHeroText">
+              Parlez-nous de votre besoin.
+              Nous prendrons le temps de comprendre
+              votre projet afin de vous proposer
+              un accompagnement adapté.
+            </p>
 
-            <div className="quoteGrid2">
-              <Field label="Société">
-                <Input
-                  name="company"
-                  value={
-                    form.company
-                  }
-                  onChange={
-                    onChange
-                  }
-                />
-              </Field>
 
-              <Field label="Ville">
-                <Input
-                  name="city"
-                  value={
-                    form.city
-                  }
-                  onChange={
-                    onChange
-                  }
-                />
-              </Field>
-            </div>
+            <div className="quoteInfoList">
+              <div className="quoteInfoItem">
+                <span>
+                  01
+                </span>
 
-            <Field label="Message">
-              <textarea
-                name="message"
-                value={
-                  form.message
-                }
-                onChange={
-                  onChange
-                }
-                className="quoteTextarea"
-                placeholder="Décrivez votre besoin (date, lieu, nombre de personnes, type d’événement...)"
-                required
-              />
-            </Field>
-
-            {error && (
-              <div
-                style={{
-                  marginBottom: 16,
-                  padding:
-                    "10px 12px",
-                  border:
-                    "1px solid #f5c2c7",
-                  borderRadius: 6,
-                  background:
-                    "#f8d7da",
-                  color:
-                    "#842029",
-                  fontSize: 13,
-                }}
-              >
-                {error}
+                <p>
+                  Décrivez votre événement
+                  et vos premières idées.
+                </p>
               </div>
-            )}
 
-            <button
-              type="submit"
-              className="btn quoteBtn"
-              disabled={
-                loading
+              <div className="quoteInfoItem">
+                <span>
+                  02
+                </span>
+
+                <p>
+                  Indiquez le lieu,
+                  la période et les participants.
+                </p>
+              </div>
+
+              <div className="quoteInfoItem">
+                <span>
+                  03
+                </span>
+
+                <p>
+                  Notre équipe revient vers vous
+                  pour échanger sur votre projet.
+                </p>
+              </div>
+            </div>
+          </section>
+
+
+          {/* ============================================= */}
+          {/* Formulaire                                     */}
+          {/* ============================================= */}
+
+          <section
+            className="quoteFormPanel"
+            aria-labelledby="quote-form-title"
+          >
+            <div className="quoteFormHeader">
+              <p className="quoteFormNumber">
+                01 — Votre demande
+              </p>
+
+              <h2
+                id="quote-form-title"
+                className="quoteTitle"
+              >
+                Parlez-nous
+                de votre projet.
+              </h2>
+
+              <p className="quoteSub">
+                Les champs marqués comme obligatoires
+                nous permettent de traiter votre demande.
+              </p>
+            </div>
+
+
+            <form
+              onSubmit={
+                onSubmit
               }
+              className="quoteForm"
             >
-              {
-                loading
-                  ? "Envoi en cours..."
-                  : "Envoyer ma demande"
-              }
-            </button>
-          </form>
+              <div className="quoteGrid2">
+                <Field
+                  label="Prénom"
+                  htmlFor="first_name"
+                >
+                  <Input
+                    id="first_name"
+                    name="first_name"
+                    value={
+                      form.first_name
+                    }
+                    onChange={
+                      onChange
+                    }
+                    autoComplete="given-name"
+                    required
+                  />
+                </Field>
+
+
+                <Field
+                  label="Nom"
+                  htmlFor="last_name"
+                >
+                  <Input
+                    id="last_name"
+                    name="last_name"
+                    value={
+                      form.last_name
+                    }
+                    onChange={
+                      onChange
+                    }
+                    autoComplete="family-name"
+                    required
+                  />
+                </Field>
+              </div>
+
+
+              <div className="quoteGrid2">
+                <Field
+                  label="Email"
+                  htmlFor="email"
+                >
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={
+                      form.email
+                    }
+                    onChange={
+                      onChange
+                    }
+                    autoComplete="email"
+                    required
+                  />
+                </Field>
+
+
+                <Field
+                  label="Téléphone"
+                  htmlFor="phone"
+                >
+                  <Input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    value={
+                      form.phone
+                    }
+                    onChange={
+                      onChange
+                    }
+                    autoComplete="tel"
+                  />
+                </Field>
+              </div>
+
+
+              <div className="quoteGrid2">
+                <Field
+                  label="Société"
+                  htmlFor="company"
+                >
+                  <Input
+                    id="company"
+                    name="company"
+                    value={
+                      form.company
+                    }
+                    onChange={
+                      onChange
+                    }
+                    autoComplete="organization"
+                  />
+                </Field>
+
+
+                <Field
+                  label="Ville"
+                  htmlFor="city"
+                >
+                  <Input
+                    id="city"
+                    name="city"
+                    value={
+                      form.city
+                    }
+                    onChange={
+                      onChange
+                    }
+                    autoComplete="address-level2"
+                  />
+                </Field>
+              </div>
+
+
+              <Field
+                label="Votre projet"
+                htmlFor="message"
+              >
+                <textarea
+                  id="message"
+                  name="message"
+                  value={
+                    form.message
+                  }
+                  onChange={
+                    onChange
+                  }
+                  className="quoteTextarea"
+                  placeholder={
+                    "Date, lieu, nombre de personnes, "
+                    + "type d’événement, ambiance recherchée..."
+                  }
+                  required
+                />
+              </Field>
+
+
+              {error && (
+                <div
+                  className="quoteError"
+                  role="alert"
+                >
+                  {error}
+                </div>
+              )}
+
+
+              <button
+                type="submit"
+                className="btn quoteBtn"
+                disabled={
+                  loading
+                }
+              >
+                {
+                  loading
+                    ? "Envoi en cours..."
+                    : "Envoyer ma demande"
+                }
+
+                {!loading && (
+                  <span aria-hidden="true">
+                    →
+                  </span>
+                )}
+              </button>
+            </form>
+          </section>
         </div>
       </main>
     </>
   );
 }
 
+
 function Field({
   label,
+  htmlFor,
   children,
 }) {
   return (
     <div className="quoteField">
-      <label className="quoteLabel">
+      <label
+        className="quoteLabel"
+        htmlFor={
+          htmlFor
+        }
+      >
         {label}
       </label>
 
@@ -259,6 +449,7 @@ function Field({
     </div>
   );
 }
+
 
 function Input(props) {
   return (
@@ -269,7 +460,10 @@ function Input(props) {
   );
 }
 
-function formatApiError(error) {
+
+function formatApiError(
+  error
+) {
   if (!error) {
     return (
       "Une erreur est survenue "
@@ -277,36 +471,61 @@ function formatApiError(error) {
     );
   }
 
+
   if (
-    typeof error === "string"
+    typeof error ===
+    "string"
   ) {
     return error;
   }
+
 
   if (error.detail) {
     return error.detail;
   }
 
+
   if (error.message) {
     return error.message;
   }
 
-  const message =
-    Object.entries(error)
-      .map(
-        ([field, value]) => {
-          const text =
-            Array.isArray(value)
-              ? value.join(" ")
-              : String(value);
 
-          return `${field} : ${text}`;
+  const message =
+    Object.entries(
+      error
+    )
+      .map(
+        (
+          [
+            field,
+            value,
+          ]
+        ) => {
+          const text =
+            Array.isArray(
+              value
+            )
+              ? value.join(
+                  " "
+                )
+              : String(
+                  value
+                );
+
+
+          return (
+            `${field} : ${text}`
+          );
         }
       )
       .join(" | ");
 
+
   return (
-    message
-    || "Une erreur est survenue lors de l'envoi."
+    message ||
+    (
+      "Une erreur est survenue "
+      + "lors de l'envoi."
+    )
   );
 }

@@ -24,9 +24,12 @@ function makeDefaultPhotos() {
 
       return {
         id: slot,
+
         url: null,
+
         title:
           `Event - ${String(slot).padStart(2, "0")}`,
+
         placeholder:
           `p${placeholderNumber}`,
       };
@@ -53,6 +56,7 @@ function buildCarouselPhotos(
       )
     );
 
+
   return defaults.map(
     (
       defaultPhoto,
@@ -66,9 +70,11 @@ function buildCarouselPhotos(
           slot
         );
 
+
       if (!apiPhoto) {
         return defaultPhoto;
       }
+
 
       return {
         ...defaultPhoto,
@@ -101,14 +107,17 @@ export default function HomeEventPhotos() {
       let active =
         true;
 
+
       async function loadPhotos() {
         try {
           const data =
             await getHomePhotos();
 
+
           if (!active) {
             return;
           }
+
 
           setPhotos(
             buildCarouselPhotos(
@@ -124,13 +133,16 @@ export default function HomeEventPhotos() {
             return;
           }
 
+
           setPhotos(
             makeDefaultPhotos()
           );
         }
       }
 
+
       loadPhotos();
+
 
       return () => {
         active = false;
@@ -142,19 +154,38 @@ export default function HomeEventPhotos() {
 
   return (
     <section
-      style={{
-        padding:
-          "0 16px",
-      }}
+      className="home-realizations"
+      aria-labelledby="home-realizations-title"
     >
-      <h2
-        style={{
-          margin:
-            "16px 0",
-        }}
-      >
-        Photos d’évènements
-      </h2>
+      <div className="home-realizations-header">
+        <div>
+          <p className="home-realizations-eyebrow">
+            Nos réalisations
+          </p>
+
+          <h2
+            id="home-realizations-title"
+            className="home-realizations-title"
+          >
+            Des événements qui
+            <br />
+            marquent les esprits.
+          </h2>
+        </div>
+
+
+        <a
+          href="/evenements"
+          className="home-realizations-link"
+        >
+          Découvrir nos événements
+
+          <span aria-hidden="true">
+            →
+          </span>
+        </a>
+      </div>
+
 
       <EventPhotosCarousel
         photos={photos}

@@ -19,63 +19,63 @@ export default function Hero() {
   ] = useState(null);
 
 
-  useEffect(
-    () => {
-      let active = true;
+  useEffect(() => {
+    let active = true;
 
-      async function loadHero() {
-        try {
-          const data =
-            await getHomeHero();
+    async function loadHero() {
+      try {
+        const data =
+          await getHomeHero();
 
-          if (!active) {
-            return;
-          }
-
-          setHero(
-            data
-          );
-        } catch {
-          if (!active) {
-            return;
-          }
-
-          setHero(
-            null
-          );
+        if (!active) {
+          return;
         }
+
+        setHero(data);
+      } catch {
+        if (!active) {
+          return;
+        }
+
+        setHero(null);
       }
+    }
 
-      loadHero();
+    loadHero();
 
-      return () => {
-        active = false;
-      };
-    },
-    []
-  );
+    return () => {
+      active = false;
+    };
+  }, []);
 
 
   const hasHeroImage =
-    Boolean(
-      hero?.image_url
-    );
+    Boolean(hero?.image_url);
 
 
   return (
     <section className="hero">
       <div className="hero-left">
+        <p className="hero-eyebrow">
+          Agence événementielle
+        </p>
+
         <h1 className="hero-title">
-          Organisation <br />
-          d&apos;événements <br />
-          professionnels <br />
-          sur mesure
+          Nous créons
+          <br />
+          des expériences
+          <br />
+
+          <em className="hero-title-accent">
+            qui rassemblent.
+          </em>
         </h1>
 
         <p className="hero-sub">
-          Seminaires, soirées d&apos;entreprises,
-          <br />
-          lancements, teams buildings
+          De la conception à la production,
+          Innov&apos;Events imagine des événements
+          professionnels sur mesure qui marquent
+          les esprits.
         </p>
 
         <div className="hero-actions">
@@ -83,28 +83,46 @@ export default function Hero() {
             className="btn"
             to="/demande-de-devis"
           >
-            demandez votre devis
+            Parler de votre projet
+            <span aria-hidden="true">
+              →
+            </span>
           </Link>
 
           <Link
-            className="btn-soft"
+            className="hero-link"
             to="/evenements"
           >
-            voir nos événements
+            Découvrir nos réalisations
+            <span aria-hidden="true">
+              →
+            </span>
           </Link>
         </div>
+
+        <div className="hero-scroll-hint">
+          <span
+            className="hero-scroll-icon"
+            aria-hidden="true"
+          >
+            ↓
+          </span>
+
+          <span>
+            Découvrez notre univers
+          </span>
+        </div>
       </div>
+
 
       <div className="hero-right">
         {hasHeroImage ? (
           <div className="hero-image">
             <img
-              src={
-                hero.image_url
-              }
+              src={hero.image_url}
               alt={
                 hero.alt_text ||
-                "Événement professionnel"
+                "Événement professionnel organisé par Innov'Events"
               }
             />
           </div>

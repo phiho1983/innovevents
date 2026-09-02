@@ -25,13 +25,16 @@ export default function LoginPage() {
     verifyLogin2FA,
   } = useAuth();
 
+
   const navigate =
     useNavigate();
+
 
   const [
     pendingUsername,
     setPendingUsername,
   ] = useState(null);
+
 
   function resetLogin() {
     setPendingUsername(
@@ -39,16 +42,20 @@ export default function LoginPage() {
     );
   }
 
+
   function redirectAfterLogin(
     user
   ) {
     navigate(
-      getHomePathForUser(user),
+      getHomePathForUser(
+        user
+      ),
       {
         replace: true,
       }
     );
   }
+
 
   if (pendingUsername) {
     return (
@@ -63,17 +70,19 @@ export default function LoginPage() {
               vient d&apos;être envoyé
               à l&apos;adresse e-mail
               associée à votre compte.
-              Saisissez-le ci-dessous
-              pour terminer la connexion.
+              Saisissez-le pour terminer
+              la connexion.
             </>
           }
           submitLabel="Vérifier le code"
           fields={[
             {
-              name: "code",
+              name:
+                "code",
               label:
                 "Code de connexion",
-              type: "text",
+              type:
+                "text",
               autoComplete:
                 "one-time-code",
               inputMode:
@@ -90,6 +99,7 @@ export default function LoginPage() {
               values.code
                 ?.trim();
 
+
             if (!code) {
               return (
                 "Veuillez saisir "
@@ -97,6 +107,7 @@ export default function LoginPage() {
                 + "par e-mail."
               );
             }
+
 
             if (
               !/^\d{6}$/.test(
@@ -110,6 +121,7 @@ export default function LoginPage() {
               );
             }
 
+
             return null;
           }}
           onSubmit={async (
@@ -121,6 +133,7 @@ export default function LoginPage() {
                 values.code.trim()
               );
 
+
             redirectAfterLogin(
               user
             );
@@ -131,18 +144,7 @@ export default function LoginPage() {
               onClick={
                 resetLogin
               }
-              style={{
-                border: 0,
-                padding: 0,
-                background:
-                  "transparent",
-                cursor:
-                  "pointer",
-                textDecoration:
-                  "underline",
-                fontSize:
-                  12,
-              }}
+              className="authTextButton"
             >
               Utiliser un autre compte
             </button>
@@ -152,6 +154,7 @@ export default function LoginPage() {
     );
   }
 
+
   return (
     <>
       <Navbar />
@@ -159,14 +162,8 @@ export default function LoginPage() {
       <AuthForm
         title="Connexion"
         subtitle={
-          <span
-            style={{
-              color: "red",
-            }}
-          >
-            Connectez-vous
-            à votre compte.
-          </span>
+          "Connectez-vous à votre compte "
+          + "pour accéder à votre espace."
         }
         submitLabel="Se connecter"
         fields={[
@@ -174,7 +171,7 @@ export default function LoginPage() {
             name:
               "username",
             label:
-              "Username",
+              "Nom d’utilisateur",
             autoComplete:
               "username",
           },
@@ -194,16 +191,16 @@ export default function LoginPage() {
         ) => {
           if (
             !values.username
-              ?.trim()
-            || !values.password
+              ?.trim() ||
+            !values.password
           ) {
             return (
               "Veuillez saisir "
-              + "votre username "
-              + "et votre mot "
-              + "de passe."
+              + "votre nom d’utilisateur "
+              + "et votre mot de passe."
             );
           }
+
 
           return null;
         }}
@@ -216,6 +213,7 @@ export default function LoginPage() {
               values.password
             );
 
+
           if (
             !response
               ?.requires_2fa
@@ -227,66 +225,33 @@ export default function LoginPage() {
             );
           }
 
+
           setPendingUsername(
-            response.username
-            || values.username.trim()
+            response.username ||
+              values.username.trim()
           );
         }}
         footer={
-          <div
-            style={{
-              display: "grid",
-              gap: 8,
-              fontSize: 12,
-            }}
-          >
-            <p
-              style={{
-                margin: 0,
-              }}
-            >
-              Pas de compte ?{" "}
-              <Link
-                to="/signup"
-                style={{
-                  fontWeight:
-                    700,
-                }}
-              >
+          <div className="authFooterLinks">
+            <p>
+              Pas encore de compte ?{" "}
+
+              <Link to="/signup">
                 Créer un compte
               </Link>
             </p>
 
-            <p
-              style={{
-                margin: 0,
-              }}
-            >
+            <p>
               Adresse e-mail
               pas encore vérifiée ?{" "}
-              <Link
-                to="/verify-email"
-                style={{
-                  fontWeight:
-                    700,
-                }}
-              >
+
+              <Link to="/verify-email">
                 Saisir mon code
               </Link>
             </p>
 
-            <p
-              style={{
-                margin: 0,
-              }}
-            >
-              <Link
-                to="/forgot-password"
-                style={{
-                  fontWeight:
-                    700,
-                }}
-              >
+            <p>
+              <Link to="/forgot-password">
                 Mot de passe oublié ?
               </Link>
             </p>

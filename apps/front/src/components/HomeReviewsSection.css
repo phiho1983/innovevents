@@ -1,0 +1,376 @@
+/* ========================================================= */
+/* INNOV'EVENTS — HOME REVIEWS                              */
+/* Phase 5 — Premium                                        */
+/* ========================================================= */
+
+
+/* ========================================================= */
+/* Section                                                   */
+/* ========================================================= */
+
+.homeReviews {
+  margin-top: clamp(110px, 13vw, 190px);
+  margin-bottom: clamp(120px, 14vw, 200px);
+}
+
+
+/* ========================================================= */
+/* Header                                                    */
+/* ========================================================= */
+
+.homeReviewsHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+
+  gap: 40px;
+
+  margin-bottom: clamp(44px, 6vw, 72px);
+}
+
+.homeReviewsEyebrow {
+  margin: 0 0 16px;
+
+  color: var(--color-accent);
+
+  font-size: 12px;
+  font-weight: 800;
+
+  letter-spacing: 0.18em;
+
+  text-transform: uppercase;
+}
+
+.homeReviewsTitle {
+  margin: 0;
+
+  color: var(--color-text);
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    ui-serif,
+    serif;
+
+  font-size: clamp(46px, 5.5vw, 76px);
+
+  font-weight: 500;
+
+  line-height: 0.98;
+
+  letter-spacing: -0.05em;
+}
+
+
+/* ========================================================= */
+/* Lien vers tous les avis                                   */
+/* ========================================================= */
+
+.homeReviewsLink {
+  display: inline-flex;
+  align-items: center;
+
+  gap: 8px;
+
+  flex-shrink: 0;
+
+  padding-bottom: 4px;
+
+  border-bottom:
+    1px solid var(--color-line-strong);
+
+  color: var(--color-text);
+
+  font-size: 14px;
+  font-weight: 700;
+
+  transition:
+    color var(--transition-base),
+    border-color var(--transition-base),
+    transform var(--transition-base);
+}
+
+.homeReviewsLink:hover {
+  color: var(--color-accent);
+
+  border-color: var(--color-accent);
+
+  transform: translateX(3px);
+}
+
+
+/* ========================================================= */
+/* Grid                                                      */
+/* ========================================================= */
+
+.homeReviewsGrid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      auto-fit,
+      minmax(280px, 1fr)
+    );
+
+  gap: 18px;
+}
+
+
+/* ========================================================= */
+/* Carte                                                     */
+/* ========================================================= */
+
+.homeReviewCard {
+  position: relative;
+
+  display: flex;
+  flex-direction: column;
+
+  min-height: 360px;
+
+  padding:
+    clamp(28px, 3vw, 40px);
+
+  overflow: hidden;
+
+  border:
+    1px solid var(--color-line);
+
+  border-radius:
+    var(--radius-md);
+
+  background:
+    var(--color-surface);
+
+  transition:
+    transform var(--transition-base),
+    border-color var(--transition-base),
+    box-shadow var(--transition-base);
+}
+
+.homeReviewCard::before {
+  content: "“";
+
+  position: absolute;
+
+  right: 20px;
+  top: -25px;
+
+  color:
+    var(--color-accent-soft);
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    ui-serif,
+    serif;
+
+  font-size: 150px;
+
+  font-weight: 700;
+
+  line-height: 1;
+
+  pointer-events: none;
+}
+
+.homeReviewCard:hover {
+  transform: translateY(-6px);
+
+  border-color:
+    var(--color-line-strong);
+
+  box-shadow:
+    var(--shadow-soft);
+}
+
+
+/* ========================================================= */
+/* Étoiles                                                   */
+/* ========================================================= */
+
+.homeReviewStars {
+  position: relative;
+
+  z-index: 1;
+
+  margin-bottom: 28px;
+
+  color:
+    var(--color-accent);
+
+  font-size: 16px;
+
+  letter-spacing: 0.12em;
+}
+
+
+/* ========================================================= */
+/* Citation                                                  */
+/* ========================================================= */
+
+.homeReviewQuote {
+  position: relative;
+
+  z-index: 1;
+
+  flex: 1;
+
+  margin: 0;
+
+  padding: 0;
+
+  border: 0;
+
+  color:
+    var(--color-text);
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    ui-serif,
+    serif;
+
+  font-size:
+    clamp(22px, 2vw, 30px);
+
+  font-weight: 500;
+
+  line-height: 1.32;
+
+  letter-spacing: -0.025em;
+}
+
+
+/* ========================================================= */
+/* Auteur                                                    */
+/* ========================================================= */
+
+.homeReviewMeta {
+  position: relative;
+
+  z-index: 1;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 4px;
+
+  margin-top: 38px;
+
+  padding-top: 20px;
+
+  border-top:
+    1px solid var(--color-line);
+}
+
+.homeReviewMeta strong {
+  color:
+    var(--color-text);
+
+  font-size: 13px;
+
+  font-weight: 800;
+}
+
+.homeReviewMeta time {
+  color:
+    var(--color-muted);
+
+  font-size: 11px;
+
+  text-transform: capitalize;
+}
+
+
+/* ========================================================= */
+/* Loading                                                   */
+/* ========================================================= */
+
+.homeReviewsLoading {
+  min-height: 180px;
+
+  display: grid;
+  place-items: center;
+
+  border:
+    1px solid var(--color-line);
+
+  border-radius:
+    var(--radius-md);
+
+  background:
+    var(--color-surface);
+
+  color:
+    var(--color-muted);
+
+  font-size: 13px;
+}
+
+
+/* ========================================================= */
+/* Tablette                                                  */
+/* ========================================================= */
+
+@media (max-width: 900px) {
+  .homeReviewsHeader {
+    align-items: flex-start;
+
+    flex-direction: column;
+
+    gap: 24px;
+  }
+
+  .homeReviewsGrid {
+    grid-template-columns:
+      repeat(
+        auto-fit,
+        minmax(260px, 1fr)
+      );
+  }
+
+  .homeReviewCard {
+    min-height: 330px;
+  }
+}
+
+
+/* ========================================================= */
+/* Mobile                                                    */
+/* ========================================================= */
+
+@media (max-width: 600px) {
+  .homeReviews {
+    margin-top: 90px;
+    margin-bottom: 110px;
+  }
+
+  .homeReviewsTitle {
+    font-size:
+      clamp(42px, 12vw, 56px);
+  }
+
+  .homeReviewsTitle br {
+    display: none;
+  }
+
+  .homeReviewsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .homeReviewCard {
+    min-height: auto;
+
+    padding: 28px 24px;
+  }
+
+  .homeReviewQuote {
+    font-size:
+      clamp(22px, 7vw, 28px);
+  }
+
+  .homeReviewMeta {
+    margin-top: 32px;
+  }
+}

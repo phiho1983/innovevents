@@ -1,0 +1,381 @@
+/* ========================================================= */
+/* INNOV'EVENTS — EXPERTISES                                */
+/* Phase 5 — Premium                                        */
+/* ========================================================= */
+
+.expertises {
+  margin-top: clamp(110px, 13vw, 190px);
+  margin-bottom: clamp(110px, 13vw, 190px);
+}
+
+
+/* ========================================================= */
+/* Introduction                                              */
+/* ========================================================= */
+
+.expertisesIntro {
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1.1fr)
+    minmax(260px, 0.65fr);
+
+  align-items: end;
+
+  gap: clamp(40px, 8vw, 120px);
+
+  margin-bottom: clamp(55px, 7vw, 90px);
+}
+
+.expertisesEyebrow {
+  margin: 0 0 16px;
+
+  color: var(--color-accent);
+
+  font-size: 12px;
+  font-weight: 800;
+
+  letter-spacing: 0.18em;
+
+  text-transform: uppercase;
+}
+
+.expertisesTitle {
+  margin: 0;
+
+  color: var(--color-text);
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    ui-serif,
+    serif;
+
+  font-size: clamp(50px, 6vw, 84px);
+
+  font-weight: 500;
+
+  line-height: 0.96;
+
+  letter-spacing: -0.055em;
+}
+
+.expertisesIntroText {
+  max-width: 470px;
+
+  margin: 0 0 8px;
+
+  color: var(--color-muted);
+
+  font-size: clamp(15px, 1.25vw, 18px);
+
+  line-height: 1.75;
+}
+
+
+/* ========================================================= */
+/* Liste                                                     */
+/* ========================================================= */
+
+.expertisesGrid {
+  border-top: 1px solid var(--color-line-strong);
+}
+
+.expertiseCard {
+  position: relative;
+
+  display: grid;
+
+  grid-template-columns:
+    80px
+    minmax(0, 1fr)
+    52px;
+
+  align-items: center;
+
+  gap: clamp(20px, 4vw, 60px);
+
+  min-height: 150px;
+
+  padding:
+    26px 10px;
+
+  overflow: hidden;
+
+  border-bottom:
+    1px solid var(--color-line);
+
+  transition:
+    padding-left var(--transition-base),
+    background-color var(--transition-base);
+}
+
+
+/* barre orange discrète */
+
+.expertiseCard::before {
+  content: "";
+
+  position: absolute;
+
+  left: 0;
+  top: 0;
+  bottom: 0;
+
+  width: 3px;
+
+  background:
+    var(--color-accent);
+
+  transform:
+    scaleY(0);
+
+  transform-origin:
+    center;
+
+  transition:
+    transform 320ms
+    cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+
+/* ========================================================= */
+/* Hover                                                     */
+/* ========================================================= */
+
+.expertiseCard:hover {
+  padding-left: 24px;
+
+  background:
+    var(--color-surface);
+}
+
+.expertiseCard:hover::before {
+  transform:
+    scaleY(1);
+}
+
+
+/* ========================================================= */
+/* Numéro                                                    */
+/* ========================================================= */
+
+.expertiseNumber {
+  align-self: start;
+
+  padding-top: 7px;
+
+  color: var(--color-accent);
+
+  font-size: 11px;
+  font-weight: 800;
+
+  letter-spacing: 0.16em;
+}
+
+
+/* ========================================================= */
+/* Contenu                                                   */
+/* ========================================================= */
+
+.expertiseContent {
+  display: grid;
+
+  grid-template-columns:
+    minmax(260px, 0.8fr)
+    minmax(300px, 1fr);
+
+  align-items: center;
+
+  gap: clamp(30px, 6vw, 90px);
+}
+
+.expertiseContent h3 {
+  margin: 0;
+
+  color: var(--color-text);
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    ui-serif,
+    serif;
+
+  font-size:
+    clamp(28px, 3vw, 42px);
+
+  font-weight: 500;
+
+  line-height: 1.05;
+
+  letter-spacing: -0.035em;
+
+  transition:
+    color var(--transition-base),
+    transform var(--transition-base);
+}
+
+.expertiseContent p {
+  max-width: 520px;
+
+  margin: 0;
+
+  color:
+    var(--color-muted);
+
+  font-size: 14px;
+
+  line-height: 1.75;
+}
+
+.expertiseCard:hover
+.expertiseContent h3 {
+  color:
+    var(--color-accent);
+
+  transform:
+    translateX(4px);
+}
+
+
+/* ========================================================= */
+/* Flèche                                                    */
+/* ========================================================= */
+
+.expertiseArrow {
+  display: grid;
+
+  place-items: center;
+
+  justify-self: end;
+
+  width: 42px;
+  height: 42px;
+
+  border:
+    1px solid var(--color-line-strong);
+
+  border-radius: 50%;
+
+  color:
+    var(--color-text);
+
+  font-size: 17px;
+
+  transition:
+    color var(--transition-base),
+    background-color var(--transition-base),
+    border-color var(--transition-base),
+    transform var(--transition-base);
+}
+
+.expertiseCard:hover
+.expertiseArrow {
+  border-color:
+    var(--color-accent);
+
+  background:
+    var(--color-accent);
+
+  color: #fff;
+
+  transform:
+    rotate(45deg);
+}
+
+
+/* ========================================================= */
+/* Tablette                                                  */
+/* ========================================================= */
+
+@media (max-width: 950px) {
+  .expertisesIntro {
+    grid-template-columns: 1fr;
+
+    align-items: start;
+
+    gap: 28px;
+  }
+
+  .expertisesIntroText {
+    max-width: 600px;
+  }
+
+  .expertiseContent {
+    grid-template-columns: 1fr;
+
+    gap: 15px;
+  }
+
+  .expertiseCard {
+    grid-template-columns:
+      55px
+      minmax(0, 1fr)
+      46px;
+
+    min-height: 170px;
+  }
+}
+
+
+/* ========================================================= */
+/* Mobile                                                    */
+/* ========================================================= */
+
+@media (max-width: 650px) {
+  .expertises {
+    margin-top: 90px;
+    margin-bottom: 110px;
+  }
+
+  .expertisesTitle {
+    font-size:
+      clamp(44px, 13vw, 60px);
+  }
+
+  .expertisesTitle br {
+    display: none;
+  }
+
+  .expertiseCard {
+    grid-template-columns:
+      1fr
+      42px;
+
+    gap: 16px;
+
+    min-height: auto;
+
+    padding:
+      28px 4px;
+  }
+
+  .expertiseNumber {
+    grid-column:
+      1 / -1;
+
+    padding-top: 0;
+  }
+
+  .expertiseContent {
+    gap: 12px;
+  }
+
+  .expertiseContent h3 {
+    font-size:
+      clamp(27px, 8vw, 34px);
+  }
+
+  .expertiseContent p {
+    font-size: 13px;
+  }
+
+  .expertiseArrow {
+    width: 38px;
+    height: 38px;
+  }
+
+  .expertiseCard:hover {
+    padding-left: 12px;
+  }
+}
