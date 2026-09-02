@@ -32,8 +32,6 @@
   --color-danger: #a82d2d;
 
   /* Compatibilité temporaire anciens composants */
-  --violet: var(--color-accent);
-  --violet2: var(--color-accent-soft);
   --bg: var(--color-bg);
   --text: var(--color-text);
   --muted: var(--color-muted);

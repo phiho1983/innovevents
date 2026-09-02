@@ -316,3 +316,46 @@ export default function AuthForm({
     </main>
   );
 }
+
+
+export function AuthStatus({
+  eyebrow = "Espace sécurisé",
+  title,
+  children,
+  tone = "success",
+  actions,
+}) {
+  return (
+    <main className="authPage">
+      <div className="container authLayout">
+        <section className="authVisual">
+          <div className="authVisualContent">
+            <p className="authEyebrow">Innov&apos;Events</p>
+            <h2 className="authVisualTitle">
+              Votre espace<br /><em>événementiel.</em>
+            </h2>
+            <p className="authVisualText">
+              Retrouvez vos échanges, vos projets et vos événements
+              dans un espace sécurisé.
+            </p>
+          </div>
+          <div className="authVisualDecoration" aria-hidden="true">
+            <span>01</span><span>02</span><span>03</span>
+          </div>
+        </section>
+
+        <section
+          className={`authCard authStatus authStatus--${tone}`}
+          aria-live="polite"
+        >
+          <p className="authCardEyebrow">{eyebrow}</p>
+          <h1 className="authTitle">{title}</h1>
+          <div className="authStatusContent">{children}</div>
+          {actions && (
+            <div className="authStatusActions">{actions}</div>
+          )}
+        </section>
+      </div>
+    </main>
+  );
+}

@@ -549,6 +549,63 @@ span:first-child {
 }
 
 
+/* États de confirmation / erreur */
+
+.authStatus {
+  position: relative;
+  overflow: hidden;
+}
+
+.authStatus::before {
+  content: "";
+  display: block;
+  width: 44px;
+  height: 3px;
+  margin-bottom: 26px;
+  border-radius: 999px;
+  background: var(--color-accent);
+}
+
+.authStatus--error::before {
+  background: var(--color-danger);
+}
+
+.authStatusContent {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+  color: var(--color-text-soft);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.authStatusContent p {
+  margin: 0;
+}
+
+.authStatus--success .authStatusContent > p:first-child {
+  color: var(--color-success-text);
+  font-weight: 700;
+}
+
+.authStatus--error .authStatusContent > p:first-child {
+  color: var(--color-danger);
+  font-weight: 700;
+}
+
+.authStatusActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.authStatusActions .btn,
+.authStatusActions .btn-soft {
+  min-width: min(100%, 190px);
+}
+
+
 /* ========================================================= */
 /* Tablette                                                  */
 /* ========================================================= */
@@ -626,5 +683,15 @@ span:first-child {
   .authTitle {
     font-size:
       clamp(34px, 10vw, 44px);
+  }
+
+  .authStatusActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .authStatusActions .btn,
+  .authStatusActions .btn-soft {
+    width: 100%;
   }
 }

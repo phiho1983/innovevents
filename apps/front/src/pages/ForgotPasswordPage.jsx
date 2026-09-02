@@ -1,6 +1,4 @@
-import {
-  useState,
-} from "react";
+import { useMemo } from "react";
 
 import {
   Link,
@@ -8,193 +6,83 @@ import {
   useNavigate,
 } from "react-router-dom";
 
+import AuthForm from "../components/auth/AuthForm";
 import Navbar from "../components/Navbar";
-
-import {
-  forgotPassword,
-} from "../api/auth";
+import { forgotPassword } from "../api/auth";
 
 
 export default function ForgotPasswordPage() {
-  const location =
-    useLocation();
-
-  const navigate =
-    useNavigate();
-
-  const mode =
-    location.state?.mode
-    || "reset";
-
-  const [
-    email,
-    setEmail,
-  ] = useState(
-    location.state?.email
-    || ""
+  const location = useLocation();
+  const navigate = useNavigate();
+  const mode = location.state?.mode || "reset";
+  const initialEmail = location.state?.email || "";
+  const isSetup = mode === "setup";
+  const initialValues = useMemo(
+    () => ({ email: initialEmail }),
+    [initialEmail]
   );
-
-  const [
-    loading,
-    setLoading,
-  ] = useState(false);
-
-  const [
-    error,
-    setError,
-  ] = useState("");
-
-  const isSetup =
-    mode === "setup";
-
-  async function submit(
-    event
-  ) {
-    event.preventDefault();
-
-    setError("");
-    setLoading(true);
-
-    const normalizedEmail =
-      email
-      .trim()
-      .toLowerCase();
-
-    try {
-      await forgotPassword(
-        normalizedEmail
-      );
-
-      navigate(
-        "/reset-password",
-        {
-          state: {
-            email:
-              normalizedEmail,
-            mode,
-          },
-        }
-      );
-    } catch (err) {
-      setError(
-        err?.message
-        || "Une erreur est survenue."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
 
   return (
     <>
       <Navbar />
 
-      <main
-        className="container"
-        style={{
-          padding: "60px 0",
-          maxWidth: 400,
+      <AuthForm
+        title={
+          isSetup
+            ? "Définir mon mot de passe"
+            : "Mot de passe oublié"
+        }
+        subtitle={
+          isSetup
+            ? (
+              <>
+                Un code de sécurité va vous être envoyé par e-mail
+                afin de vous permettre de choisir votre mot de passe.
+              </>
+            )
+            : (
+              <>
+                Saisissez votre adresse e-mail. Un code de
+                réinitialisation vous sera envoyé.
+              </>
+            )
+        }
+        submitLabel="Recevoir mon code"
+        initialValues={initialValues}
+        fields={[
+          {
+            name: "email",
+            label: "Adresse e-mail",
+            type: "email",
+            autoComplete: "email",
+            placeholder: "vous@exemple.fr",
+          },
+        ]}
+        validate={(values) => {
+          if (!values.email?.trim()) {
+            return "Veuillez saisir votre adresse e-mail.";
+          }
+
+          return null;
         }}
-      >
-        <h2>
-          {
-            isSetup
-              ? "Définir mon mot de passe"
-              : "Mot de passe oublié"
-          }
-        </h2>
+        onSubmit={async (values) => {
+          const normalizedEmail = values.email.trim().toLowerCase();
 
-        <p
-          style={{
-            marginTop: 12,
-            lineHeight: 1.6,
-            color: "#666",
-          }}
-        >
-          {
-            isSetup
-              ? (
-                "Un code de sécurité va vous être envoyé "
-                + "par e-mail afin de vous permettre "
-                + "de choisir votre mot de passe."
-              )
-              : (
-                "Saisissez votre adresse e-mail. "
-                + "Un code de réinitialisation "
-                + "vous sera envoyé."
-              )
-          }
-        </p>
+          await forgotPassword(normalizedEmail);
 
-        <form
-          onSubmit={submit}
-          style={{
-            marginTop: 16,
-          }}
-        >
-          <input
-            type="email"
-            value={email}
-            onChange={(event) =>
-              setEmail(
-                event.target.value
-              )
-            }
-            placeholder="Votre adresse e-mail"
-            autoComplete="email"
-            required
-            disabled={loading}
-            style={{
-              width: "100%",
-              padding: "8px 10px",
-              border:
-                "1px solid #ddd",
-              borderRadius: 4,
-              marginBottom: 12,
-              boxSizing:
-                "border-box",
-            }}
-          />
-
-          {error && (
-            <p
-              style={{
-                color: "crimson",
-                fontSize: 13,
-              }}
-            >
-              {error}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            className="btn"
-            disabled={loading}
-            style={{
-              width: "100%",
-            }}
-          >
-            {
-              loading
-                ? "Envoi..."
-                : "Recevoir mon code"
-            }
-          </button>
-
-          <p
-            style={{
-              marginTop: 12,
-              textAlign: "center",
-              fontSize: 13,
-            }}
-          >
-            <Link to="/login">
-              Retour à la connexion
-            </Link>
+          navigate("/reset-password", {
+            state: {
+              email: normalizedEmail,
+              mode,
+            },
+          });
+        }}
+        footer={
+          <p>
+            <Link to="/login">Retour à la connexion</Link>
           </p>
-        </form>
-      </main>
+        }
+      />
     </>
   );
 }

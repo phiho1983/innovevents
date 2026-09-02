@@ -9,7 +9,7 @@ import {
   useNavigate,
 } from "react-router-dom";
 
-import AuthForm from "../components/auth/AuthForm";
+import AuthForm, { AuthStatus } from "../components/auth/AuthForm";
 import Navbar from "../components/Navbar";
 
 import {
@@ -54,24 +54,20 @@ export default function ResetPasswordPage() {
       <>
         <Navbar />
 
-        <main
-          className="container"
-          style={{
-            padding: "60px 0",
-            maxWidth: 520,
-          }}
+        <AuthStatus
+          title="Mot de passe enregistré"
+          actions={
+            <button
+              type="button"
+              className="btn"
+              onClick={() => navigate("/login", { replace: true })}
+            >
+              Se connecter
+            </button>
+          }
         >
-          <h2>
-            Mot de passe enregistré
-          </h2>
 
-          <p
-            style={{
-              marginTop: 16,
-              lineHeight: 1.6,
-              color: "#0f5132",
-            }}
-          >
+          <p>
             {
               isSetup
                 ? (
@@ -85,31 +81,13 @@ export default function ResetPasswordPage() {
             }
           </p>
 
-          <p
-            style={{
-              lineHeight: 1.6,
-            }}
-          >
+          <p>
             Vous pouvez maintenant vous connecter.
             Un second code de sécurité vous sera
             envoyé par e-mail lors de la connexion.
           </p>
 
-          <button
-            type="button"
-            className="btn"
-            onClick={() =>
-              navigate(
-                "/login",
-                {
-                  replace: true,
-                }
-              )
-            }
-          >
-            Se connecter
-          </button>
-        </main>
+        </AuthStatus>
       </>
     );
   }
@@ -246,12 +224,7 @@ export default function ResetPasswordPage() {
           );
         }}
         footer={
-          <p
-            style={{
-              fontSize: 12,
-              margin: 0,
-            }}
-          >
+          <p>
             Vous n&apos;avez pas reçu
             de code ?{" "}
             <Link

@@ -1,19 +1,127 @@
-import Navbar from"../components/Navbar"
-import{Link}from"react-router-dom"
-export default function LegalPage(){
-  return(<><Navbar/><main className="container" style={{padding:"24px 0",maxWidth:700,lineHeight:1.8}}>
-    <h1>Mentions légales</h1>
-    <h2 style={{marginTop:24}}>Éditeur</h2>
-    <p>Innov'Events SAS — Capital social : 10 000 €<br/>Siège social : 12 rue de la Créativité, 75001 Paris<br/>Forme juridique : Société par Actions Simplifiée</p>
-    <h2 style={{marginTop:20}}>Contact</h2>
-    <p>Email : <a href="mailto:contact@innovevents.com">contact@innovevents.com</a><br/>Téléphone : +33 1 23 45 67 89</p>
-    <h2 style={{marginTop:20}}>Responsable de la publication</h2>
-    <p>Chloé Dupont, Directrice de la publication</p>
-    <h2 style={{marginTop:20}}>Hébergeur</h2>
-    <p>Render Services Inc.<br/>525 Brannan Street, San Francisco, CA 94107, USA<br/><a href="https://render.com" target="_blank" rel="noreferrer">render.com</a></p>
-    <div style={{marginTop:24,display:"flex",gap:16}}>
-      <Link to="/cgu" style={{color:"#333"}}>CGU</Link>
-      <Link to="/cgv" style={{color:"#333"}}>CGV</Link>
-    </div>
-  </main></>)
+﻿import Navbar from "../components/Navbar";
+import Footer from "../components/Footer/Footer";
+
+import "./LegalPage.css";
+
+
+export default function LegalPage() {
+  return (
+    <>
+      <Navbar />
+
+
+      <main className="legalPage">
+        <div className="container legalLayout">
+          <header className="legalHeader">
+            <p className="legalEyebrow">
+              Informations juridiques
+            </p>
+
+            <h1>
+              Mentions légales
+            </h1>
+
+            <p>
+              Cette page recense les informations
+              qui devront être validées et complétées
+              par l&apos;éditeur avant la mise en
+              production publique.
+            </p>
+          </header>
+
+
+          <aside
+            className="legalNotice"
+            aria-label="État des informations légales"
+          >
+            <strong>
+              Document à compléter
+            </strong>
+
+            <p>
+              Aucune donnée juridique non vérifiée
+              n&apos;est présentée comme définitive.
+            </p>
+          </aside>
+
+
+          <section
+            className="legalContent"
+            aria-label="Informations légales à compléter"
+          >
+            <LegalSection
+              number="01"
+              title="Éditeur du site"
+            >
+              À compléter avant publication :
+              dénomination sociale, forme juridique,
+              capital social, adresse du siège,
+              numéro d&apos;immatriculation et numéro
+              de TVA intracommunautaire.
+            </LegalSection>
+
+
+            <LegalSection
+              number="02"
+              title="Direction de la publication"
+            >
+              Le nom et la qualité du responsable
+              de publication doivent être renseignés
+              après validation par l&apos;entreprise.
+            </LegalSection>
+
+
+            <LegalSection
+              number="03"
+              title="Hébergement"
+            >
+              Les coordonnées légales exactes de
+              l&apos;hébergeur de production doivent
+              être ajoutées une fois le prestataire
+              définitivement confirmé.
+            </LegalSection>
+
+
+            <LegalSection
+              number="04"
+              title="Propriété intellectuelle et données personnelles"
+            >
+              Les dispositions applicables aux contenus,
+              aux données personnelles et aux droits
+              des utilisateurs doivent être finalisées
+              avant publication.
+            </LegalSection>
+          </section>
+        </div>
+      </main>
+
+
+      <Footer />
+    </>
+  );
+}
+
+
+function LegalSection({
+  number,
+  title,
+  children,
+}) {
+  return (
+    <article className="legalSection">
+      <p className="legalNumber">
+        {number}
+      </p>
+
+      <div>
+        <h2>
+          {title}
+        </h2>
+
+        <p>
+          {children}
+        </p>
+      </div>
+    </article>
+  );
 }

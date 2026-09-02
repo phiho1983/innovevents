@@ -9,7 +9,7 @@ import {
   useNavigate,
 } from "react-router-dom";
 
-import AuthForm from "../components/auth/AuthForm";
+import AuthForm, { AuthStatus } from "../components/auth/AuthForm";
 import Navbar from "../components/Navbar";
 
 import {
@@ -46,63 +46,58 @@ export default function VerifyEmailPage() {
       <>
         <Navbar />
 
-        <main
-          className="container"
-          style={{
-            padding: "60px 0",
-            maxWidth: 520,
-          }}
+        <AuthStatus
+          title="Adresse e-mail vérifiée"
+          actions={
+            mode === "signup" ? (
+              <button
+                type="button"
+                className="btn"
+                onClick={() => navigate("/login", { replace: true })}
+              >
+                Se connecter
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => navigate("/forgot-password", {
+                    state: { email: verifiedEmail, mode: "setup" },
+                  })}
+                >
+                  Définir mon mot de passe
+                </button>
+                <button
+                  type="button"
+                  className="btn-soft"
+                  onClick={() => navigate("/login")}
+                >
+                  J&apos;ai déjà un mot de passe
+                </button>
+              </>
+            )
+          }
         >
-          <h2>
-            Adresse e-mail vérifiée
-          </h2>
 
-          <p
-            style={{
-              marginTop: 16,
-              lineHeight: 1.6,
-              color: "#0f5132",
-            }}
-          >
+          <p>
             Votre adresse e-mail a été
             vérifiée avec succès.
           </p>
 
           {mode === "signup" ? (
             <>
-              <p
-                style={{
-                  lineHeight: 1.6,
-                }}
-              >
+              <p>
                 Votre compte est maintenant
                 activé. Vous pouvez vous
                 connecter avec le mot de passe
                 choisi lors de votre inscription.
               </p>
 
-              <button
-                type="button"
-                className="btn"
-                onClick={() =>
-                  navigate(
-                    "/login",
-                    {
-                      replace: true,
-                    }
-                  )
-                }
-              >
-                Se connecter
-              </button>
             </>
           ) : (
             <>
-              <p
-                style={{
-                  lineHeight: 1.6,
-                }}
-              >
+              <p>
                 Si votre compte a été créé
                 par Innov&apos;Events à partir
                 d&apos;une demande de devis,
@@ -110,48 +105,9 @@ export default function VerifyEmailPage() {
                 votre mot de passe.
               </p>
 
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: 10,
-                  marginTop: 20,
-                }}
-              >
-                <button
-                  type="button"
-                  className="btn"
-                  onClick={() =>
-                    navigate(
-                      "/forgot-password",
-                      {
-                        state: {
-                          email:
-                            verifiedEmail,
-                          mode:
-                            "setup",
-                        },
-                      }
-                    )
-                  }
-                >
-                  Définir mon mot de passe
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    navigate(
-                      "/login"
-                    )
-                  }
-                >
-                  J&apos;ai déjà un mot de passe
-                </button>
-              </div>
             </>
           )}
-        </main>
+        </AuthStatus>
       </>
     );
   }
@@ -245,12 +201,7 @@ export default function VerifyEmailPage() {
           );
         }}
         footer={
-          <p
-            style={{
-              fontSize: 12,
-              margin: 0,
-            }}
-          >
+          <p>
             <Link to="/login">
               Retour à la connexion
             </Link>
