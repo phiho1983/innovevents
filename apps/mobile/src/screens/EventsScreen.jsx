@@ -1,6 +1,5 @@
 import React, {
   useCallback,
-  useEffect,
   useState,
 } from "react";
 
@@ -17,17 +16,22 @@ import {
 } from "react-native";
 
 import {
+  useFocusEffect,
+} from "@react-navigation/native";
+
+import {
   getEvents,
 } from "../api";
 
+
 const STATUS_LABELS = {
   DRAFT: "Brouillon",
-  PENDING: "En attente",
   ACCEPTED: "Confirmé",
   IN_PROGRESS: "En cours",
-  COMPLETED: "Terminé",
+  DONE: "Terminé",
   CANCELLED: "Annulé",
 };
+
 
 function formatDate(value) {
   if (!value) {
@@ -46,7 +50,9 @@ function formatDate(value) {
   );
 }
 
+
 export default function EventsScreen({
+  navigation,
   user,
   onLogout,
 }) {
@@ -64,6 +70,7 @@ export default function EventsScreen({
     refreshing,
     setRefreshing,
   ] = useState(false);
+
 
   const loadEvents =
     useCallback(
@@ -95,15 +102,20 @@ export default function EventsScreen({
       []
     );
 
-  useEffect(() => {
-    loadEvents();
-  }, [loadEvents]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadEvents();
+    }, [loadEvents])
+  );
+
 
   const roleLabel =
     user?.is_superuser ||
     user?.role === "ADMIN"
       ? "Administrateur"
       : "Employé";
+
 
   return (
     <View
@@ -226,8 +238,18 @@ export default function EventsScreen({
           renderItem={({
             item,
           }) => (
-            <View
+            <TouchableOpacity
+              activeOpacity={0.82}
               style={styles.card}
+              onPress={() =>
+                navigation.navigate(
+                  "EventDetail",
+                  {
+                    eventId:
+                      item.id,
+                  }
+                )
+              }
             >
               <View
                 style={
@@ -285,24 +307,40 @@ export default function EventsScreen({
                 }
               />
 
-              <Text
+              <View
                 style={
-                  styles.dateLabel
+                  styles.cardBottom
                 }
               >
-                DÉBUT
-              </Text>
+                <View>
+                  <Text
+                    style={
+                      styles.dateLabel
+                    }
+                  >
+                    DÉBUT
+                  </Text>
 
-              <Text
-                style={
-                  styles.eventDate
-                }
-              >
-                {formatDate(
-                  item.start_at
-                )}
-              </Text>
-            </View>
+                  <Text
+                    style={
+                      styles.eventDate
+                    }
+                  >
+                    {formatDate(
+                      item.start_at
+                    )}
+                  </Text>
+                </View>
+
+                <Text
+                  style={
+                    styles.openText
+                  }
+                >
+                  Ouvrir →
+                </Text>
+              </View>
+            </TouchableOpacity>
           )}
           ListEmptyComponent={
             <View
@@ -334,6 +372,7 @@ export default function EventsScreen({
     </View>
   );
 }
+
 
 const styles =
   StyleSheet.create({
@@ -515,6 +554,13 @@ const styles =
       marginVertical: 16,
     },
 
+    cardBottom: {
+      flexDirection: "row",
+      justifyContent:
+        "space-between",
+      alignItems: "flex-end",
+    },
+
     dateLabel: {
       color: "#a09a92",
       fontSize: 9,
@@ -527,6 +573,12 @@ const styles =
       color: "#171614",
       fontSize: 13,
       fontWeight: "700",
+    },
+
+    openText: {
+      color: "#ee5a2b",
+      fontSize: 12,
+      fontWeight: "800",
     },
 
     centerState: {

@@ -9,6 +9,7 @@ const API_URL =
   process.env.EXPO_PUBLIC_API_URL ||
   "https://innovevents-back.onrender.com";
 
+
 async function parseResponse(response) {
   const text = await response.text();
 
@@ -37,6 +38,7 @@ async function parseResponse(response) {
 
   return data;
 }
+
 
 async function refreshAccessToken() {
   const refreshToken =
@@ -78,6 +80,7 @@ async function refreshAccessToken() {
 
   return data.access;
 }
+
 
 export async function apiFetch(
   path,
@@ -148,6 +151,7 @@ export async function apiFetch(
   return parseResponse(response);
 }
 
+
 export async function login(
   username,
   password
@@ -164,6 +168,7 @@ export async function login(
     false
   );
 }
+
 
 export async function verifyLogin2FA(
   username,
@@ -198,11 +203,13 @@ export async function verifyLogin2FA(
   return data;
 }
 
+
 export async function getCurrentUser() {
   return apiFetch(
     "/api/me/"
   );
 }
+
 
 export async function getEvents() {
   const data =
@@ -220,6 +227,93 @@ export async function getEvents() {
 
   return [];
 }
+
+
+export async function getEvent(
+  eventId
+) {
+  return apiFetch(
+    `/api/events/${eventId}/`
+  );
+}
+
+
+export async function startEvent(
+  eventId
+) {
+  return apiFetch(
+    `/api/events/${eventId}/start/`,
+    {
+      method: "POST",
+    }
+  );
+}
+
+
+export async function completeEvent(
+  eventId
+) {
+  return apiFetch(
+    `/api/events/${eventId}/complete/`,
+    {
+      method: "POST",
+    }
+  );
+}
+
+
+export async function getNotes() {
+  const data =
+    await apiFetch(
+      "/api/notes/"
+    );
+
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  if (Array.isArray(data?.results)) {
+    return data.results;
+  }
+
+  return [];
+}
+
+
+export async function createNote({
+  clientId,
+  content,
+}) {
+  return apiFetch(
+    "/api/notes/",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        client: clientId,
+        content:
+          content.trim(),
+      }),
+    }
+  );
+}
+
+
+export async function updateNote(
+  noteId,
+  content
+) {
+  return apiFetch(
+    `/api/notes/${noteId}/`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        content:
+          content.trim(),
+      }),
+    }
+  );
+}
+
 
 export async function logout() {
   await clearTokens();

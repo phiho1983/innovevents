@@ -20,6 +20,7 @@ import {
 import LoginScreen from "./src/screens/LoginScreen";
 import TwoFactorScreen from "./src/screens/TwoFactorScreen";
 import EventsScreen from "./src/screens/EventsScreen";
+import EventDetailScreen from "./src/screens/EventDetailScreen";
 
 import {
   getCurrentUser,
@@ -28,6 +29,7 @@ import {
 
 const Stack =
   createStackNavigator();
+
 
 function isTeamUser(user) {
   return Boolean(
@@ -40,6 +42,7 @@ function isTeamUser(user) {
   );
 }
 
+
 export default function App() {
   const [
     user,
@@ -50,6 +53,7 @@ export default function App() {
     booting,
     setBooting,
   ] = useState(true);
+
 
   useEffect(() => {
     async function restoreSession() {
@@ -78,10 +82,12 @@ export default function App() {
     restoreSession();
   }, []);
 
+
   async function handleLogout() {
     await logout();
     setUser(null);
   }
+
 
   if (booting) {
     return (
@@ -98,6 +104,7 @@ export default function App() {
     );
   }
 
+
   return (
     <NavigationContainer>
       <Stack.Navigator
@@ -110,18 +117,28 @@ export default function App() {
         }}
       >
         {user ? (
-          <Stack.Screen
-            name="Events"
-          >
-            {() => (
-              <EventsScreen
-                user={user}
-                onLogout={
-                  handleLogout
-                }
-              />
-            )}
-          </Stack.Screen>
+          <>
+            <Stack.Screen
+              name="Events"
+            >
+              {(props) => (
+                <EventsScreen
+                  {...props}
+                  user={user}
+                  onLogout={
+                    handleLogout
+                  }
+                />
+              )}
+            </Stack.Screen>
+
+            <Stack.Screen
+              name="EventDetail"
+              component={
+                EventDetailScreen
+              }
+            />
+          </>
         ) : (
           <>
             <Stack.Screen
@@ -149,6 +166,7 @@ export default function App() {
     </NavigationContainer>
   );
 }
+
 
 const styles =
   StyleSheet.create({
