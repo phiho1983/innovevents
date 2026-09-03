@@ -31,11 +31,13 @@ from config.mongo import log_action
 
 from .models import (
     ClientProfile,
+    ContactMessage,
     Note,
     Prospect,
     Quote,
 )
 from .serializers import (
+    ContactMessageSerializer,
     NoteSerializer,
     ProspectAdminSerializer,
     ProspectPublicCreateSerializer,
@@ -93,6 +95,89 @@ def build_unique_client_username(email):
         counter += 1
 
     return username
+
+
+class ContactMessageViewSet(
+    viewsets.ModelViewSet
+):
+    """
+    Messages envoyés depuis la page Contact.
+
+    CREATE :
+    - public.
+
+    ADMIN / EMPLOYEE :
+    - consultation ;
+    - changement de statut ;
+    - traitement.
+
+    ADMIN :
+    - suppression.
+    """
+
+    queryset = (
+        ContactMessage.objects
+        .all()
+        .order_by("-created_at")
+    )
+
+    serializer_class = (
+        ContactMessageSerializer
+    )
+
+    def get_permissions(self):
+        if self.action == "create":
+            return [
+                AllowAny()
+            ]
+
+        if self.action in [
+            "list",
+            "retrieve",
+            "update",
+            "partial_update",
+        ]:
+            return [
+                IsInternalUser()
+            ]
+
+        return [
+            IsBusinessAdmin()
+        ]
+
+    def perform_create(
+        self,
+        serializer,
+    ):
+        serializer.save(
+            status=(
+                ContactMessage
+                .Status
+                .NEW
+            )
+        )
+
+    def perform_update(
+        self,
+        serializer,
+    ):
+        message = serializer.save()
+
+        if (
+            message.status
+            != ContactMessage.Status.NEW
+            and message.handled_by_id
+            is None
+        ):
+            message.handled_by = (
+                self.request.user
+            )
+
+            message.save(
+                update_fields=[
+                    "handled_by",
+                ]
+            )
 
 
 class ProspectViewSet(
@@ -579,6 +664,7 @@ class QuoteViewSet(
             "update",
             "partial_update",
             "generate_pdf",
+            "send",
         ]:
             return [
                 IsInternalUser()
@@ -628,6 +714,453 @@ class QuoteViewSet(
             )
 
         return quote
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="send",
+    )
+    def send(
+        self,
+        request,
+        pk=None,
+    ):
+        """
+        Envoie un devis DRAFT au client.
+
+        Si le devis est lié à une demande
+        mais pas encore à un client :
+
+        - réutilise le client déjà converti ;
+        - ou réutilise un compte CLIENT
+          existant avec le même e-mail ;
+        - ou crée un nouveau compte CLIENT.
+
+        Pour un nouveau client non activé,
+        un lien d'activation est créé et envoyé.
+
+        L'opération est idempotente :
+        seul un devis DRAFT peut être envoyé.
+        """
+
+        quote = self.get_object()
+
+        client_created = False
+        activation_required = False
+        activation_token = None
+
+        with transaction.atomic():
+            quote = (
+                Quote.objects
+                .select_for_update()
+                .get(
+                    pk=quote.pk
+                )
+            )
+
+            if (
+                quote.status
+                != Quote.Status.DRAFT
+            ):
+                raise ValidationError(
+                    {
+                        "detail": (
+                            "Seul un devis en brouillon "
+                            "peut être envoyé."
+                        )
+                    }
+                )
+
+            prospect = None
+
+            if quote.prospect_id:
+                prospect = (
+                    Prospect.objects
+                    .select_for_update()
+                    .get(
+                        pk=quote.prospect_id
+                    )
+                )
+
+            client = None
+
+            if quote.client_id:
+                client = (
+                    User.objects.get(
+                        pk=quote.client_id
+                    )
+                )
+
+            if (
+                client is None
+                and prospect is None
+            ):
+                raise ValidationError(
+                    {
+                        "detail": (
+                            "Le devis doit être rattaché "
+                            "à une demande ou à un client "
+                            "avant son envoi."
+                        )
+                    }
+                )
+
+            # --------------------------------------------
+            # Devis déjà rattaché à un client
+            # --------------------------------------------
+
+            if client is not None:
+                if (
+                    client.role
+                    != User.Role.CLIENT
+                ):
+                    raise ValidationError(
+                        {
+                            "client": (
+                                "Le destinataire du devis "
+                                "doit être un compte client."
+                            )
+                        }
+                    )
+
+            # --------------------------------------------
+            # Résolution du client depuis la demande
+            # --------------------------------------------
+
+            if prospect is not None:
+                email = (
+                    prospect.email
+                    or ""
+                ).strip().lower()
+
+                if not email:
+                    raise ValidationError(
+                        {
+                            "prospect": (
+                                "La demande ne possède "
+                                "aucune adresse e-mail valide."
+                            )
+                        }
+                    )
+
+                if client is not None:
+                    client_email = (
+                        client.email
+                        or ""
+                    ).strip().lower()
+
+                    if (
+                        client_email
+                        != email
+                    ):
+                        raise ValidationError(
+                            {
+                                "client": (
+                                    "Le client du devis "
+                                    "ne correspond pas "
+                                    "à l'adresse e-mail "
+                                    "de la demande."
+                                )
+                            }
+                        )
+
+                if (
+                    client is None
+                    and prospect.converted_client_id
+                ):
+                    client = (
+                        prospect.converted_client
+                    )
+
+                    if (
+                        client.role
+                        != User.Role.CLIENT
+                    ):
+                        raise ValidationError(
+                            {
+                                "prospect": (
+                                    "Le compte déjà associé "
+                                    "à cette demande n'est pas "
+                                    "un compte client valide."
+                                )
+                            }
+                        )
+
+                if client is None:
+                    existing_user = (
+                        User.objects
+                        .filter(
+                            email__iexact=email
+                        )
+                        .first()
+                    )
+
+                    if existing_user is not None:
+                        if (
+                            existing_user.role
+                            != User.Role.CLIENT
+                        ):
+                            raise ValidationError(
+                                {
+                                    "email": (
+                                        "Cette adresse e-mail "
+                                        "est déjà utilisée par "
+                                        "un compte interne."
+                                    )
+                                }
+                            )
+
+                        client = existing_user
+
+                    else:
+                        username = (
+                            build_unique_client_username(
+                                email
+                            )
+                        )
+
+                        client = (
+                            User.objects.create_user(
+                                username=username,
+                                email=email,
+                                password=None,
+                                first_name=(
+                                    prospect.first_name
+                                ),
+                                last_name=(
+                                    prospect.last_name
+                                ),
+                                role=(
+                                    User.Role.CLIENT
+                                ),
+                                is_staff=False,
+                                is_superuser=False,
+                                email_verified=False,
+                                must_change_password=False,
+                            )
+                        )
+
+                        client_created = True
+
+                ClientProfile.objects.get_or_create(
+                    user=client,
+                    defaults={
+                        "company":
+                            prospect.company,
+
+                        "phone":
+                            prospect.phone,
+                    },
+                )
+
+                if (
+                    prospect.converted_client_id
+                    and prospect.converted_client_id
+                    != client.id
+                ):
+                    raise ValidationError(
+                        {
+                            "prospect": (
+                                "Cette demande est déjà "
+                                "rattachée à un autre client."
+                            )
+                        }
+                    )
+
+                prospect.converted_client = client
+                prospect.status = (
+                    Prospect.Status.QUALIFIED
+                )
+
+                prospect.save(
+                    update_fields=[
+                        "converted_client",
+                        "status",
+                    ]
+                )
+
+            # --------------------------------------------
+            # Finalisation du devis
+            # --------------------------------------------
+
+            if client is None:
+                raise ValidationError(
+                    {
+                        "detail": (
+                            "Aucun client valide "
+                            "n'a pu être déterminé."
+                        )
+                    }
+                )
+
+            quote.client = client
+            quote.status = (
+                Quote.Status.SENT
+            )
+
+            quote.save(
+                update_fields=[
+                    "client",
+                    "status",
+                ]
+            )
+
+            # --------------------------------------------
+            # Activation nécessaire ?
+            # --------------------------------------------
+
+            if not client.email_verified:
+                (
+                    activation_token,
+                    _,
+                ) = (
+                    create_account_activation_token(
+                        client
+                    )
+                )
+
+                activation_required = True
+
+        # ==================================================
+        # Envoi e-mail après validation transactionnelle
+        # ==================================================
+
+        activation_email_sent = False
+
+        if activation_required:
+            frontend_url = (
+                os.getenv(
+                    "FRONTEND_URL",
+                    "http://localhost:5173",
+                )
+                .rstrip("/")
+            )
+
+            activation_url = (
+                f"{frontend_url}/activation"
+                f"?uid={client.id}"
+                f"&token={activation_token}"
+            )
+
+            try:
+                send_transactional_email(
+                    recipient_email=
+                        client.email,
+
+                    subject=(
+                        "Votre devis Innov'Events "
+                        "est disponible"
+                    ),
+
+                    text_content=(
+                        f"Bonjour "
+                        f"{client.first_name or client.username},\n\n"
+
+                        "Votre devis Innov'Events "
+                        f"n°{quote.id} est disponible.\n\n"
+
+                        "Un espace client a été préparé "
+                        "pour vous permettre de consulter "
+                        "et répondre à ce devis.\n\n"
+
+                        "Pour activer votre compte "
+                        "et définir votre mot de passe, "
+                        "utilisez le lien suivant :\n\n"
+
+                        f"{activation_url}\n\n"
+
+                        "Ce lien est personnel, "
+                        "valable pendant 24 heures "
+                        "et utilisable une seule fois.\n\n"
+
+                        "Une fois votre compte activé, "
+                        "vous pourrez consulter le devis "
+                        "et l'accepter, le refuser ou "
+                        "demander une modification."
+                    ),
+                )
+
+                activation_email_sent = True
+
+            except Exception:
+                activation_email_sent = False
+
+        else:
+            # Client déjà actif :
+            # notification simple du nouveau devis.
+            send_mail(
+                subject=(
+                    "Nouveau devis Innov'Events"
+                ),
+                message=(
+                    f"Bonjour "
+                    f"{client.first_name or client.username},\n\n"
+
+                    f"Le devis n°{quote.id} "
+                    "est maintenant disponible "
+                    "dans votre espace client."
+                ),
+                from_email=getattr(
+                    settings,
+                    "DEFAULT_FROM_EMAIL",
+                    None,
+                ),
+                recipient_list=[
+                    client.email
+                ],
+                fail_silently=True,
+            )
+
+        log_action(
+            "ENVOI_DEVIS",
+            request.user.id,
+            {
+                "quote_id":
+                    quote.id,
+
+                "client_id":
+                    client.id,
+
+                "client_created":
+                    client_created,
+
+                "activation_required":
+                    activation_required,
+
+                "activation_email_sent":
+                    activation_email_sent,
+            },
+        )
+
+        return Response(
+            {
+                "detail": (
+                    "Devis envoyé."
+                ),
+
+                "quote_id":
+                    quote.id,
+
+                "status":
+                    quote.status,
+
+                "client_id":
+                    client.id,
+
+                "client_created":
+                    client_created,
+
+                "activation_required":
+                    activation_required,
+
+                "activation_email_sent":
+                    activation_email_sent,
+            },
+            status=(
+                drf_status.HTTP_200_OK
+            ),
+        )
+
 
     @action(
         detail=True,

@@ -9,12 +9,11 @@ import {
   useAuth,
 } from "../auth/useAuth";
 
+import {
+  createContactMessage,
+} from "../api/contactMessages";
+
 import "./ContactPage.css";
-
-
-const API =
-  import.meta.env.VITE_API_URL ||
-  "http://localhost:8000";
 
 
 export default function ContactPage() {
@@ -27,7 +26,7 @@ export default function ContactPage() {
     form,
     setForm,
   ] = useState({
-    username:
+    name:
       user?.username || "",
 
     email:
@@ -42,6 +41,16 @@ export default function ContactPage() {
     sent,
     setSent,
   ] = useState(false);
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
+
+  const [
+    error,
+    setError,
+  ] = useState("");
 
 
   function onChange(
@@ -59,7 +68,8 @@ export default function ContactPage() {
       ) => ({
         ...previousForm,
 
-        [name]: value,
+        [name]:
+          value,
       })
     );
   }
@@ -70,28 +80,40 @@ export default function ContactPage() {
   ) {
     event.preventDefault();
 
-
-    await fetch(
-      `${API}/api/contact/`,
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type":
-            "application/json",
-        },
-
-        body:
-          JSON.stringify(
-            form
-          ),
-      }
-    ).catch(
-      () => {}
-    );
+    setLoading(true);
+    setError("");
 
 
-    setSent(true);
+    try {
+      await createContactMessage({
+        name:
+          form.name.trim(),
+
+        email:
+          form.email.trim(),
+
+        subject:
+          form.subject.trim(),
+
+        message:
+          form.message.trim(),
+      });
+
+
+      setSent(true);
+
+    } catch (
+      submitError
+    ) {
+      setError(
+        formatApiError(
+          submitError
+        )
+      );
+
+    } finally {
+      setLoading(false);
+    }
   }
 
 
@@ -107,6 +129,7 @@ export default function ContactPage() {
               Contact
             </p>
 
+
             <h1 className="contactHeroTitle">
               Une question ?
               <br />
@@ -115,6 +138,7 @@ export default function ContactPage() {
                 Parlons-en.
               </em>
             </h1>
+
 
             <p className="contactHeroText">
               Notre équipe est disponible
@@ -130,10 +154,13 @@ export default function ContactPage() {
                   E-mail
                 </span>
 
-                <a href="mailto:contact@innov-events.com">
+                <a
+                  href="mailto:contact@innov-events.com"
+                >
                   contact@innov-events.com
                 </a>
               </div>
+
 
               <div className="contactDetail">
                 <span>
@@ -150,7 +177,9 @@ export default function ContactPage() {
 
           <section
             className="contactPanel"
-            aria-labelledby="contact-form-title"
+            aria-labelledby={
+              "contact-form-title"
+            }
           >
             {sent ? (
               <div className="contactSuccess">
@@ -161,14 +190,17 @@ export default function ContactPage() {
                   ✓
                 </span>
 
+
                 <p className="contactPanelEyebrow">
                   Message envoyé
                 </p>
+
 
                 <h2>
                   Merci pour
                   votre message.
                 </h2>
+
 
                 <p>
                   Nous reviendrons vers vous
@@ -181,6 +213,7 @@ export default function ContactPage() {
                   <p className="contactPanelEyebrow">
                     Écrivez-nous
                   </p>
+
 
                   <h2
                     id="contact-form-title"
@@ -198,20 +231,22 @@ export default function ContactPage() {
                   className="contactForm"
                 >
                   <ContactField
-                    label="Nom d’utilisateur"
-                    htmlFor="contact-username"
+                    label="Nom"
+                    htmlFor="contact-name"
                   >
                     <input
-                      id="contact-username"
-                      name="username"
+                      id="contact-name"
+                      name="name"
                       value={
-                        form.username
+                        form.name
                       }
                       onChange={
                         onChange
                       }
                       className="contactInput"
-                      autoComplete="username"
+                      autoComplete="name"
+                      maxLength={120}
+                      required
                     />
                   </ContactField>
 
@@ -251,6 +286,7 @@ export default function ContactPage() {
                         onChange
                       }
                       className="contactInput"
+                      maxLength={160}
                       required
                     />
                   </ContactField>
@@ -270,6 +306,7 @@ export default function ContactPage() {
                         onChange
                       }
                       rows={6}
+                      maxLength={5000}
                       className="contactTextarea"
                       placeholder={
                         "Décrivez votre demande..."
@@ -279,15 +316,42 @@ export default function ContactPage() {
                   </ContactField>
 
 
+                  {error && (
+                    <div
+                      role="alert"
+                      style={{
+                        padding: 12,
+                        border:
+                          "1px solid #f5c2c7",
+                        borderRadius: 6,
+                        marginBottom: 12,
+                      }}
+                    >
+                      {error}
+                    </div>
+                  )}
+
+
                   <button
                     type="submit"
                     className="btn contactSubmit"
+                    disabled={
+                      loading
+                    }
                   >
-                    Envoyer mon message
+                    {
+                      loading
+                        ? "Envoi en cours..."
+                        : "Envoyer mon message"
+                    }
 
-                    <span aria-hidden="true">
-                      →
-                    </span>
+                    {!loading && (
+                      <span
+                        aria-hidden="true"
+                      >
+                        →
+                      </span>
+                    )}
                   </button>
                 </form>
               </>
@@ -321,5 +385,72 @@ function ContactField({
 
       {children}
     </div>
+  );
+}
+
+
+function formatApiError(
+  error
+) {
+  if (!error) {
+    return (
+      "Une erreur est survenue "
+      + "pendant l'envoi."
+    );
+  }
+
+
+  if (
+    typeof error ===
+    "string"
+  ) {
+    return error;
+  }
+
+
+  if (error.detail) {
+    return error.detail;
+  }
+
+
+  if (error.message) {
+    return error.message;
+  }
+
+
+  const message =
+    Object.entries(
+      error
+    )
+      .map(
+        (
+          [
+            field,
+            value,
+          ]
+        ) => {
+          const text =
+            Array.isArray(
+              value
+            )
+              ? value.join(
+                  " "
+                )
+              : String(
+                  value
+                );
+
+
+          return (
+            `${field} : ${text}`
+          );
+        }
+      )
+      .join(" | ");
+
+
+  return (
+    message ||
+    "Une erreur est survenue pendant l'envoi."
   );
 }

@@ -14,7 +14,6 @@ import {
 } from "../api/client";
 
 import {
-  convertProspect,
   getProspects,
   updateProspectStatus,
 } from "../api/prospects";
@@ -22,6 +21,7 @@ import {
 import {
   createQuote,
   getQuotes,
+  sendQuote,
 } from "../api/quotes";
 
 
@@ -129,11 +129,6 @@ export default function EmployeePage() {
   const [
     updatingId,
     setUpdatingId,
-  ] = useState(null);
-
-  const [
-    convertingId,
-    setConvertingId,
   ] = useState(null);
 
   const [
@@ -471,76 +466,6 @@ export default function EmployeePage() {
   }
 
 
-  async function convertToClient(
-    prospect,
-  ) {
-    const confirmed =
-      window.confirm(
-        `Convertir ${prospect.first_name} `
-        + `${prospect.last_name} en client ?`
-      );
-
-    if (!confirmed) {
-      return;
-    }
-
-    setProspectsError("");
-    setConvertingId(
-      prospect.id
-    );
-
-    try {
-      const result =
-        await convertProspect(
-          prospect.id
-        );
-
-      setProspects(
-        (previousProspects) =>
-          previousProspects.map(
-            (currentProspect) =>
-              currentProspect.id
-                === prospect.id
-                ? {
-                    ...currentProspect,
-                    status: "QUALIFIED",
-                  }
-                : currentProspect
-          )
-      );
-
-      if (
-        result?.activation_email_sent
-      ) {
-        window.alert(
-          "Client créé avec succès.\n\n"
-          + "Un code de vérification "
-          + `a été envoyé à ${result.email}.\n`
-          + `Identifiant : ${result.username}`
-        );
-      } else {
-        window.alert(
-          "Le client a été créé, "
-          + "mais l'e-mail d'activation "
-          + "n'a pas pu être envoyé."
-        );
-      }
-    } catch (conversionError) {
-      setProspectsError(
-        formatError(
-          conversionError
-        )
-      );
-
-      window.alert(
-        "Erreur lors de la conversion."
-      );
-    } finally {
-      setConvertingId(null);
-    }
-  }
-
-
   async function transitionEvent(
     eventId,
     action,
@@ -637,7 +562,7 @@ export default function EmployeePage() {
                 )
             }
           >
-            Prospects
+            Demandes
           </TabButton>
 
           <TabButton
@@ -695,14 +620,8 @@ export default function EmployeePage() {
             updatingId={
               updatingId
             }
-            convertingId={
-              convertingId
-            }
             onStatusChange={
               changeStatus
-            }
-            onConvert={
-              convertToClient
             }
           />
         )}
@@ -786,14 +705,12 @@ function ProspectsSection({
   loading,
   error,
   updatingId,
-  convertingId,
   onStatusChange,
-  onConvert,
 }) {
   return (
     <section>
       <h2>
-        Prospects
+        Demandes
       </h2>
 
       <p
@@ -802,9 +719,9 @@ function ProspectsSection({
           fontSize: 14,
         }}
       >
-        Suivi commercial,
-        qualification et conversion
-        des prospects en clients.
+        Suivi des demandes de projet,
+        qualification et préparation
+        des devis commerciaux.
       </p>
 
       {error && (
@@ -827,7 +744,7 @@ function ProspectsSection({
               color: "#888",
             }}
           >
-            Aucun prospect.
+            Aucune demande.
           </p>
         )}
 
@@ -860,7 +777,6 @@ function ProspectsSection({
                     "Société",
                     "Type événement",
                     "Statut",
-                    "Action",
                     "Date",
                   ].map(
                     (heading) => (
@@ -1007,48 +923,6 @@ function ProspectsSection({
                         </select>
                       </td>
 
-                      <td
-                        style={{
-                          padding:
-                            "8px 10px",
-                        }}
-                      >
-                        {prospect.status
-                          !== "ARCHIVED"
-                          && (
-                            <button
-                              type="button"
-                              disabled={
-                                convertingId
-                                === prospect.id
-                              }
-                              onClick={
-                                () =>
-                                  onConvert(
-                                    prospect
-                                  )
-                              }
-                              style={{
-                                padding:
-                                  "4px 8px",
-                                fontSize: 12,
-                                cursor:
-                                  "pointer",
-                                border:
-                                  "1px solid #ddd",
-                                borderRadius:
-                                  4,
-                                background:
-                                  "#e8f5e9",
-                              }}
-                            >
-                              {convertingId
-                                === prospect.id
-                                ? "Conversion..."
-                                : "Convertir en client"}
-                            </button>
-                          )}
-                      </td>
 
                       <td
                         style={{
@@ -1094,6 +968,98 @@ function QuotesSection({
     setShowCreateForm,
   ] = useState(false);
 
+  const [
+    sendingId,
+    setSendingId,
+  ] = useState(null);
+
+  const [
+    success,
+    setSuccess,
+  ] = useState("");
+
+
+  async function handleSendQuote(
+    quote
+  ) {
+    setSendingId(
+      quote.id
+    );
+
+    setError("");
+    setSuccess("");
+
+
+    try {
+      const result =
+        await sendQuote(
+          quote.id
+        );
+
+
+      setQuotes(
+        (previousQuotes) =>
+          previousQuotes.map(
+            (currentQuote) =>
+              currentQuote.id
+              === quote.id
+                ? {
+                    ...currentQuote,
+                    status:
+                      result?.status
+                      || "SENT",
+                    client:
+                      result?.client_id
+                      || currentQuote.client,
+                  }
+                : currentQuote
+          )
+      );
+
+
+      if (
+        result?.client_created
+        && result?.activation_required
+        && result?.activation_email_sent
+      ) {
+        setSuccess(
+          `Devis #${quote.id} envoyé. `
+          + "Le compte client a été créé "
+          + "et le lien d'activation "
+          + "a été envoyé par e-mail."
+        );
+
+      } else if (
+        result?.activation_required
+        && !result?.activation_email_sent
+      ) {
+        setSuccess(
+          `Devis #${quote.id} envoyé, `
+          + "mais l'e-mail d'activation "
+          + "n'a pas pu être envoyé."
+        );
+
+      } else {
+        setSuccess(
+          `Devis #${quote.id} envoyé au client.`
+        );
+      }
+
+    } catch (sendError) {
+      setError(
+        formatError(
+          sendError
+        )
+      );
+
+    } finally {
+      setSendingId(
+        null
+      );
+    }
+  }
+
+
   return (
     <section>
       <div
@@ -1122,8 +1088,8 @@ function QuotesSection({
               margin: 0,
             }}
           >
-            Consultation et création
-            des devis commerciaux.
+            Création et envoi
+            des devis aux clients.
           </p>
         </div>
 
@@ -1144,11 +1110,29 @@ function QuotesSection({
         </button>
       </div>
 
+
       {error && (
         <ErrorMessage
           message={error}
         />
       )}
+
+
+      {success && (
+        <p
+          style={{
+            color: "#0f5132",
+            background: "#d1e7dd",
+            border:
+              "1px solid #badbcc",
+            borderRadius: 6,
+            padding: "9px 12px",
+          }}
+        >
+          {success}
+        </p>
+      )}
+
 
       {showCreateForm && (
         <CreateQuoteForm
@@ -1175,11 +1159,13 @@ function QuotesSection({
         />
       )}
 
+
       {loading && (
         <p>
           Chargement...
         </p>
       )}
+
 
       {!loading
         && quotes.length === 0
@@ -1193,12 +1179,20 @@ function QuotesSection({
           </p>
         )}
 
+
       {!loading
         && quotes.map(
           (quote) => (
             <QuoteCard
               key={quote.id}
               quote={quote}
+              sending={
+                sendingId
+                === quote.id
+              }
+              onSend={
+                handleSendQuote
+              }
             />
           )
         )}
@@ -1209,10 +1203,13 @@ function QuotesSection({
 
 function QuoteCard({
   quote,
+  sending,
+  onSend,
 }) {
   const API =
     import.meta.env.VITE_API_URL
     || "http://localhost:8000";
+
 
   return (
     <article
@@ -1248,6 +1245,7 @@ function QuoteCard({
         </span>
       </div>
 
+
       <div
         style={{
           fontSize: 13,
@@ -1257,12 +1255,15 @@ function QuoteCard({
       >
         HT : {quote.total_ht} €
         {" | "}
+
         TVA : {quote.total_tva} €
         {" | "}
+
         <strong>
           TTC : {quote.total_ttc} €
         </strong>
       </div>
+
 
       {quote.items?.map(
         (item) => (
@@ -1284,9 +1285,14 @@ function QuoteCard({
         )
       )}
 
+
       <div
         style={{
           marginTop: 10,
+          display: "flex",
+          gap: 8,
+          alignItems: "center",
+          flexWrap: "wrap",
         }}
       >
         <a
@@ -1301,6 +1307,33 @@ function QuoteCard({
         >
           Télécharger PDF
         </a>
+
+
+        {quote.status === "DRAFT" && (
+          <button
+            type="button"
+            disabled={sending}
+            onClick={
+              () =>
+                onSend(
+                  quote
+                )
+            }
+            style={{
+              fontSize: 12,
+              padding: "5px 10px",
+              border:
+                "1px solid #badbcc",
+              borderRadius: 4,
+              background: "#d1e7dd",
+              cursor: "pointer",
+            }}
+          >
+            {sending
+              ? "Envoi..."
+              : "Envoyer le devis"}
+          </button>
+        )}
       </div>
     </article>
   );
@@ -1506,13 +1539,11 @@ function CreateQuoteForm({
               marginBottom: 4,
             }}
           >
-            Prospect
+            Demande
           </label>
 
-          <input
+          <select
             id="quote-prospect"
-            type="number"
-            min="1"
             required
             value={
               form.prospect
@@ -1528,7 +1559,42 @@ function CreateQuoteForm({
                   })
                 )
             }
-          />
+          >
+            <option value="">
+              Sélectionner une demande
+            </option>
+
+            {prospects
+              .filter(
+                (prospect) =>
+                  prospect.status
+                  !== "ARCHIVED"
+              )
+              .map(
+                (prospect) => (
+                  <option
+                    key={
+                      prospect.id
+                    }
+                    value={
+                      prospect.id
+                    }
+                  >
+                    {
+                      prospect.first_name
+                    }{" "}
+                    {
+                      prospect.last_name
+                    }
+                    {
+                      prospect.event_type
+                        ? ` — ${prospect.event_type}`
+                        : ""
+                    }
+                  </option>
+                )
+              )}
+          </select>
 
           {prospects.length > 0 && (
             <div
@@ -1538,11 +1604,11 @@ function CreateQuoteForm({
                 fontSize: 12,
               }}
             >
-              Prospects disponibles :
+              Demandes disponibles :
               {" "}
               {prospects.map(
                 (prospect) =>
-                  `${prospect.id} - ${prospect.first_name} ${prospect.last_name}`
+                  `${prospect.first_name} ${prospect.last_name}`
               ).join(", ")}
             </div>
           )}

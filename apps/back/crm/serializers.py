@@ -1,20 +1,59 @@
 from rest_framework import serializers
-from .models import Prospect, Quote, QuoteItem, Note, ClientProfile
+
+from .models import (
+    ClientProfile,
+    ContactMessage,
+    Note,
+    Prospect,
+    Quote,
+    QuoteItem,
+)
 
 
-# -------------------------
-# PROSPECT (Jour 11)
-# -------------------------
+def clean_single_line_text(
+    value,
+):
+    value = (
+        value or ""
+    ).strip()
 
-class ProspectPublicCreateSerializer(serializers.ModelSerializer):
-    """
-    Serializer utilisé uniquement pour le formulaire public (POST /prospects/).
-    -> Tous les champs obligatoires + pas de champs admin modifiables.
-    """
+    if any(
+        ord(character) < 32
+        for character in value
+    ):
+        raise serializers.ValidationError(
+            "Ce champ contient des caractères non autorisés."
+        )
 
+    return value
+
+
+def clean_multiline_text(
+    value,
+):
+    value = (
+        value or ""
+    ).strip()
+
+    for character in value:
+        if (
+            ord(character) < 32
+            and character
+            not in "\n\r\t"
+        ):
+            raise serializers.ValidationError(
+                "Ce champ contient des caractères non autorisés."
+            )
+
+    return value
+
+
+class ProspectPublicCreateSerializer(
+    serializers.ModelSerializer
+):
     class Meta:
         model = Prospect
-        # ⚠️ adapte cette liste EXACTEMENT à tes champs Prospect
+
         fields = (
             "id",
             "first_name",
@@ -24,76 +63,273 @@ class ProspectPublicCreateSerializer(serializers.ModelSerializer):
             "company",
             "city",
             "message",
+            "event_type",
+            "desired_date",
+            "participant_count",
             "status",
             "created_at",
         )
-        read_only_fields = ("id", "status", "created_at")
 
-    def validate(self, attrs):
-        # Tous champs obligatoires (même si ton modèle autorise blank=True)
-        required_fields = ["first_name", "last_name", "email", "phone", "company", "city", "message"]
-        errors = {}
+        read_only_fields = (
+            "id",
+            "status",
+            "created_at",
+        )
 
-        for f in required_fields:
-            val = attrs.get(f)
-            if val is None or (isinstance(val, str) and not val.strip()):
-                errors[f] = "Ce champ est obligatoire."
+        extra_kwargs = {
+            "phone": {
+                "required": False,
+                "allow_blank": True,
+            },
+            "company": {
+                "required": False,
+                "allow_blank": True,
+            },
+            "city": {
+                "required": False,
+                "allow_blank": True,
+            },
+            "event_type": {
+                "required": False,
+                "allow_blank": True,
+            },
+            "desired_date": {
+                "required": False,
+                "allow_null": True,
+            },
+            "participant_count": {
+                "required": False,
+                "allow_null": True,
+            },
+        }
 
-        if errors:
-            raise serializers.ValidationError(errors)
+    def validate_first_name(
+        self,
+        value,
+    ):
+        return clean_single_line_text(
+            value
+        )
 
-        return attrs
+    def validate_last_name(
+        self,
+        value,
+    ):
+        return clean_single_line_text(
+            value
+        )
 
-    def create(self, validated_data):
-        # sécurité : on ignore "status" si envoyé, et le modèle mettra le défaut
-        validated_data.pop("status", None)
-        return Prospect.objects.create(**validated_data)
+    def validate_phone(
+        self,
+        value,
+    ):
+        return clean_single_line_text(
+            value
+        )
+
+    def validate_company(
+        self,
+        value,
+    ):
+        return clean_single_line_text(
+            value
+        )
+
+    def validate_city(
+        self,
+        value,
+    ):
+        return clean_single_line_text(
+            value
+        )
+
+    def validate_event_type(
+        self,
+        value,
+    ):
+        return clean_single_line_text(
+            value
+        )
+
+    def validate_message(
+        self,
+        value,
+    ):
+        value = clean_multiline_text(
+            value
+        )
+
+        if not value:
+            raise serializers.ValidationError(
+                "Ce champ est obligatoire."
+            )
+
+        return value
+
+    def create(
+        self,
+        validated_data,
+    ):
+        validated_data.pop(
+            "status",
+            None,
+        )
+
+        return Prospect.objects.create(
+            **validated_data
+        )
 
 
-class ProspectAdminSerializer(serializers.ModelSerializer):
-    """
-    Serializer admin (GET /prospects/, GET /prospects/{id}/) : tout voir.
-    """
+class ProspectAdminSerializer(
+    serializers.ModelSerializer
+):
     class Meta:
         model = Prospect
         fields = "__all__"
-        read_only_fields = ("created_at", "converted_client")
+
+        read_only_fields = (
+            "created_at",
+            "converted_client",
+        )
 
 
-class ProspectStatusSerializer(serializers.ModelSerializer):
-    """
-    PATCH admin-only (PATCH /prospects/{id}/status/) : ne modifie que le statut.
-    """
+class ProspectStatusSerializer(
+    serializers.ModelSerializer
+):
     class Meta:
         model = Prospect
-        fields = ("status",)
+
+        fields = (
+            "status",
+        )
 
 
-# -------------------------
-# EXISTANT (tu gardes)
-# -------------------------
+class ContactMessageSerializer(
+    serializers.ModelSerializer
+):
+    class Meta:
+        model = ContactMessage
 
-class ClientProfileSerializer(serializers.ModelSerializer):
+        fields = (
+            "id",
+            "name",
+            "email",
+            "subject",
+            "message",
+            "status",
+            "handled_by",
+            "created_at",
+            "updated_at",
+        )
+
+        read_only_fields = (
+            "id",
+            "handled_by",
+            "created_at",
+            "updated_at",
+        )
+
+    def validate_name(
+        self,
+        value,
+    ):
+        value = clean_single_line_text(
+            value
+        )
+
+        if not value:
+            raise serializers.ValidationError(
+                "Ce champ est obligatoire."
+            )
+
+        return value
+
+    def validate_subject(
+        self,
+        value,
+    ):
+        value = clean_single_line_text(
+            value
+        )
+
+        if not value:
+            raise serializers.ValidationError(
+                "Ce champ est obligatoire."
+            )
+
+        return value
+
+    def validate_message(
+        self,
+        value,
+    ):
+        value = clean_multiline_text(
+            value
+        )
+
+        if not value:
+            raise serializers.ValidationError(
+                "Ce champ est obligatoire."
+            )
+
+        return value
+
+
+class ClientProfileSerializer(
+    serializers.ModelSerializer
+):
     class Meta:
         model = ClientProfile
+
         fields = "__all__"
-        read_only_fields = ("user",)
+
+        read_only_fields = (
+            "user",
+        )
 
 
-class QuoteItemSerializer(serializers.ModelSerializer):
+class QuoteItemSerializer(
+    serializers.ModelSerializer
+):
     class Meta:
         model = QuoteItem
-        fields = ("id", "label", "amount_ht")
+
+        fields = (
+            "id",
+            "label",
+            "amount_ht",
+        )
 
 
-class QuoteSerializer(serializers.ModelSerializer):
-    items = QuoteItemSerializer(many=True, required=False)
-    total_ht = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
-    total_tva = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
-    total_ttc = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+class QuoteSerializer(
+    serializers.ModelSerializer
+):
+    items = QuoteItemSerializer(
+        many=True,
+        required=False,
+    )
+
+    total_ht = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        read_only=True,
+    )
+
+    total_tva = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        read_only=True,
+    )
+
+    total_ttc = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        read_only=True,
+    )
 
     class Meta:
         model = Quote
+
         fields = (
             "id",
             "client",
@@ -107,11 +343,23 @@ class QuoteSerializer(serializers.ModelSerializer):
             "total_tva",
             "total_ttc",
         )
-        read_only_fields = ("status", "created_at")
 
-    def validate(self, attrs):
-        event = attrs.get("event")
-        client = attrs.get("client")
+        read_only_fields = (
+            "status",
+            "created_at",
+        )
+
+    def validate(
+        self,
+        attrs,
+    ):
+        event = attrs.get(
+            "event"
+        )
+
+        client = attrs.get(
+            "client"
+        )
 
         if event is not None:
             if event.client_id is None:
@@ -127,7 +375,8 @@ class QuoteSerializer(serializers.ModelSerializer):
 
             if (
                 client is not None
-                and client.id != event.client_id
+                and client.id
+                != event.client_id
             ):
                 raise serializers.ValidationError(
                     {
@@ -140,36 +389,74 @@ class QuoteSerializer(serializers.ModelSerializer):
 
         return attrs
 
-    def create(self, validated_data):
-        items_data = validated_data.pop("items", [])
+    def create(
+        self,
+        validated_data,
+    ):
+        items_data = (
+            validated_data.pop(
+                "items",
+                [],
+            )
+        )
 
-        event = validated_data.get("event")
-        prospect = validated_data.get("prospect")
-        client = validated_data.get("client")
+        event = (
+            validated_data.get(
+                "event"
+            )
+        )
+
+        prospect = (
+            validated_data.get(
+                "prospect"
+            )
+        )
+
+        client = (
+            validated_data.get(
+                "client"
+            )
+        )
 
         if event is not None:
-            validated_data["client"] = event.client
+            validated_data[
+                "client"
+            ] = event.client
 
         elif (
             client is None
-            and prospect is not None
+            and prospect
+            is not None
             and prospect.converted_client_id
         ):
-            validated_data["client"] = prospect.converted_client
+            validated_data[
+                "client"
+            ] = (
+                prospect.converted_client
+            )
 
-        quote = Quote.objects.create(**validated_data)
+        quote = Quote.objects.create(
+            **validated_data
+        )
 
-        for it in items_data:
+        for item in items_data:
             QuoteItem.objects.create(
                 quote=quote,
-                **it,
+                **item,
             )
 
         return quote
 
 
-class NoteSerializer(serializers.ModelSerializer):
+class NoteSerializer(
+    serializers.ModelSerializer
+):
     class Meta:
         model = Note
+
         fields = "__all__"
-        read_only_fields = ("author", "created_at")
+
+        read_only_fields = (
+            "author",
+            "created_at",
+        )

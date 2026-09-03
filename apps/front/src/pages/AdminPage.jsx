@@ -4,206 +4,1261 @@ import Navbar from"../components/Navbar"
 import HomeHeroAdmin from"../components/admin/HomeHeroAdmin"
 import HomePhotosAdminTab from"../components/admin/HomePhotosAdminTab"
 import{useAuth}from"../auth/useAuth"
-import{getProspects,updateProspectStatus,convertProspect}from"../api/prospects"
-import{getQuotes,createQuote}from"../api/quotes"
+import{getProspects,updateProspectStatus}from"../api/prospects"
+import{getQuotes,createQuote,sendQuote}from"../api/quotes"
+import{
+  getContactMessages,
+  updateContactMessage,
+}from"../api/contactMessages"
 
 const API=import.meta.env.VITE_API_URL||"http://localhost:8000"
-const ah=()=>({"Content-Type":"application/json","Authorization":`Bearer ${localStorage.getItem("access_token")}`})
+const ah=()=>({
+  "Content-Type":"application/json",
+  "Authorization":`Bearer ${localStorage.getItem("access_token")}`,
+})
 
-const SLABELS={TO_CONTACT:"À contacter",CONTACTED:"Contacté",QUALIFIED:"Qualifié",ARCHIVED:"Archivé"}
-const SCOLORS={TO_CONTACT:"#fff3cd",CONTACTED:"#cce5ff",QUALIFIED:"#d4edda",ARCHIVED:"#f8d7da"}
-const QLABELS={DRAFT:"Brouillon",SENT:"Envoyé",ACCEPTED:"Accepté",REFUSED:"Refusé",CHANGE_REQUESTED:"Modif demandée"}
+const SLABELS={
+  TO_CONTACT:"À contacter",
+  CONTACTED:"Contacté",
+  QUALIFIED:"Qualifié",
+  ARCHIVED:"Archivé",
+}
+
+const SCOLORS={
+  TO_CONTACT:"#fff3cd",
+  CONTACTED:"#cce5ff",
+  QUALIFIED:"#d4edda",
+  ARCHIVED:"#f8d7da",
+}
+
+const QLABELS={
+  DRAFT:"Brouillon",
+  SENT:"Envoyé",
+  ACCEPTED:"Accepté",
+  REFUSED:"Refusé",
+  CHANGE_REQUESTED:"Modif demandée",
+}
+
+const MLABELS={
+  NEW:"Nouveau",
+  READ:"Lu",
+  REPLIED:"Répondu",
+  ARCHIVED:"Archivé",
+}
+
+function list(data){
+  return Array.isArray(data)
+    ?data
+    :(data?.results||[])
+}
+
+function formatError(error){
+  return error?.detail
+    ||error?.message
+    ||(
+      typeof error==="string"
+        ?error
+        :"Une erreur est survenue."
+    )
+}
+
 
 export default function AdminPage(){
-  const{user,logout}=useAuth(); const nav=useNavigate()
-  const[tab,setTab]=useState("prospects")
-  return(<><Navbar/>
-    <main className="container" style={{padding:"20px 0"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-        <div><h1 style={{margin:0}}>Dashboard Admin</h1><p style={{color:"#666",margin:0}}>{user?.username}</p></div>
-        <button className="btn" onClick={()=>{logout();nav("/")}}>Déconnexion</button>
-      </div>
-      <div style={{display:"flex",gap:4,marginBottom:20,borderBottom:"1px solid #eee"}}>
-        {[["prospects","Prospects"],["quotes","Devis"],["reviews","Avis"],["users","Utilisateurs"],["notes","Notes"],["home","Accueil"]].map(([k,l])=>(
-          <button key={k} onClick={()=>setTab(k)} style={{padding:"8px 16px",border:"none",background:"none",cursor:"pointer",fontWeight:tab===k?"600":"400",borderBottom:tab===k?"2px solid #000":"none",marginBottom:-1}}>{l}</button>
-        ))}
-      </div>
-      {tab==="prospects"&&<ProspectsTab/>}
-      {tab==="quotes"&&<QuotesTab/>}
-      {tab==="reviews"&&<ReviewsAdminTab/>}
-      {tab==="users"&&<UsersRightsTab currentUser={user}/>}
-      {tab==="notes"&&<NotesTab/>}
-      {tab==="home"&&<>
-        <HomeHeroAdmin/>
-        <HomePhotosAdminTab/>
-      </>}
-    </main>
-  </>)
-}
+  const{user,logout}=useAuth()
+  const nav=useNavigate()
+  const[tab,setTab]=useState("requests")
 
-function ProspectsTab(){
-  const[prospects,setProspects]=useState([]); const[loading,setLoading]=useState(true); const[upd,setUpd]=useState(null)
-  useEffect(()=>{getProspects().then(d=>setProspects(d.results||d)).finally(()=>setLoading(false))},[])
-  async function changeStatus(id,status){
-    setUpd(id)
-    const u=await updateProspectStatus(id,status)
-    setProspects(p=>p.map(x=>x.id===id?{...x,status:u.status}:x)); setUpd(null)
-  }
-  async function doConvert(id){
-  if(!window.confirm("Convertir ce prospect en client ?")) return
+  const tabs=[
+    ["requests","Demandes"],
+    ["messages","Messages"],
+    ["quotes","Devis"],
+    ["reviews","Avis"],
+    ["users","Utilisateurs"],
+    ["notes","Notes"],
+    ["home","Accueil"],
+  ]
 
-  try{
-    const result=await convertProspect(id)
+  return(
+    <>
+      <Navbar/>
 
-    if(result.activation_email_sent){
-      alert(
-        `Client créé avec succès.\n\n`
-        + `Un code de vérification a été envoyé à ${result.email}.\n`
-        + `Identifiant du client : ${result.username}\n\n`
-        + `Aucun mot de passe temporaire n'a été envoyé.`
-      )
-    }else{
-      alert(
-        `Le client a bien été créé, mais l'e-mail d'activation `
-        + `n'a pas pu être envoyé.\n\n`
-        + `Le client peut demander un nouveau code depuis `
-        + `la page de vérification d'adresse.`
-      )
-    }
+      <main
+        className="container"
+        style={{padding:"20px 0"}}
+      >
+        <div
+          style={{
+            display:"flex",
+            justifyContent:"space-between",
+            alignItems:"center",
+            marginBottom:16,
+          }}
+        >
+          <div>
+            <h1 style={{margin:0}}>
+              Dashboard Admin
+            </h1>
 
-    setProspects(p=>
-      p.map(x=>
-        x.id===id
-          ?{...x,status:"QUALIFIED"}
-          :x
-      )
-    )
-  }catch(e){
-    alert("Erreur: "+JSON.stringify(e))
-  }
-}
-  if(loading) return <p>Chargement...</p>
-  return(<div>
-    <h2 style={{marginBottom:12}}>Prospects ({prospects.length})</h2>
-    <div style={{overflowX:"auto"}}>
-      <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
-        <thead><tr style={{background:"#f5f5f5"}}>
-          {["Nom","Email","Société","Type évén.","Statut","Action","Date"].map(h=>(
-            <th key={h} style={{padding:"8px 10px",textAlign:"left",borderBottom:"2px solid #ddd"}}>{h}</th>
+            <p
+              style={{
+                color:"#666",
+                margin:0,
+              }}
+            >
+              {user?.username}
+            </p>
+          </div>
+
+          <button
+            className="btn"
+            onClick={()=>{
+              logout()
+              nav("/")
+            }}
+          >
+            Déconnexion
+          </button>
+        </div>
+
+        <div
+          style={{
+            display:"flex",
+            gap:4,
+            marginBottom:20,
+            borderBottom:"1px solid #eee",
+            overflowX:"auto",
+          }}
+        >
+          {tabs.map(([key,label])=>(
+            <button
+              key={key}
+              onClick={()=>setTab(key)}
+              style={{
+                padding:"8px 16px",
+                border:"none",
+                background:"none",
+                cursor:"pointer",
+                fontWeight:
+                  tab===key
+                    ?"600"
+                    :"400",
+                borderBottom:
+                  tab===key
+                    ?"2px solid #000"
+                    :"none",
+                marginBottom:-1,
+                whiteSpace:"nowrap",
+              }}
+            >
+              {label}
+            </button>
           ))}
-        </tr></thead>
-        <tbody>{prospects.map(p=>(
-          <tr key={p.id} style={{borderBottom:"1px solid #eee"}}>
-            <td style={{padding:"8px 10px"}}><b>{p.first_name} {p.last_name}</b></td>
-            <td style={{padding:"8px 10px"}}><a href={`mailto:${p.email}`}>{p.email}</a></td>
-            <td style={{padding:"8px 10px"}}>{p.company||"—"}</td>
-            <td style={{padding:"8px 10px"}}>{p.event_type||"—"}</td>
-            <td style={{padding:"8px 10px"}}>
-              <select value={p.status} disabled={upd===p.id}
-                onChange={e=>changeStatus(p.id,e.target.value)}
-                style={{padding:"3px 6px",borderRadius:4,background:SCOLORS[p.status]||"#fff",border:"1px solid #ddd"}}>
-                {Object.entries(SLABELS).map(([v,l])=><option key={v} value={v}>{l}</option>)}
-              </select>
-            </td>
-            <td style={{padding:"8px 10px"}}>
-              {p.status!=="ARCHIVED"&&(
-                <button onClick={()=>doConvert(p.id)}
-                  style={{fontSize:12,padding:"3px 8px",border:"1px solid #ddd",borderRadius:4,cursor:"pointer",background:"#e8f5e9"}}>
-                  → Client
-                </button>
-              )}
-            </td>
-            <td style={{padding:"8px 10px",color:"#888"}}>{new Date(p.created_at).toLocaleDateString("fr-FR")}</td>
-          </tr>
-        ))}</tbody>
-      </table>
-    </div>
-  </div>)
+        </div>
+
+        {tab==="requests"&&(
+          <RequestsTab/>
+        )}
+
+        {tab==="messages"&&(
+          <MessagesTab/>
+        )}
+
+        {tab==="quotes"&&(
+          <QuotesTab/>
+        )}
+
+        {tab==="reviews"&&(
+          <ReviewsAdminTab/>
+        )}
+
+        {tab==="users"&&(
+          <UsersRightsTab
+            currentUser={user}
+          />
+        )}
+
+        {tab==="notes"&&(
+          <NotesTab/>
+        )}
+
+        {tab==="home"&&(
+          <>
+            <HomeHeroAdmin/>
+            <HomePhotosAdminTab/>
+          </>
+        )}
+      </main>
+    </>
+  )
 }
 
-function QuotesTab(){
-  const[quotes,setQuotes]=useState([]); const[loading,setLoading]=useState(true); const[show,setShow]=useState(false)
-  useEffect(()=>{getQuotes().then(d=>setQuotes(d.results||d)).finally(()=>setLoading(false))},[])
-  return(<div>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-      <h2>Devis ({quotes.length})</h2>
-      <button className="btn" onClick={()=>setShow(s=>!s)}>{show?"Annuler":"+ Nouveau devis"}</button>
-    </div>
-    {show&&<CreateQuoteForm onSuccess={q=>{setQuotes(p=>[q,...p]);setShow(false)}}/>}
-    {loading?<p>Chargement...</p>:quotes.map(q=>(
-      <div key={q.id} style={{border:"1px solid #eee",borderRadius:8,padding:14,marginBottom:8,background:"#fff"}}>
-        <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
-          <b>Devis #{q.id}</b>
-          <span style={{padding:"2px 10px",borderRadius:20,fontSize:12,background:{DRAFT:"#f5f5f5",SENT:"#cce5ff",ACCEPTED:"#d4edda",REFUSED:"#f8d7da",CHANGE_REQUESTED:"#fff3cd"}[q.status]||"#eee"}}>
-            {QLABELS[q.status]||q.status}
-          </span>
-        </div>
-        <div style={{fontSize:13,color:"#555"}}>HT: {q.total_ht}€ | TVA: {q.total_tva}€ | <b>TTC: {q.total_ttc}€</b></div>
-        {q.items?.map(i=><div key={i.id} style={{fontSize:12,color:"#888",marginTop:2}}>• {i.label} — {i.amount_ht}€</div>)}
-        <div style={{marginTop:8,display:"flex",gap:6}}>
-          <a href={`${import.meta.env.VITE_API_URL||"http://localhost:8000"}/api/quotes/${q.id}/pdf/`}
-            target="_blank" rel="noreferrer"
-            style={{fontSize:12,padding:"3px 10px",border:"1px solid #ddd",borderRadius:4,textDecoration:"none",color:"#333"}}>
-            Télécharger PDF
-          </a>
-        </div>
-      </div>
-    ))}
-  </div>)
-}
 
-function CreateQuoteForm({onSuccess}){
-  const[form,setForm]=useState({prospect:"",tva_rate:"0.20"})
-  const[items,setItems]=useState([{label:"",amount_ht:""}])
-  const[loading,setLoading]=useState(false)
-  const totalHT=items.reduce((s,i)=>s+(parseFloat(i.amount_ht)||0),0)
-  const totalTVA=totalHT*parseFloat(form.tva_rate||0)
-  function updItem(idx,k,v){setItems(p=>p.map((x,i)=>i===idx?{...x,[k]:v}:x))}
-  async function submit(e){
-    e.preventDefault(); setLoading(true)
+function RequestsTab(){
+  const[requests,setRequests]=useState([])
+  const[loading,setLoading]=useState(true)
+  const[updating,setUpdating]=useState(null)
+  const[selected,setSelected]=useState(null)
+  const[error,setError]=useState("")
+
+  useEffect(()=>{
+    getProspects()
+      .then(data=>setRequests(list(data)))
+      .catch(err=>setError(formatError(err)))
+      .finally(()=>setLoading(false))
+  },[])
+
+  async function changeStatus(id,status){
+    setUpdating(id)
+    setError("")
+
     try{
-      const q=await createQuote({prospect:parseInt(form.prospect),tva_rate:form.tva_rate,items:items.filter(i=>i.label&&i.amount_ht)})
-      onSuccess(q)
-    }catch(err){alert(JSON.stringify(err))}
-    finally{setLoading(false)}
+      const updated=
+        await updateProspectStatus(
+          id,
+          status
+        )
+
+      setRequests(previous=>
+        previous.map(request=>
+          request.id===id
+            ?{
+                ...request,
+                status:
+                  updated?.status
+                  ||status,
+              }
+            :request
+        )
+      )
+    }catch(err){
+      setError(formatError(err))
+    }finally{
+      setUpdating(null)
+    }
   }
-  return(<div style={{background:"#f9f9f9",border:"1px solid #ddd",borderRadius:8,padding:16,marginBottom:16}}>
-    <h3 style={{marginTop:0,marginBottom:12}}>Nouveau devis</h3>
-    <form onSubmit={submit}>
-      <div style={{display:"flex",gap:12,marginBottom:10}}>
-        <div style={{flex:1}}><label style={{display:"block",fontSize:13,marginBottom:3}}>ID du prospect *</label>
-          <input type="number" value={form.prospect} onChange={e=>setForm(p=>({...p,prospect:e.target.value}))}
-            style={{width:"100%",padding:"6px 8px",border:"1px solid #ddd",borderRadius:4}}/>
-        </div>
-        <div><label style={{display:"block",fontSize:13,marginBottom:3}}>TVA</label>
-          <select value={form.tva_rate} onChange={e=>setForm(p=>({...p,tva_rate:e.target.value}))} style={{padding:"6px 8px",border:"1px solid #ddd",borderRadius:4}}>
-            <option value="0.20">20%</option><option value="0.10">10%</option><option value="0.055">5,5%</option><option value="0.00">0%</option>
-          </select>
-        </div>
-      </div>
-      {items.map((item,idx)=>(
-        <div key={idx} style={{display:"flex",gap:8,marginBottom:6}}>
-          <input value={item.label} onChange={e=>updItem(idx,"label",e.target.value)} placeholder="Libellé prestation"
-            style={{flex:2,padding:"6px 8px",border:"1px solid #ddd",borderRadius:4}}/>
-          <input type="number" value={item.amount_ht} onChange={e=>updItem(idx,"amount_ht",e.target.value)} placeholder="Montant HT €"
-            style={{flex:1,padding:"6px 8px",border:"1px solid #ddd",borderRadius:4}}/>
-          {items.length>1&&<button type="button" onClick={()=>setItems(p=>p.filter((_,i)=>i!==idx))}
-            style={{padding:"6px 10px",background:"#f8d7da",border:"none",borderRadius:4,cursor:"pointer"}}>✕</button>}
+
+  if(loading){
+    return <p>Chargement...</p>
+  }
+
+  return(
+    <div>
+      <h2 style={{marginBottom:12}}>
+        Demandes ({requests.length})
+      </h2>
+
+      {error&&(
+        <p role="alert">
+          {error}
+        </p>
+      )}
+
+      {requests.length===0&&(
+        <p>
+          Aucune demande.
+        </p>
+      )}
+
+      {requests.map(request=>(
+        <div
+          key={request.id}
+          style={{
+            border:"1px solid #eee",
+            borderRadius:8,
+            padding:14,
+            marginBottom:10,
+            background:"#fff",
+          }}
+        >
+          <div
+            style={{
+              display:"flex",
+              justifyContent:"space-between",
+              gap:12,
+            }}
+          >
+            <div>
+              <strong>
+                {request.first_name}{" "}
+                {request.last_name}
+              </strong>
+
+              <div
+                style={{
+                  fontSize:13,
+                  color:"#666",
+                  marginTop:4,
+                }}
+              >
+                {request.email}
+
+                {request.phone
+                  ?` — ${request.phone}`
+                  :""}
+              </div>
+            </div>
+
+            <select
+              aria-label={
+                `Statut de ${request.first_name} ${request.last_name}`
+              }
+              value={request.status}
+              disabled={
+                updating===request.id
+              }
+              onChange={event=>
+                changeStatus(
+                  request.id,
+                  event.target.value
+                )
+              }
+              style={{
+                padding:"4px 6px",
+                borderRadius:4,
+                border:"1px solid #ddd",
+                background:
+                  SCOLORS[request.status]
+                  ||"#fff",
+              }}
+            >
+              {Object.entries(
+                SLABELS
+              ).map(([value,label])=>(
+                <option
+                  key={value}
+                  value={value}
+                >
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div
+            style={{
+              marginTop:10,
+              fontSize:13,
+            }}
+          >
+            {request.company&&(
+              <div>
+                Société : {request.company}
+              </div>
+            )}
+
+            {request.city&&(
+              <div>
+                Ville : {request.city}
+              </div>
+            )}
+
+            {request.event_type&&(
+              <div>
+                Événement : {request.event_type}
+              </div>
+            )}
+
+            {request.desired_date&&(
+              <div>
+                Date souhaitée :{" "}
+                {request.desired_date}
+              </div>
+            )}
+
+            {request.participant_count!=null&&(
+              <div>
+                {request.participant_count} participants
+              </div>
+            )}
+
+            {request.message&&(
+              <p
+                style={{
+                  margin:"8px 0 0",
+                  whiteSpace:"pre-wrap",
+                }}
+              >
+                {request.message}
+              </p>
+            )}
+          </div>
+
+          <div style={{marginTop:10}}>
+            {selected!==request.id&&(
+              <button
+                type="button"
+                onClick={()=>
+                  setSelected(
+                    request.id
+                  )
+                }
+              >
+                Créer un devis
+              </button>
+            )}
+          </div>
+
+          {selected===request.id&&(
+            <div style={{marginTop:12}}>
+              <CreateQuoteForm
+                requests={requests}
+                initialRequestId={
+                  request.id
+                }
+                requestName={
+                  `${request.first_name} ${request.last_name}`
+                }
+                onSuccess={()=>
+                  setSelected(null)
+                }
+                onCancel={()=>
+                  setSelected(null)
+                }
+              />
+            </div>
+          )}
         </div>
       ))}
-      <button type="button" onClick={()=>setItems(p=>[...p,{label:"",amount_ht:""}])}
-        style={{fontSize:12,padding:"4px 10px",border:"1px solid #ddd",borderRadius:4,cursor:"pointer",background:"#f5f5f5",marginBottom:12}}>
-        + Ajouter prestation
-      </button>
-      <div style={{background:"#fff",border:"1px solid #ddd",borderRadius:6,padding:12,marginBottom:12,fontSize:13}}>
-        <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>Total HT : <b>{totalHT.toFixed(2)} €</b></div>
-        <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>TVA : <b>{totalTVA.toFixed(2)} €</b></div>
-        <div style={{display:"flex",justifyContent:"space-between",fontWeight:"bold",fontSize:15}}>Total TTC : <b>{(totalHT+totalTVA).toFixed(2)} €</b></div>
-      </div>
-      <button type="submit" className="btn" disabled={loading}>{loading?"Création...":"Créer le devis"}</button>
-    </form>
-  </div>)
+    </div>
+  )
 }
+
+
+function MessagesTab(){
+  const[messages,setMessages]=useState([])
+  const[loading,setLoading]=useState(true)
+  const[busy,setBusy]=useState(null)
+  const[error,setError]=useState("")
+
+  useEffect(()=>{
+    getContactMessages()
+      .then(data=>
+        setMessages(
+          list(data)
+        )
+      )
+      .catch(err=>
+        setError(
+          formatError(err)
+        )
+      )
+      .finally(()=>
+        setLoading(false)
+      )
+  },[])
+
+  async function setStatus(
+    id,
+    status
+  ){
+    setBusy(id)
+    setError("")
+
+    try{
+      const updated=
+        await updateContactMessage(
+          id,
+          {status}
+        )
+
+      setMessages(previous=>
+        previous.map(message=>
+          message.id===id
+            ?{
+                ...message,
+                status:
+                  updated?.status
+                  ||status,
+              }
+            :message
+        )
+      )
+    }catch(err){
+      setError(
+        formatError(err)
+      )
+    }finally{
+      setBusy(null)
+    }
+  }
+
+  if(loading){
+    return <p>Chargement...</p>
+  }
+
+  return(
+    <div>
+      <h2>
+        Messages ({messages.length})
+      </h2>
+
+      {error&&(
+        <p role="alert">
+          {error}
+        </p>
+      )}
+
+      {messages.length===0&&(
+        <p>
+          Aucun message.
+        </p>
+      )}
+
+      {messages.map(message=>(
+        <div
+          key={message.id}
+          style={{
+            border:"1px solid #eee",
+            borderRadius:8,
+            padding:14,
+            marginBottom:10,
+            background:"#fff",
+          }}
+        >
+          <div
+            style={{
+              display:"flex",
+              justifyContent:"space-between",
+              gap:12,
+            }}
+          >
+            <strong>
+              {message.name}
+            </strong>
+
+            <span>
+              {
+                MLABELS[
+                  message.status
+                ]
+                ||message.status
+              }
+            </span>
+          </div>
+
+          <div
+            style={{
+              fontSize:13,
+              color:"#666",
+              marginTop:4,
+            }}
+          >
+            {message.email}
+          </div>
+
+          {message.subject&&(
+            <h3
+              style={{
+                marginBottom:6,
+              }}
+            >
+              {message.subject}
+            </h3>
+          )}
+
+          <p
+            style={{
+              whiteSpace:"pre-wrap",
+            }}
+          >
+            {message.message}
+          </p>
+
+          <div
+            style={{
+              display:"flex",
+              gap:8,
+              flexWrap:"wrap",
+            }}
+          >
+            {message.status==="NEW"&&(
+              <button
+                type="button"
+                disabled={
+                  busy===message.id
+                }
+                onClick={()=>
+                  setStatus(
+                    message.id,
+                    "READ"
+                  )
+                }
+              >
+                Marquer comme lu
+              </button>
+            )}
+
+            {message.status!=="REPLIED"
+              &&message.status!=="ARCHIVED"
+              &&(
+                <button
+                  type="button"
+                  disabled={
+                    busy===message.id
+                  }
+                  onClick={()=>
+                    setStatus(
+                      message.id,
+                      "REPLIED"
+                    )
+                  }
+                >
+                  Marquer répondu
+                </button>
+              )}
+
+            {message.status!=="ARCHIVED"&&(
+              <button
+                type="button"
+                disabled={
+                  busy===message.id
+                }
+                onClick={()=>
+                  setStatus(
+                    message.id,
+                    "ARCHIVED"
+                  )
+                }
+              >
+                Archiver
+              </button>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+
+function QuotesTab(){
+  const[quotes,setQuotes]=useState([])
+  const[requests,setRequests]=useState([])
+  const[loading,setLoading]=useState(true)
+  const[show,setShow]=useState(false)
+  const[sending,setSending]=useState(null)
+  const[error,setError]=useState("")
+  const[success,setSuccess]=useState("")
+
+  useEffect(()=>{
+    Promise.all([
+      getQuotes(),
+      getProspects(),
+    ])
+      .then(([quoteData,requestData])=>{
+        setQuotes(list(quoteData))
+        setRequests(list(requestData))
+      })
+      .catch(err=>
+        setError(
+          formatError(err)
+        )
+      )
+      .finally(()=>
+        setLoading(false)
+      )
+  },[])
+
+  async function handleSend(
+    quote
+  ){
+    setSending(quote.id)
+    setError("")
+    setSuccess("")
+
+    try{
+      const result=
+        await sendQuote(
+          quote.id
+        )
+
+      setQuotes(previous=>
+        previous.map(current=>
+          current.id===quote.id
+            ?{
+                ...current,
+                status:
+                  result?.status
+                  ||"SENT",
+                client:
+                  result?.client_id
+                  ??result?.client
+                  ??current.client,
+              }
+            :current
+        )
+      )
+
+      setSuccess(
+        `Devis #${quote.id} envoyé.`
+      )
+    }catch(err){
+      setError(
+        formatError(err)
+      )
+    }finally{
+      setSending(null)
+    }
+  }
+
+  return(
+    <div>
+      <div
+        style={{
+          display:"flex",
+          justifyContent:"space-between",
+          alignItems:"center",
+          marginBottom:12,
+        }}
+      >
+        <h2>
+          Devis ({quotes.length})
+        </h2>
+
+        <button
+          className="btn"
+          onClick={()=>
+            setShow(
+              previous=>!previous
+            )
+          }
+        >
+          {show
+            ?"Annuler"
+            :"+ Nouveau devis"}
+        </button>
+      </div>
+
+      {error&&(
+        <p role="alert">
+          {error}
+        </p>
+      )}
+
+      {success&&(
+        <p>
+          {success}
+        </p>
+      )}
+
+      {show&&(
+        <CreateQuoteForm
+          requests={requests}
+          onSuccess={quote=>{
+            setQuotes(previous=>[
+              quote,
+              ...previous,
+            ])
+            setShow(false)
+          }}
+          onCancel={()=>
+            setShow(false)
+          }
+        />
+      )}
+
+      {loading
+        ?(
+          <p>
+            Chargement...
+          </p>
+        )
+        :quotes.map(quote=>(
+          <div
+            key={quote.id}
+            style={{
+              border:"1px solid #eee",
+              borderRadius:8,
+              padding:14,
+              marginBottom:8,
+              background:"#fff",
+            }}
+          >
+            <div
+              style={{
+                display:"flex",
+                justifyContent:"space-between",
+                marginBottom:6,
+              }}
+            >
+              <b>
+                Devis #{quote.id}
+              </b>
+
+              <span
+                style={{
+                  padding:"2px 10px",
+                  borderRadius:20,
+                  fontSize:12,
+                  background:{
+                    DRAFT:"#f5f5f5",
+                    SENT:"#cce5ff",
+                    ACCEPTED:"#d4edda",
+                    REFUSED:"#f8d7da",
+                    CHANGE_REQUESTED:"#fff3cd",
+                  }[quote.status]
+                  ||"#eee",
+                }}
+              >
+                {QLABELS[quote.status]
+                  ||quote.status}
+              </span>
+            </div>
+
+            <div
+              style={{
+                fontSize:13,
+                color:"#555",
+              }}
+            >
+              HT: {quote.total_ht}€
+              {" | "}
+              TVA: {quote.total_tva}€
+              {" | "}
+              <b>
+                TTC: {quote.total_ttc}€
+              </b>
+            </div>
+
+            {quote.items?.map(item=>(
+              <div
+                key={
+                  item.id
+                  ??`${item.label}-${item.amount_ht}`
+                }
+                style={{
+                  fontSize:12,
+                  color:"#888",
+                  marginTop:2,
+                }}
+              >
+                • {item.label}
+                {" — "}
+                {item.amount_ht}€
+              </div>
+            ))}
+
+            <div
+              style={{
+                marginTop:8,
+                display:"flex",
+                gap:8,
+                flexWrap:"wrap",
+              }}
+            >
+              <a
+                href={
+                  `${API}/api/quotes/${quote.id}/pdf/`
+                }
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  fontSize:12,
+                  padding:"3px 10px",
+                  border:"1px solid #ddd",
+                  borderRadius:4,
+                  textDecoration:"none",
+                  color:"#333",
+                }}
+              >
+                Télécharger PDF
+              </a>
+
+              {quote.status==="DRAFT"&&(
+                <button
+                  type="button"
+                  disabled={
+                    sending===quote.id
+                  }
+                  onClick={()=>
+                    handleSend(
+                      quote
+                    )
+                  }
+                >
+                  {sending===quote.id
+                    ?"Envoi..."
+                    :"Envoyer le devis"}
+                </button>
+              )}
+            </div>
+          </div>
+        ))
+      }
+    </div>
+  )
+}
+
+
+function CreateQuoteForm({
+  requests=[],
+  initialRequestId="",
+  requestName="",
+  onSuccess,
+  onCancel,
+}){
+  const[form,setForm]=useState({
+    prospect:
+      initialRequestId
+        ?String(initialRequestId)
+        :"",
+    tva_rate:"0.20",
+  })
+
+  const[items,setItems]=useState([
+    {
+      label:"",
+      amount_ht:"",
+    },
+  ])
+
+  const[loading,setLoading]=useState(false)
+
+  const totalHT=
+    items.reduce(
+      (sum,item)=>
+        sum
+        +(parseFloat(item.amount_ht)||0),
+      0
+    )
+
+  const totalTVA=
+    totalHT
+    *parseFloat(
+      form.tva_rate||0
+    )
+
+  function updItem(
+    index,
+    key,
+    value
+  ){
+    setItems(previous=>
+      previous.map((item,currentIndex)=>
+        currentIndex===index
+          ?{
+              ...item,
+              [key]:value,
+            }
+          :item
+      )
+    )
+  }
+
+  async function submit(event){
+    event.preventDefault()
+    setLoading(true)
+
+    const validItems=
+      items
+        .filter(item=>
+          item.label.trim()
+          &&item.amount_ht!==""
+        )
+        .map(item=>({
+          label:
+            item.label.trim(),
+          amount_ht:
+            item.amount_ht,
+        }))
+
+    try{
+      const quote=
+        await createQuote({
+          prospect:
+            Number(
+              form.prospect
+            ),
+          tva_rate:
+            form.tva_rate,
+          items:
+            validItems,
+        })
+
+      onSuccess?.(
+        quote
+      )
+    }catch(err){
+      alert(
+        formatError(err)
+      )
+    }finally{
+      setLoading(false)
+    }
+  }
+
+  return(
+    <div
+      style={{
+        background:"#f9f9f9",
+        border:"1px solid #ddd",
+        borderRadius:8,
+        padding:16,
+        marginBottom:16,
+      }}
+    >
+      <h3
+        style={{
+          marginTop:0,
+          marginBottom:12,
+        }}
+      >
+        {requestName
+          ? `Nouveau devis pour ${requestName}`
+          : "Nouveau devis"}
+      </h3>
+
+      <form onSubmit={submit}>
+        <div
+          style={{
+            display:"flex",
+            gap:12,
+            marginBottom:10,
+          }}
+        >
+          <div style={{flex:1}}>
+            <label
+              htmlFor="quote-request"
+              style={{
+                display:"block",
+                fontSize:13,
+                marginBottom:3,
+              }}
+            >
+              Demande
+            </label>
+
+            <select
+              id="quote-request"
+              required
+              value={
+                form.prospect
+              }
+              onChange={event=>
+                setForm(previous=>({
+                  ...previous,
+                  prospect:
+                    event.target.value,
+                }))
+              }
+              style={{
+                width:"100%",
+                padding:"6px 8px",
+                border:"1px solid #ddd",
+                borderRadius:4,
+              }}
+            >
+              <option value="">
+                Sélectionner une demande
+              </option>
+
+              {requests
+                .filter(request=>
+                  request.status
+                  !=="ARCHIVED"
+                )
+                .map(request=>(
+                  <option
+                    key={request.id}
+                    value={request.id}
+                  >
+                    {request.first_name}{" "}
+                    {request.last_name}
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          <div>
+            <label
+              htmlFor="quote-vat"
+              style={{
+                display:"block",
+                fontSize:13,
+                marginBottom:3,
+              }}
+            >
+              TVA
+            </label>
+
+            <select
+              id="quote-vat"
+              value={form.tva_rate}
+              onChange={event=>
+                setForm(previous=>({
+                  ...previous,
+                  tva_rate:
+                    event.target.value,
+                }))
+              }
+              style={{
+                padding:"6px 8px",
+                border:"1px solid #ddd",
+                borderRadius:4,
+              }}
+            >
+              <option value="0.20">
+                20%
+              </option>
+
+              <option value="0.10">
+                10%
+              </option>
+
+              <option value="0.055">
+                5,5%
+              </option>
+
+              <option value="0.00">
+                0%
+              </option>
+            </select>
+          </div>
+        </div>
+
+        {items.map((item,index)=>(
+          <div
+            key={index}
+            style={{
+              display:"flex",
+              gap:8,
+              marginBottom:6,
+            }}
+          >
+            <input
+              aria-label="Libellé prestation"
+              value={item.label}
+              onChange={event=>
+                updItem(
+                  index,
+                  "label",
+                  event.target.value
+                )
+              }
+              placeholder="Libellé prestation"
+              style={{
+                flex:2,
+                padding:"6px 8px",
+                border:"1px solid #ddd",
+                borderRadius:4,
+              }}
+            />
+
+            <input
+              aria-label="Montant HT"
+              type="number"
+              value={item.amount_ht}
+              onChange={event=>
+                updItem(
+                  index,
+                  "amount_ht",
+                  event.target.value
+                )
+              }
+              placeholder="Montant HT €"
+              style={{
+                flex:1,
+                padding:"6px 8px",
+                border:"1px solid #ddd",
+                borderRadius:4,
+              }}
+            />
+
+            {items.length>1&&(
+              <button
+                type="button"
+                onClick={()=>
+                  setItems(previous=>
+                    previous.filter(
+                      (_,currentIndex)=>
+                        currentIndex!==index
+                    )
+                  )
+                }
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        ))}
+
+        <button
+          type="button"
+          onClick={()=>
+            setItems(previous=>[
+              ...previous,
+              {
+                label:"",
+                amount_ht:"",
+              },
+            ])
+          }
+        >
+          + Ajouter prestation
+        </button>
+
+        <div
+          style={{
+            background:"#fff",
+            border:"1px solid #ddd",
+            borderRadius:6,
+            padding:12,
+            margin:"12px 0",
+            fontSize:13,
+          }}
+        >
+          <div>
+            Total HT :{" "}
+            <b>
+              {totalHT.toFixed(2)} €
+            </b>
+          </div>
+
+          <div>
+            TVA :{" "}
+            <b>
+              {totalTVA.toFixed(2)} €
+            </b>
+          </div>
+
+          <div>
+            Total TTC :{" "}
+            <b>
+              {(totalHT+totalTVA).toFixed(2)} €
+            </b>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display:"flex",
+            gap:8,
+          }}
+        >
+          <button
+            type="submit"
+            className="btn"
+            disabled={loading}
+          >
+            {loading
+              ?"Création..."
+              :"Créer le devis"}
+          </button>
+
+          {onCancel&&(
+            <button
+              type="button"
+              onClick={onCancel}
+            >
+              Annuler
+            </button>
+          )}
+        </div>
+      </form>
+    </div>
+  )
+}
+
 
 function ReviewsAdminTab() {
   const [reviews, setReviews] = useState([])

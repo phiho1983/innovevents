@@ -1,12 +1,6 @@
-// @vitest-environment jsdom
-
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+/**
+ * @vitest-environment jsdom
+ */
 
 import {
   afterEach,
@@ -16,6 +10,14 @@ import {
   it,
   vi,
 } from "vitest";
+
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 
 import EmployeePage
   from "./EmployeePage";
@@ -27,6 +29,7 @@ import {
 import {
   createQuote,
   getQuotes,
+  sendQuote,
 } from "../api/quotes";
 
 
@@ -34,7 +37,9 @@ vi.mock(
   "../components/Navbar",
   () => ({
     default: () => (
-      <div>Navbar</div>
+      <div>
+        NAVBAR
+      </div>
     ),
   })
 );
@@ -52,6 +57,15 @@ vi.mock(
           "EMPLOYEE",
       },
     }),
+  })
+);
+
+
+vi.mock(
+  "../api/client",
+  () => ({
+    apiFetch:
+      vi.fn(),
   })
 );
 
@@ -85,7 +99,7 @@ vi.mock(
 
 const REQUESTS = [
   {
-    id: 1,
+    id: 5,
 
     first_name:
       "Claire",
@@ -103,48 +117,49 @@ const REQUESTS = [
       "Séminaire",
 
     status:
-      "QUALIFIED",
+      "TO_CONTACT",
 
     created_at:
-      "2026-08-29T10:00:00Z",
+      "2026-09-03T10:00:00Z",
   },
 ];
 
 
 const QUOTES = [
   {
-    id: 42,
+    id: 12,
 
     prospect:
-      1,
+      5,
+
+    client:
+      null,
 
     status:
-      "SENT",
+      "DRAFT",
 
     tva_rate:
       "0.20",
 
     total_ht:
-      "2000.00",
+      "1000.00",
 
     total_tva:
-      "400.00",
+      "200.00",
 
     total_ttc:
-      "2400.00",
-
-    created_at:
-      "2026-08-29T11:00:00Z",
+      "1200.00",
 
     items: [
       {
-        id: 1,
+        id:
+          1,
 
         label:
-          "Organisation événement",
+          "Organisation",
 
         amount_ht:
-          "2000.00",
+          "1000.00",
       },
     ],
   },
@@ -152,7 +167,7 @@ const QUOTES = [
 
 
 describe(
-  "EmployeePage - gestion des devis",
+  "EmployeePage - workflow commercial",
   () => {
     beforeEach(() => {
       vi.clearAllMocks();
@@ -170,6 +185,66 @@ describe(
           results:
             QUOTES,
         });
+
+
+      createQuote
+        .mockResolvedValue({
+          id:
+            99,
+
+          prospect:
+            5,
+
+          status:
+            "DRAFT",
+
+          tva_rate:
+            "0.20",
+
+          total_ht:
+            "500.00",
+
+          total_tva:
+            "100.00",
+
+          total_ttc:
+            "600.00",
+
+          items: [
+            {
+              id:
+                2,
+
+              label:
+                "Sonorisation",
+
+              amount_ht:
+                "500.00",
+            },
+          ],
+        });
+
+
+      sendQuote
+        .mockResolvedValue({
+          quote_id:
+            12,
+
+          status:
+            "SENT",
+
+          client_id:
+            33,
+
+          client_created:
+            true,
+
+          activation_required:
+            true,
+
+          activation_email_sent:
+            true,
+        });
     });
 
 
@@ -180,108 +255,73 @@ describe(
     });
 
 
-    async function openQuotesTab() {
-      render(
-        <EmployeePage />
-      );
-
-
-      const quotesTab =
-        await screen.findByRole(
-          "button",
-          {
-            name:
-              "Devis",
-          }
-        );
-
-
-      fireEvent.click(
-        quotesTab
-      );
-    }
-
-
     it(
-      "affiche les devis accessibles a l employe",
+      "utilise Demandes au lieu de Prospects et ne propose plus la conversion manuelle",
       async () => {
-        await openQuotesTab();
-
-
-        await waitFor(
-          () => {
-            expect(
-              getQuotes
-            ).toHaveBeenCalled();
-          }
+        render(
+          <EmployeePage />
         );
+
+
+        expect(
+          await screen.findByRole(
+            "button",
+            {
+              name:
+                "Demandes",
+            }
+          )
+        ).toBeTruthy();
+
+
+        expect(
+          screen.queryByRole(
+            "button",
+            {
+              name:
+                "Prospects",
+            }
+          )
+        ).toBeNull();
 
 
         expect(
           await screen.findByText(
-            "Devis #42"
+            "Claire Martin"
           )
         ).toBeTruthy();
 
 
         expect(
-          screen.getByText(
-            "Envoyé"
+          screen.queryByRole(
+            "button",
+            {
+              name:
+                /convertir.*client/i,
+            }
           )
-        ).toBeTruthy();
-
-
-        expect(
-          screen.getByText(
-            /2400\.00 €/
-          )
-        ).toBeTruthy();
+        ).toBeNull();
       }
     );
 
 
     it(
-      "permet a l employe de creer un devis pour une demande",
+      "cree un devis en selectionnant une demande et non un ID manuel",
       async () => {
-        createQuote
-          .mockResolvedValue({
-            id:
-              99,
-
-            prospect:
-              1,
-
-            status:
-              "DRAFT",
-
-            tva_rate:
-              "0.20",
-
-            total_ht:
-              "500.00",
-
-            total_tva:
-              "100.00",
-
-            total_ttc:
-              "600.00",
-
-            items: [
-              {
-                id:
-                  10,
-
-                label:
-                  "Sonorisation",
-
-                amount_ht:
-                  "500.00",
-              },
-            ],
-          });
+        render(
+          <EmployeePage />
+        );
 
 
-        await openQuotesTab();
+        fireEvent.click(
+          screen.getByRole(
+            "button",
+            {
+              name:
+                "Devis",
+            }
+          )
+        );
 
 
         fireEvent.click(
@@ -295,6 +335,13 @@ describe(
         );
 
 
+        expect(
+          screen.queryByLabelText(
+            "Prospect"
+          )
+        ).toBeNull();
+
+
         fireEvent.change(
           screen.getByLabelText(
             "Demande"
@@ -302,7 +349,7 @@ describe(
           {
             target: {
               value:
-                "1",
+                "5",
             },
           }
         );
@@ -351,7 +398,7 @@ describe(
               createQuote
             ).toHaveBeenCalledWith({
               prospect:
-                1,
+                5,
 
               tva_rate:
                 "0.20",
@@ -368,44 +415,15 @@ describe(
             });
           }
         );
-
-
-        expect(
-          await screen.findByText(
-            "Devis #99"
-          )
-        ).toBeTruthy();
       }
     );
 
 
     it(
-      "calcule les totaux du nouveau devis avant creation",
+      "permet a l employe d envoyer un devis brouillon",
       async () => {
-        await openQuotesTab();
-
-
-        fireEvent.click(
-          await screen.findByRole(
-            "button",
-            {
-              name:
-                /nouveau devis/i,
-            }
-          )
-        );
-
-
-        fireEvent.change(
-          screen.getByLabelText(
-            "Montant HT"
-          ),
-          {
-            target: {
-              value:
-                "1000",
-            },
-          }
+        render(
+          <EmployeePage />
         );
 
 
@@ -414,54 +432,57 @@ describe(
             "button",
             {
               name:
-                /ajouter prestation/i,
+                "Devis",
             }
           )
         );
 
 
-        const amountInputs =
-          screen.getAllByLabelText(
-            "Montant HT"
-          );
+        expect(
+          await screen.findByText(
+            "Devis #12"
+          )
+        ).toBeTruthy();
 
 
-        fireEvent.change(
-          amountInputs[1],
-          {
-            target: {
-              value:
-                "500",
-            },
+        fireEvent.click(
+          screen.getByRole(
+            "button",
+            {
+              name:
+                "Envoyer le devis",
+            }
+          )
+        );
+
+
+        await waitFor(
+          () => {
+            expect(
+              sendQuote
+            ).toHaveBeenCalledWith(
+              12
+            );
           }
         );
 
 
         expect(
-          screen.getByText(
-            /Total HT :/
-          ).textContent
-        ).toContain(
-          "1500.00 €"
-        );
+          await screen.findByText(
+            "Envoyé"
+          )
+        ).toBeTruthy();
 
 
         expect(
-          screen.getByText(
-            /^TVA :/
-          ).textContent
-        ).toContain(
-          "300.00 €"
-        );
-
-
-        expect(
-          screen.getByText(
-            /Total TTC :/
-          ).textContent
-        ).toContain(
-          "1800.00 €"
-        );
+          screen.queryByRole(
+            "button",
+            {
+              name:
+                "Envoyer le devis",
+            }
+          )
+        ).toBeNull();
       }
     );
   }

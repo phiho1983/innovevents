@@ -9,15 +9,20 @@ from events.home_hero_views import (
     HomeHeroViewSet,
 )
 
-from bookings.views import BookingViewSet
-
-from crm.views import (
-    ProspectViewSet,
-    QuoteViewSet,
-    NoteViewSet,
+from bookings.views import (
+    BookingViewSet,
 )
 
-from reviews.views import ReviewViewSet
+from crm.views import (
+    ContactMessageViewSet,
+    NoteViewSet,
+    ProspectViewSet,
+    QuoteViewSet,
+)
+
+from reviews.views import (
+    ReviewViewSet,
+)
 
 from accounts.views import (
     UserAdminRightsViewSet,
@@ -55,6 +60,12 @@ router.register(
     "prospects",
     ProspectViewSet,
     basename="prospect",
+)
+
+router.register(
+    "contact-messages",
+    ContactMessageViewSet,
+    basename="contact-message",
 )
 
 router.register(
