@@ -933,7 +933,7 @@ class UserAdminRightsViewSet(
     viewsets.ReadOnlyModelViewSet
 ):
     """
-    Consultation et gestion des rôles ADMIN.
+    Consultation et gestion des comptes utilisateurs.
 
     Seuls les ADMIN métier et les superusers
     peuvent accéder à ces opérations.
@@ -941,6 +941,10 @@ class UserAdminRightsViewSet(
     User.role représente les droits métier.
 
     is_staff reste réservé à l'accès au Django Admin.
+
+    La suppression d'un utilisateur est logique :
+    le compte est anonymisé et désactivé afin de
+    conserver l'historique métier associé.
     """
 
     serializer_class = UserRightsSerializer
@@ -950,8 +954,10 @@ class UserAdminRightsViewSet(
     ]
 
     def get_queryset(self):
-        return User.objects.all().order_by(
-            "username"
+        return (
+            User.objects
+            .filter(is_active=True)
+            .order_by("username")
         )
 
     @action(
@@ -1132,4 +1138,90 @@ class UserAdminRightsViewSet(
         return Response(
             serializer.data,
             status=status.HTTP_200_OK,
+        )
+
+    def destroy(
+        self,
+        request,
+        *args,
+        **kwargs,
+    ):
+        target_user = self.get_object()
+
+        if (
+            target_user.id
+            == request.user.id
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Vous ne pouvez pas supprimer "
+                        "votre propre compte depuis "
+                        "le dashboard."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if target_user.is_superuser:
+            return Response(
+                {
+                    "detail": (
+                        "Un super admin Django "
+                        "doit être géré côté technique."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        target_user_id = target_user.id
+        previous_role = target_user.role
+
+        with transaction.atomic():
+            if hasattr(
+                target_user,
+                "client_profile",
+            ):
+                target_user.client_profile.delete()
+
+            target_user.username = (
+                f"deleted_user_{target_user_id}"
+            )
+
+            target_user.email = ""
+            target_user.first_name = ""
+            target_user.last_name = ""
+
+            target_user.is_active = False
+            target_user.email_verified = False
+            target_user.is_staff = False
+
+            target_user.set_unusable_password()
+
+            target_user.save(
+                update_fields=[
+                    "username",
+                    "email",
+                    "first_name",
+                    "last_name",
+                    "is_active",
+                    "email_verified",
+                    "is_staff",
+                    "password",
+                ]
+            )
+
+        log_action(
+            "UTILISATEUR_ANONYMISE",
+            request.user.id,
+            {
+                "target_user_id":
+                    target_user_id,
+                "previous_role":
+                    previous_role,
+            },
+        )
+
+        return Response(
+            status=status.HTTP_204_NO_CONTENT,
         )

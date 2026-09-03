@@ -381,8 +381,8 @@ function UsersRightsTab({currentUser}){
     const isPromotion=action==="promote-admin"
 
     const message=isPromotion
-      ? "Donner les droits admin à cet utilisateur ?"
-      : "Retirer les droits admin à cet utilisateur ?"
+      ?"Donner les droits admin à cet utilisateur ?"
+      :"Retirer les droits admin à cet utilisateur ?"
 
     if(!window.confirm(message)){
       return
@@ -393,10 +393,13 @@ function UsersRightsTab({currentUser}){
     setSuccess("")
 
     try{
-      const response=await fetch(`${API}/api/users-rights/${userId}/${action}/`,{
-        method:"PATCH",
-        headers:ah(),
-      })
+      const response=await fetch(
+        `${API}/api/users-rights/${userId}/${action}/`,
+        {
+          method:"PATCH",
+          headers:ah(),
+        }
+      )
 
       const data=await response.json().catch(()=>null)
 
@@ -405,13 +408,63 @@ function UsersRightsTab({currentUser}){
       }
 
       setUsers(previousUsers=>
-        previousUsers.map(user=>user.id===userId?data:user)
+        previousUsers.map(user=>
+          user.id===userId
+            ?data
+            :user
+        )
       )
 
       setSuccess(
         isPromotion
-          ? `Droits admin accordés à ${data.username}.`
-          : `Droits admin retirés à ${data.username}.`
+          ?`Droits admin accordés à ${data.username}.`
+          :`Droits admin retirés à ${data.username}.`
+      )
+    }catch(error){
+      setError(formatApiError(error))
+    }finally{
+      setBusy(null)
+    }
+  }
+
+  async function deleteUser(user){
+    const confirmed=window.confirm(
+      `Supprimer le compte de ${user.username} ?\n\n`
+      +"Le compte sera désactivé et anonymisé. "
+      +"Son historique métier sera conservé."
+    )
+
+    if(!confirmed){
+      return
+    }
+
+    setBusy(user.id)
+    setError("")
+    setSuccess("")
+
+    try{
+      const response=await fetch(
+        `${API}/api/users-rights/${user.id}/`,
+        {
+          method:"DELETE",
+          headers:ah(),
+        }
+      )
+
+      if(!response.ok){
+        const data=await response.json().catch(()=>null)
+
+        throw data||{detail:`HTTP ${response.status}`}
+      }
+
+      setUsers(previousUsers=>
+        previousUsers.filter(
+          current=>current.id!==user.id
+        )
+      )
+
+      setSuccess(
+        `Compte ${user.username} supprimé.`
       )
     }catch(error){
       setError(formatApiError(error))
@@ -426,10 +479,18 @@ function UsersRightsTab({currentUser}){
 
   return(
     <div>
-      <h2 style={{marginBottom:12}}>Gestion des utilisateurs</h2>
+      <h2 style={{marginBottom:12}}>
+        Gestion des utilisateurs
+      </h2>
 
-      <p style={{fontSize:13,color:"#666",marginTop:0,marginBottom:16}}>
-        Ici, l’admin connecté peut donner ou retirer les droits admin à un compte utilisateur déjà existant.
+      <p style={{
+        fontSize:13,
+        color:"#666",
+        marginTop:0,
+        marginBottom:16,
+      }}>
+        Ici, l’admin connecté peut gérer les droits
+        et supprimer un compte utilisateur.
       </p>
 
       <div style={{marginBottom:12}}>
@@ -475,10 +536,21 @@ function UsersRightsTab({currentUser}){
       )}
 
       <div style={{overflowX:"auto"}}>
-        <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+        <table style={{
+          width:"100%",
+          borderCollapse:"collapse",
+          fontSize:13,
+        }}>
           <thead>
             <tr style={{background:"#f5f5f5"}}>
-              {["Utilisateur","Email","Nom","Rôle","Statut","Action"].map(header=>(
+              {[
+                "Utilisateur",
+                "Email",
+                "Nom",
+                "Rôle",
+                "Statut",
+                "Action",
+              ].map(header=>(
                 <th
                   key={header}
                   style={{
@@ -495,26 +567,52 @@ function UsersRightsTab({currentUser}){
 
           <tbody>
             {filteredUsers.map(user=>{
-              const isCurrentUser=currentUser?.id===user.id
-              const isAdmin=user.is_staff||user.role==="ADMIN"||user.is_superuser
+              const isCurrentUser=
+                currentUser?.id===user.id
+
+              const isAdmin=
+                user.is_staff
+                ||user.role==="ADMIN"
+                ||user.is_superuser
 
               return(
-                <tr key={user.id} style={{borderBottom:"1px solid #eee"}}>
+                <tr
+                  key={user.id}
+                  style={{
+                    borderBottom:"1px solid #eee",
+                  }}
+                >
                   <td style={{padding:"8px 10px"}}>
                     <b>{user.username}</b>
+
                     {isCurrentUser&&(
-                      <span style={{fontSize:12,color:"#666"}}> — vous</span>
+                      <span style={{
+                        fontSize:12,
+                        color:"#666",
+                      }}>
+                        {" "}— vous
+                      </span>
                     )}
                   </td>
 
                   <td style={{padding:"8px 10px"}}>
                     {user.email?(
-                      <a href={`mailto:${user.email}`}>{user.email}</a>
+                      <a href={`mailto:${user.email}`}>
+                        {user.email}
+                      </a>
                     ):"—"}
                   </td>
 
                   <td style={{padding:"8px 10px"}}>
-                    {[user.first_name,user.last_name].filter(Boolean).join(" ")||"—"}
+                    {
+                      [
+                        user.first_name,
+                        user.last_name,
+                      ]
+                        .filter(Boolean)
+                        .join(" ")
+                      ||"—"
+                    }
                   </td>
 
                   <td style={{padding:"8px 10px"}}>
@@ -522,44 +620,100 @@ function UsersRightsTab({currentUser}){
                   </td>
 
                   <td style={{padding:"8px 10px"}}>
-                    {user.is_superuser?"Super admin":isAdmin?"Admin":"Utilisateur"}
+                    {
+                      user.is_superuser
+                        ?"Super admin"
+                        :isAdmin
+                          ?"Admin"
+                          :"Utilisateur"
+                    }
                   </td>
 
                   <td style={{padding:"8px 10px"}}>
                     {user.is_superuser?(
-                      <span style={{color:"#888"}}>Géré côté technique</span>
+                      <span style={{color:"#888"}}>
+                        Géré côté technique
+                      </span>
                     ):isCurrentUser?(
-                      <span style={{color:"#888"}}>Votre compte</span>
-                    ):isAdmin?(
-                      <button
-                        onClick={()=>updateAdminRights(user.id,"remove-admin")}
-                        disabled={busy===user.id}
-                        style={{
-                          fontSize:12,
-                          padding:"4px 10px",
-                          border:"1px solid #f5c6cb",
-                          borderRadius:4,
-                          background:"#f8d7da",
-                          cursor:"pointer",
-                        }}
-                      >
-                        {busy===user.id?"Modification...":"Retirer droits admin"}
-                      </button>
+                      <span style={{color:"#888"}}>
+                        Votre compte
+                      </span>
                     ):(
-                      <button
-                        onClick={()=>updateAdminRights(user.id,"promote-admin")}
-                        disabled={busy===user.id}
-                        style={{
-                          fontSize:12,
-                          padding:"4px 10px",
-                          border:"1px solid #badbcc",
-                          borderRadius:4,
-                          background:"#d1e7dd",
-                          cursor:"pointer",
-                        }}
-                      >
-                        {busy===user.id?"Modification...":"Donner droits admin"}
-                      </button>
+                      <div style={{
+                        display:"flex",
+                        gap:8,
+                        flexWrap:"wrap",
+                      }}>
+                        {isAdmin?(
+                          <button
+                            onClick={()=>
+                              updateAdminRights(
+                                user.id,
+                                "remove-admin"
+                              )
+                            }
+                            disabled={busy===user.id}
+                            style={{
+                              fontSize:12,
+                              padding:"4px 10px",
+                              border:"1px solid #f5c6cb",
+                              borderRadius:4,
+                              background:"#f8d7da",
+                              cursor:"pointer",
+                            }}
+                          >
+                            {
+                              busy===user.id
+                                ?"Modification..."
+                                :"Retirer droits admin"
+                            }
+                          </button>
+                        ):(
+                          <button
+                            onClick={()=>
+                              updateAdminRights(
+                                user.id,
+                                "promote-admin"
+                              )
+                            }
+                            disabled={busy===user.id}
+                            style={{
+                              fontSize:12,
+                              padding:"4px 10px",
+                              border:"1px solid #badbcc",
+                              borderRadius:4,
+                              background:"#d1e7dd",
+                              cursor:"pointer",
+                            }}
+                          >
+                            {
+                              busy===user.id
+                                ?"Modification..."
+                                :"Donner droits admin"
+                            }
+                          </button>
+                        )}
+
+                        <button
+                          onClick={()=>deleteUser(user)}
+                          disabled={busy===user.id}
+                          style={{
+                            fontSize:12,
+                            padding:"4px 10px",
+                            border:"1px solid #dc3545",
+                            borderRadius:4,
+                            background:"#fff",
+                            color:"#dc3545",
+                            cursor:"pointer",
+                          }}
+                        >
+                          {
+                            busy===user.id
+                              ?"Traitement..."
+                              :"Supprimer"
+                          }
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>
