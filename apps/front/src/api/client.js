@@ -93,10 +93,37 @@ export async function apiFetch(
   }
 
   if (!res.ok) {
-    const msg =
+    let msg =
       data?.detail ||
-      data?.message ||
-      `HTTP ${res.status}`;
+      data?.message;
+
+    if (
+      !msg &&
+      data &&
+      typeof data === "object"
+    ) {
+      msg =
+        Object.entries(data)
+          .map(
+            ([field, value]) => {
+              const fieldMessage =
+                Array.isArray(value)
+                  ? value.join(" ")
+                  : String(value);
+
+              return (
+                `${field} : ` +
+                fieldMessage
+              );
+            }
+          )
+          .join(" | ");
+    }
+
+    if (!msg) {
+      msg =
+        `HTTP ${res.status}`;
+    }
 
     throw new Error(msg);
   }

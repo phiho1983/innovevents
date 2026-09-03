@@ -33,6 +33,7 @@ describe("apiFetch", () => {
     );
   });
 
+
   it(
     "conserve application/json pour une requête JSON",
     async () => {
@@ -51,14 +52,18 @@ describe("apiFetch", () => {
         }
       );
 
-      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(
+        fetch
+      ).toHaveBeenCalledTimes(1);
 
       const [
         url,
         options,
       ] = fetch.mock.calls[0];
 
-      expect(url).toContain(
+      expect(
+        url
+      ).toContain(
         "/api/test/"
       );
 
@@ -80,6 +85,7 @@ describe("apiFetch", () => {
     }
   );
 
+
   it(
     "ne force pas Content-Type avec FormData",
     async () => {
@@ -88,7 +94,8 @@ describe("apiFetch", () => {
         "token-upload"
       );
 
-      const formData = new FormData();
+      const formData =
+        new FormData();
 
       formData.append(
         "alt_text",
@@ -114,14 +121,18 @@ describe("apiFetch", () => {
         }
       );
 
-      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(
+        fetch
+      ).toHaveBeenCalledTimes(1);
 
       const [
         url,
         options,
       ] = fetch.mock.calls[0];
 
-      expect(url).toContain(
+      expect(
+        url
+      ).toContain(
         "/api/home-photos/1/upload/"
       );
 
@@ -143,6 +154,41 @@ describe("apiFetch", () => {
         )
       ).toBe(
         "Bearer token-upload"
+      );
+    }
+  );
+
+
+  it(
+    "affiche les erreurs de validation DRF par champ",
+    async () => {
+      fetch.mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        text: async () => (
+          JSON.stringify({
+            password: [
+              "Ce mot de passe est trop court.",
+              "Il doit contenir au moins 8 caractères.",
+            ],
+          })
+        ),
+      });
+
+      await expect(
+        apiFetch(
+          "/api/activate/",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              password: "123",
+            }),
+          }
+        )
+      ).rejects.toThrow(
+        "password : " +
+        "Ce mot de passe est trop court. " +
+        "Il doit contenir au moins 8 caractères."
       );
     }
   );
