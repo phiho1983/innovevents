@@ -4,11 +4,12 @@ import Navbar from"../components/Navbar"
 import HomeHeroAdmin from"../components/admin/HomeHeroAdmin"
 import HomePhotosAdminTab from"../components/admin/HomePhotosAdminTab"
 import{useAuth}from"../auth/useAuth"
-import{getProspects,updateProspectStatus}from"../api/prospects"
+import{getProspects,updateProspectStatus,deleteProspect}from"../api/prospects"
 import{getQuotes,createQuote,sendQuote}from"../api/quotes"
 import{
   getContactMessages,
   updateContactMessage,
+  deleteContactMessage,
 }from"../api/contactMessages"
 
 const API=import.meta.env.VITE_API_URL||"http://localhost:8000"
@@ -156,11 +157,11 @@ export default function AdminPage(){
         </div>
 
         {tab==="requests"&&(
-          <RequestsTab/>
+          <RequestsTab currentUser={user}/>
         )}
 
         {tab==="messages"&&(
-          <MessagesTab/>
+          <MessagesTab currentUser={user}/>
         )}
 
         {tab==="quotes"&&(
@@ -193,12 +194,22 @@ export default function AdminPage(){
 }
 
 
-function RequestsTab(){
+function RequestsTab({currentUser}){
   const[requests,setRequests]=useState([])
   const[loading,setLoading]=useState(true)
   const[updating,setUpdating]=useState(null)
   const[selected,setSelected]=useState(null)
   const[error,setError]=useState("")
+  const[statusFilter,setStatusFilter]=useState(
+    "TO_CONTACT"
+  )
+
+  const pipelineTabs=[
+    ["TO_CONTACT","À traiter"],
+    ["CONTACTED","Contactées"],
+    ["QUALIFIED","Qualifiées"],
+    ["ARCHIVED","Archivées"],
+  ]
 
   useEffect(()=>{
     getProspects()
@@ -207,9 +218,52 @@ function RequestsTab(){
       .finally(()=>setLoading(false))
   },[])
 
-  async function changeStatus(id,status){
+  const counts=
+    Object.fromEntries(
+      pipelineTabs.map(
+        ([status])=>[
+          status,
+          requests.filter(
+            request=>
+              request.status===status
+          ).length,
+        ]
+      )
+    )
+
+  const visibleRequests=
+    requests.filter(
+      request=>
+        request.status===statusFilter
+    )
+
+  async function changeStatus(
+    id,
+    status
+  ){
+    const previousRequest=
+      requests.find(
+        request=>
+          request.id===id
+      )
+
     setUpdating(id)
     setError("")
+
+    setRequests(previous=>
+      previous.map(request=>
+        request.id===id
+          ?{
+              ...request,
+              status,
+            }
+          :request
+      )
+    )
+
+    if(selected===id){
+      setSelected(null)
+    }
 
     try{
       const updated=
@@ -218,20 +272,71 @@ function RequestsTab(){
           status
         )
 
+      if(
+        updated?.status
+        &&updated.status!==status
+      ){
+        setRequests(previous=>
+          previous.map(request=>
+            request.id===id
+              ?{
+                  ...request,
+                  status:
+                    updated.status,
+                }
+              :request
+          )
+        )
+      }
+    }catch(err){
+      if(previousRequest){
+        setRequests(previous=>
+          previous.map(request=>
+            request.id===id
+              ?previousRequest
+              :request
+          )
+        )
+      }
+
+      setError(
+        formatError(err)
+      )
+    }finally{
+      setUpdating(null)
+    }
+  }
+
+  async function removeRequest(id){
+    const confirmed=
+      window.confirm(
+        "Supprimer définitivement cette demande ?"
+      )
+
+    if(!confirmed){
+      return
+    }
+
+    setUpdating(id)
+    setError("")
+
+    try{
+      await deleteProspect(id)
+
       setRequests(previous=>
-        previous.map(request=>
-          request.id===id
-            ?{
-                ...request,
-                status:
-                  updated?.status
-                  ||status,
-              }
-            :request
+        previous.filter(
+          request=>
+            request.id!==id
         )
       )
+
+      if(selected===id){
+        setSelected(null)
+      }
     }catch(err){
-      setError(formatError(err))
+      setError(
+        formatError(err)
+      )
     }finally{
       setUpdating(null)
     }
@@ -247,19 +352,59 @@ function RequestsTab(){
         Demandes ({requests.length})
       </h2>
 
+      <div
+        style={{
+          display:"flex",
+          gap:8,
+          flexWrap:"wrap",
+          marginBottom:16,
+        }}
+      >
+        {pipelineTabs.map(
+          ([status,label])=>(
+            <button
+              key={status}
+              type="button"
+              onClick={()=>
+                setStatusFilter(status)
+              }
+              style={{
+                padding:"8px 12px",
+                borderRadius:6,
+                border:
+                  statusFilter===status
+                    ?"2px solid #111"
+                    :"1px solid #ddd",
+                background:
+                  statusFilter===status
+                    ?"#f5f5f5"
+                    :"#fff",
+                fontWeight:
+                  statusFilter===status
+                    ?"600"
+                    :"400",
+                cursor:"pointer",
+              }}
+            >
+              {label} ({counts[status]||0})
+            </button>
+          )
+        )}
+      </div>
+
       {error&&(
         <p role="alert">
           {error}
         </p>
       )}
 
-      {requests.length===0&&(
+      {visibleRequests.length===0&&(
         <p>
-          Aucune demande.
+          Aucune demande dans cette catégorie.
         </p>
       )}
 
-      {requests.map(request=>(
+      {visibleRequests.map(request=>(
         <div
           key={request.id}
           style={{
@@ -274,6 +419,7 @@ function RequestsTab(){
             style={{
               display:"flex",
               justifyContent:"space-between",
+              alignItems:"flex-start",
               gap:12,
             }}
           >
@@ -298,40 +444,23 @@ function RequestsTab(){
               </div>
             </div>
 
-            <select
-              aria-label={
-                `Statut de ${request.first_name} ${request.last_name}`
-              }
-              value={request.status}
-              disabled={
-                updating===request.id
-              }
-              onChange={event=>
-                changeStatus(
-                  request.id,
-                  event.target.value
-                )
-              }
+            <span
               style={{
-                padding:"4px 6px",
-                borderRadius:4,
-                border:"1px solid #ddd",
+                padding:"4px 8px",
+                borderRadius:999,
+                fontSize:12,
                 background:
                   SCOLORS[request.status]
-                  ||"#fff",
+                  ||"#f5f5f5",
               }}
             >
-              {Object.entries(
-                SLABELS
-              ).map(([value,label])=>(
-                <option
-                  key={value}
-                  value={value}
-                >
-                  {label}
-                </option>
-              ))}
-            </select>
+              {
+                SLABELS[
+                  request.status
+                ]
+                ||request.status
+              }
+            </span>
           </div>
 
           <div
@@ -383,19 +512,130 @@ function RequestsTab(){
             )}
           </div>
 
-          <div style={{marginTop:10}}>
-            {selected!==request.id&&(
-              <button
-                type="button"
-                onClick={()=>
-                  setSelected(
-                    request.id
-                  )
-                }
-              >
-                Créer un devis
-              </button>
-            )}
+          <div
+            style={{
+              display:"flex",
+              gap:8,
+              flexWrap:"wrap",
+              marginTop:12,
+            }}
+          >
+            {
+              request.status!=="ARCHIVED"
+              &&selected!==request.id
+              &&(
+                <button
+                  type="button"
+                  onClick={()=>
+                    setSelected(
+                      request.id
+                    )
+                  }
+                >
+                  Créer un devis
+                </button>
+              )
+            }
+
+            {
+              request.status==="TO_CONTACT"
+              &&(
+                <button
+                  type="button"
+                  disabled={
+                    updating===request.id
+                  }
+                  onClick={()=>
+                    changeStatus(
+                      request.id,
+                      "CONTACTED"
+                    )
+                  }
+                >
+                  Marquer contactée
+                </button>
+              )
+            }
+
+            {
+              request.status==="CONTACTED"
+              &&(
+                <button
+                  type="button"
+                  disabled={
+                    updating===request.id
+                  }
+                  onClick={()=>
+                    changeStatus(
+                      request.id,
+                      "QUALIFIED"
+                    )
+                  }
+                >
+                  Qualifier
+                </button>
+              )
+            }
+
+            {
+              request.status!=="ARCHIVED"
+              &&(
+                <button
+                  type="button"
+                  disabled={
+                    updating===request.id
+                  }
+                  onClick={()=>
+                    changeStatus(
+                      request.id,
+                      "ARCHIVED"
+                    )
+                  }
+                >
+                  Archiver
+                </button>
+              )
+            }
+
+            {
+              request.status==="ARCHIVED"
+              &&(
+                <button
+                  type="button"
+                  disabled={
+                    updating===request.id
+                  }
+                  onClick={()=>
+                    changeStatus(
+                      request.id,
+                      "TO_CONTACT"
+                    )
+                  }
+                >
+                  Restaurer
+                </button>
+              )
+            }
+
+            {
+              request.status==="ARCHIVED"
+              &&currentUser?.role==="ADMIN"
+              &&(
+                <button
+                  type="button"
+                  disabled={
+                    updating===request.id
+                  }
+                  onClick={()=>
+                    removeRequest(
+                      request.id
+                    )
+                  }
+                >
+                  Supprimer définitivement
+                </button>
+              )
+            }
           </div>
 
           {selected===request.id&&(
@@ -424,11 +664,21 @@ function RequestsTab(){
 }
 
 
-function MessagesTab(){
+function MessagesTab({currentUser}){
   const[messages,setMessages]=useState([])
   const[loading,setLoading]=useState(true)
   const[busy,setBusy]=useState(null)
   const[error,setError]=useState("")
+  const[statusFilter,setStatusFilter]=useState(
+    "NEW"
+  )
+
+  const pipelineTabs=[
+    ["NEW","Nouveaux"],
+    ["READ","Lus"],
+    ["REPLIED","Répondus"],
+    ["ARCHIVED","Archivés"],
+  ]
 
   useEffect(()=>{
     getContactMessages()
@@ -447,12 +697,48 @@ function MessagesTab(){
       )
   },[])
 
+  const counts=
+    Object.fromEntries(
+      pipelineTabs.map(
+        ([status])=>[
+          status,
+          messages.filter(
+            message=>
+              message.status===status
+          ).length,
+        ]
+      )
+    )
+
+  const visibleMessages=
+    messages.filter(
+      message=>
+        message.status===statusFilter
+    )
+
   async function setStatus(
     id,
     status
   ){
+    const previousMessage=
+      messages.find(
+        message=>
+          message.id===id
+      )
+
     setBusy(id)
     setError("")
+
+    setMessages(previous=>
+      previous.map(message=>
+        message.id===id
+          ?{
+              ...message,
+              status,
+            }
+          :message
+      )
+    )
 
     try{
       const updated=
@@ -461,16 +747,61 @@ function MessagesTab(){
           {status}
         )
 
+      if(
+        updated?.status
+        &&updated.status!==status
+      ){
+        setMessages(previous=>
+          previous.map(message=>
+            message.id===id
+              ?{
+                  ...message,
+                  status:
+                    updated.status,
+                }
+              :message
+          )
+        )
+      }
+    }catch(err){
+      if(previousMessage){
+        setMessages(previous=>
+          previous.map(message=>
+            message.id===id
+              ?previousMessage
+              :message
+          )
+        )
+      }
+
+      setError(
+        formatError(err)
+      )
+    }finally{
+      setBusy(null)
+    }
+  }
+
+  async function removeMessage(id){
+    const confirmed=
+      window.confirm(
+        "Supprimer définitivement ce message ?"
+      )
+
+    if(!confirmed){
+      return
+    }
+
+    setBusy(id)
+    setError("")
+
+    try{
+      await deleteContactMessage(id)
+
       setMessages(previous=>
-        previous.map(message=>
-          message.id===id
-            ?{
-                ...message,
-                status:
-                  updated?.status
-                  ||status,
-              }
-            :message
+        previous.filter(
+          message=>
+            message.id!==id
         )
       )
     }catch(err){
@@ -492,19 +823,59 @@ function MessagesTab(){
         Messages ({messages.length})
       </h2>
 
+      <div
+        style={{
+          display:"flex",
+          gap:8,
+          flexWrap:"wrap",
+          marginBottom:16,
+        }}
+      >
+        {pipelineTabs.map(
+          ([status,label])=>(
+            <button
+              key={status}
+              type="button"
+              onClick={()=>
+                setStatusFilter(status)
+              }
+              style={{
+                padding:"8px 12px",
+                borderRadius:6,
+                border:
+                  statusFilter===status
+                    ?"2px solid #111"
+                    :"1px solid #ddd",
+                background:
+                  statusFilter===status
+                    ?"#f5f5f5"
+                    :"#fff",
+                fontWeight:
+                  statusFilter===status
+                    ?"600"
+                    :"400",
+                cursor:"pointer",
+              }}
+            >
+              {label} ({counts[status]||0})
+            </button>
+          )
+        )}
+      </div>
+
       {error&&(
         <p role="alert">
           {error}
         </p>
       )}
 
-      {messages.length===0&&(
+      {visibleMessages.length===0&&(
         <p>
-          Aucun message.
+          Aucun message dans cette catégorie.
         </p>
       )}
 
-      {messages.map(message=>(
+      {visibleMessages.map(message=>(
         <div
           key={message.id}
           style={{
@@ -519,6 +890,7 @@ function MessagesTab(){
             style={{
               display:"flex",
               justifyContent:"space-between",
+              alignItems:"flex-start",
               gap:12,
             }}
           >
@@ -526,7 +898,20 @@ function MessagesTab(){
               {message.name}
             </strong>
 
-            <span>
+            <span
+              style={{
+                padding:"4px 8px",
+                borderRadius:999,
+                fontSize:12,
+                background:{
+                  NEW:"#fff3cd",
+                  READ:"#cce5ff",
+                  REPLIED:"#d4edda",
+                  ARCHIVED:"#f8d7da",
+                }[message.status]
+                ||"#f5f5f5",
+              }}
+            >
               {
                 MLABELS[
                   message.status
@@ -588,24 +973,22 @@ function MessagesTab(){
               </button>
             )}
 
-            {message.status!=="REPLIED"
-              &&message.status!=="ARCHIVED"
-              &&(
-                <button
-                  type="button"
-                  disabled={
-                    busy===message.id
-                  }
-                  onClick={()=>
-                    setStatus(
-                      message.id,
-                      "REPLIED"
-                    )
-                  }
-                >
-                  Marquer répondu
-                </button>
-              )}
+            {message.status==="READ"&&(
+              <button
+                type="button"
+                disabled={
+                  busy===message.id
+                }
+                onClick={()=>
+                  setStatus(
+                    message.id,
+                    "REPLIED"
+                  )
+                }
+              >
+                Marquer répondu
+              </button>
+            )}
 
             {message.status!=="ARCHIVED"&&(
               <button
@@ -623,6 +1006,43 @@ function MessagesTab(){
                 Archiver
               </button>
             )}
+
+            {message.status==="ARCHIVED"&&(
+              <button
+                type="button"
+                disabled={
+                  busy===message.id
+                }
+                onClick={()=>
+                  setStatus(
+                    message.id,
+                    "NEW"
+                  )
+                }
+              >
+                Restaurer
+              </button>
+            )}
+
+            {
+              message.status==="ARCHIVED"
+              &&currentUser?.role==="ADMIN"
+              &&(
+                <button
+                  type="button"
+                  disabled={
+                    busy===message.id
+                  }
+                  onClick={()=>
+                    removeMessage(
+                      message.id
+                    )
+                  }
+                >
+                  Supprimer définitivement
+                </button>
+              )
+            }
           </div>
         </div>
       ))}

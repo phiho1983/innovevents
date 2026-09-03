@@ -109,3 +109,23 @@ export async function updateContactMessage(
     response
   );
 }
+
+
+export async function deleteContactMessage(
+  id
+) {
+  const response =
+    await fetch(
+      `${API}/api/contact-messages/${id}/`,
+      {
+        method: "DELETE",
+
+        headers:
+          authHeaders(),
+      }
+    );
+
+  return readResponse(
+    response
+  );
+}

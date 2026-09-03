@@ -31,6 +31,14 @@ export async function updateProspectStatus(id, status) {
   return r.json()
 }
 
+export async function deleteProspect(id) {
+  const r = await fetch(`${API}/api/prospects/${id}/`, {
+    method:"DELETE",
+    headers:authHeaders(),
+  })
+  if (!r.ok) throw await r.json()
+}
+
 export async function convertProspect(id) {
   const r = await fetch(`${API}/api/prospects/${id}/convert/`, {
     method:"POST", headers:authHeaders(),

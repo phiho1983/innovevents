@@ -24,6 +24,11 @@ import {
   sendQuote,
 } from "../api/quotes";
 
+import {
+  getContactMessages,
+  updateContactMessage,
+} from "../api/contactMessages";
+
 
 const STATUS_LABELS = {
   TO_CONTACT: "À contacter",
@@ -132,6 +137,31 @@ export default function EmployeePage() {
   ] = useState(null);
 
   const [
+    messages,
+    setMessages,
+  ] = useState([]);
+
+  const [
+    messagesLoading,
+    setMessagesLoading,
+  ] = useState(false);
+
+  const [
+    messagesLoaded,
+    setMessagesLoaded,
+  ] = useState(false);
+
+  const [
+    messagesError,
+    setMessagesError,
+  ] = useState("");
+
+  const [
+    messageActionId,
+    setMessageActionId,
+  ] = useState(null);
+
+  const [
     quotes,
     setQuotes,
   ] = useState([]);
@@ -229,6 +259,55 @@ export default function EmployeePage() {
       active = false;
     };
   }, []);
+
+
+  useEffect(() => {
+    if (
+      activeTab !== "messages"
+      || messagesLoaded
+    ) {
+      return;
+    }
+
+    let active = true;
+
+    async function loadMessages() {
+      setMessagesLoading(true);
+      setMessagesError("");
+
+      try {
+        const data =
+          await getContactMessages();
+
+        if (active) {
+          setMessages(
+            normalizeList(data)
+          );
+
+          setMessagesLoaded(true);
+        }
+      } catch (loadError) {
+        if (active) {
+          setMessagesError(
+            formatError(loadError)
+          );
+        }
+      } finally {
+        if (active) {
+          setMessagesLoading(false);
+        }
+      }
+    }
+
+    loadMessages();
+
+    return () => {
+      active = false;
+    };
+  }, [
+    activeTab,
+    messagesLoaded,
+  ]);
 
 
   useEffect(() => {
@@ -466,6 +545,87 @@ export default function EmployeePage() {
   }
 
 
+  async function changeMessageStatus(
+    messageId,
+    nextStatus,
+  ) {
+    const previousMessage =
+      messages.find(
+        (message) =>
+          message.id === messageId
+      );
+
+    setMessagesError("");
+    setMessageActionId(
+      messageId
+    );
+
+    setMessages(
+      (previousMessages) =>
+        previousMessages.map(
+          (message) =>
+            message.id === messageId
+              ? {
+                  ...message,
+                  status: nextStatus,
+                }
+              : message
+        )
+    );
+
+    try {
+      const updatedMessage =
+        await updateContactMessage(
+          messageId,
+          {
+            status: nextStatus,
+          }
+        );
+
+      if (
+        updatedMessage?.status
+        && updatedMessage.status
+          !== nextStatus
+      ) {
+        setMessages(
+          (previousMessages) =>
+            previousMessages.map(
+              (message) =>
+                message.id
+                  === messageId
+                  ? {
+                      ...message,
+                      status:
+                        updatedMessage
+                          .status,
+                    }
+                  : message
+            )
+        );
+      }
+    } catch (updateError) {
+      if (previousMessage) {
+        setMessages(
+          (previousMessages) =>
+            previousMessages.map(
+              (message) =>
+                message.id
+                  === messageId
+                  ? previousMessage
+                  : message
+            )
+        );
+      }
+
+      setMessagesError(
+        formatError(updateError)
+      );
+    } finally {
+      setMessageActionId(null);
+    }
+  }
+
+
   async function transitionEvent(
     eventId,
     action,
@@ -567,6 +727,20 @@ export default function EmployeePage() {
 
           <TabButton
             active={
+              activeTab === "messages"
+            }
+            onClick={
+              () =>
+                setActiveTab(
+                  "messages"
+                )
+            }
+          >
+            Messages
+          </TabButton>
+
+          <TabButton
+            active={
               activeTab === "quotes"
             }
             onClick={
@@ -622,6 +796,24 @@ export default function EmployeePage() {
             }
             onStatusChange={
               changeStatus
+            }
+          />
+        )}
+
+        {activeTab === "messages" && (
+          <MessagesSection
+            messages={messages}
+            loading={
+              messagesLoading
+            }
+            error={
+              messagesError
+            }
+            actionId={
+              messageActionId
+            }
+            onStatusChange={
+              changeMessageStatus
             }
           />
         )}
@@ -700,6 +892,392 @@ function TabButton({
 }
 
 
+function MessagesSection({
+  messages,
+  loading,
+  error,
+  actionId,
+  onStatusChange,
+}) {
+  const [
+    statusFilter,
+    setStatusFilter,
+  ] = useState(
+    "NEW"
+  );
+
+
+  const pipelineTabs = [
+    [
+      "NEW",
+      "Nouveaux",
+    ],
+    [
+      "READ",
+      "Lus",
+    ],
+    [
+      "REPLIED",
+      "Répondus",
+    ],
+    [
+      "ARCHIVED",
+      "Archivés",
+    ],
+  ];
+
+
+  const labels = {
+    NEW: "Nouveau",
+    READ: "Lu",
+    REPLIED: "Répondu",
+    ARCHIVED: "Archivé",
+  };
+
+
+  const colors = {
+    NEW: "#fff3cd",
+    READ: "#cce5ff",
+    REPLIED: "#d4edda",
+    ARCHIVED: "#f8d7da",
+  };
+
+
+  const counts =
+    Object.fromEntries(
+      pipelineTabs.map(
+        ([status]) => [
+          status,
+          messages.filter(
+            (message) =>
+              message.status === status
+          ).length,
+        ]
+      )
+    );
+
+
+  const visibleMessages =
+    messages.filter(
+      (message) =>
+        message.status
+        === statusFilter
+    );
+
+
+  return (
+    <section>
+      <h2>
+        Messages ({messages.length})
+      </h2>
+
+
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+          marginBottom: 16,
+        }}
+      >
+        {pipelineTabs.map(
+          ([
+            status,
+            label,
+          ]) => (
+            <button
+              key={status}
+              type="button"
+              onClick={
+                () =>
+                  setStatusFilter(
+                    status
+                  )
+              }
+              style={{
+                padding:
+                  "8px 12px",
+
+                borderRadius:
+                  6,
+
+                border:
+                  statusFilter
+                  === status
+                    ? "2px solid #111"
+                    : "1px solid #ddd",
+
+                background:
+                  statusFilter
+                  === status
+                    ? "#f5f5f5"
+                    : "#fff",
+
+                fontWeight:
+                  statusFilter
+                  === status
+                    ? "600"
+                    : "400",
+
+                cursor:
+                  "pointer",
+              }}
+            >
+              {label} (
+              {
+                counts[
+                  status
+                ] || 0
+              }
+              )
+            </button>
+          )
+        )}
+      </div>
+
+
+      {error && (
+        <ErrorMessage
+          message={error}
+        />
+      )}
+
+
+      {loading && (
+        <p>
+          Chargement...
+        </p>
+      )}
+
+
+      {!loading
+        && visibleMessages.length
+          === 0
+        && (
+          <p>
+            Aucun message dans
+            cette catégorie.
+          </p>
+        )}
+
+
+      {!loading
+        && visibleMessages.map(
+          (message) => (
+            <article
+              key={message.id}
+              style={{
+                border:
+                  "1px solid #eee",
+
+                borderRadius:
+                  8,
+
+                padding:
+                  14,
+
+                marginBottom:
+                  10,
+
+                background:
+                  "#fff",
+              }}
+            >
+              <div
+                style={{
+                  display:
+                    "flex",
+
+                  justifyContent:
+                    "space-between",
+
+                  alignItems:
+                    "flex-start",
+
+                  gap:
+                    12,
+                }}
+              >
+                <strong>
+                  {message.name}
+                </strong>
+
+                <span
+                  style={{
+                    padding:
+                      "4px 8px",
+
+                    borderRadius:
+                      999,
+
+                    fontSize:
+                      12,
+
+                    background:
+                      colors[
+                        message.status
+                      ]
+                      || "#f5f5f5",
+                  }}
+                >
+                  {
+                    labels[
+                      message.status
+                    ]
+                    || message.status
+                  }
+                </span>
+              </div>
+
+
+              <div
+                style={{
+                  fontSize:
+                    13,
+
+                  color:
+                    "#666",
+
+                  marginTop:
+                    4,
+                }}
+              >
+                {message.email}
+              </div>
+
+
+              {message.subject && (
+                <h3>
+                  {message.subject}
+                </h3>
+              )}
+
+
+              <p
+                style={{
+                  whiteSpace:
+                    "pre-wrap",
+                }}
+              >
+                {message.message}
+              </p>
+
+
+              <div
+                style={{
+                  display:
+                    "flex",
+
+                  gap:
+                    8,
+
+                  flexWrap:
+                    "wrap",
+                }}
+              >
+                {
+                  message.status
+                  === "NEW"
+                  && (
+                    <button
+                      type="button"
+                      disabled={
+                        actionId
+                        === message.id
+                      }
+                      onClick={
+                        () =>
+                          onStatusChange(
+                            message.id,
+                            "READ"
+                          )
+                      }
+                    >
+                      Marquer comme lu
+                    </button>
+                  )
+                }
+
+
+                {
+                  message.status
+                  === "READ"
+                  && (
+                    <button
+                      type="button"
+                      disabled={
+                        actionId
+                        === message.id
+                      }
+                      onClick={
+                        () =>
+                          onStatusChange(
+                            message.id,
+                            "REPLIED"
+                          )
+                      }
+                    >
+                      Marquer répondu
+                    </button>
+                  )
+                }
+
+
+                {
+                  message.status
+                  !== "ARCHIVED"
+                  && (
+                    <button
+                      type="button"
+                      disabled={
+                        actionId
+                        === message.id
+                      }
+                      onClick={
+                        () =>
+                          onStatusChange(
+                            message.id,
+                            "ARCHIVED"
+                          )
+                      }
+                    >
+                      Archiver
+                    </button>
+                  )
+                }
+
+
+                {
+                  message.status
+                  === "ARCHIVED"
+                  && (
+                    <button
+                      type="button"
+                      disabled={
+                        actionId
+                        === message.id
+                      }
+                      onClick={
+                        () =>
+                          onStatusChange(
+                            message.id,
+                            "NEW"
+                          )
+                      }
+                    >
+                      Restaurer
+                    </button>
+                  )
+                }
+              </div>
+            </article>
+          )
+        )}
+    </section>
+  );
+}
+
+
 function ProspectsSection({
   prospects,
   loading,
@@ -707,6 +1285,57 @@ function ProspectsSection({
   updatingId,
   onStatusChange,
 }) {
+  const [
+    statusFilter,
+    setStatusFilter,
+  ] = useState(
+    "TO_CONTACT"
+  );
+
+
+  const pipelineTabs = [
+    [
+      "TO_CONTACT",
+      "À traiter",
+    ],
+    [
+      "CONTACTED",
+      "Contactées",
+    ],
+    [
+      "QUALIFIED",
+      "Qualifiées",
+    ],
+    [
+      "ARCHIVED",
+      "Archivées",
+    ],
+  ];
+
+
+  const counts =
+    Object.fromEntries(
+      pipelineTabs.map(
+        ([status]) => [
+          status,
+          prospects.filter(
+            (prospect) =>
+              prospect.status
+              === status
+          ).length,
+        ]
+      )
+    );
+
+
+  const visibleProspects =
+    prospects.filter(
+      (prospect) =>
+        prospect.status
+        === statusFilter
+    );
+
+
   return (
     <section>
       <h2>
@@ -724,11 +1353,77 @@ function ProspectsSection({
         des devis commerciaux.
       </p>
 
+
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+          marginBottom: 16,
+        }}
+      >
+        {pipelineTabs.map(
+          ([
+            status,
+            label,
+          ]) => (
+            <button
+              key={status}
+              type="button"
+              onClick={
+                () =>
+                  setStatusFilter(
+                    status
+                  )
+              }
+              style={{
+                padding:
+                  "8px 12px",
+
+                borderRadius:
+                  6,
+
+                border:
+                  statusFilter
+                  === status
+                    ? "2px solid #111"
+                    : "1px solid #ddd",
+
+                background:
+                  statusFilter
+                  === status
+                    ? "#f5f5f5"
+                    : "#fff",
+
+                fontWeight:
+                  statusFilter
+                  === status
+                    ? "600"
+                    : "400",
+
+                cursor:
+                  "pointer",
+              }}
+            >
+              {label} (
+              {
+                counts[
+                  status
+                ] || 0
+              }
+              )
+            </button>
+          )
+        )}
+      </div>
+
+
       {error && (
         <ErrorMessage
           message={error}
         />
       )}
+
 
       {loading && (
         <p>
@@ -736,98 +1431,89 @@ function ProspectsSection({
         </p>
       )}
 
+
       {!loading
-        && prospects.length === 0
+        && visibleProspects.length
+          === 0
         && (
           <p
             style={{
               color: "#888",
             }}
           >
-            Aucune demande.
+            Aucune demande dans
+            cette catégorie.
           </p>
         )}
 
+
       {!loading
-        && prospects.length > 0
+        && visibleProspects.length
+          > 0
         && (
           <div
             style={{
-              overflowX: "auto",
+              display: "grid",
+              gap: 12,
             }}
           >
-            <table
-              style={{
-                width: "100%",
-                borderCollapse:
-                  "collapse",
-                fontSize: 13,
-              }}
-            >
-              <thead>
-                <tr
+            {visibleProspects.map(
+              (prospect) => (
+                <article
+                  key={
+                    prospect.id
+                  }
                   style={{
+                    border:
+                      "1px solid #eee",
+
+                    borderRadius:
+                      8,
+
+                    padding:
+                      14,
+
                     background:
-                      "#f5f5f5",
+                      "#fff",
                   }}
                 >
-                  {[
-                    "Nom",
-                    "Email",
-                    "Société",
-                    "Type événement",
-                    "Statut",
-                    "Date",
-                  ].map(
-                    (heading) => (
-                      <th
-                        key={heading}
-                        style={{
-                          padding:
-                            "8px 10px",
-                          textAlign:
-                            "left",
-                          borderBottom:
-                            "2px solid #ddd",
-                        }}
-                      >
-                        {heading}
-                      </th>
-                    )
-                  )}
-                </tr>
-              </thead>
+                  <div
+                    style={{
+                      display:
+                        "flex",
 
-              <tbody>
-                {prospects.map(
-                  (prospect) => (
-                    <tr
-                      key={prospect.id}
-                      style={{
-                        borderBottom:
-                          "1px solid #eee",
-                      }}
-                    >
-                      <td
-                        style={{
-                          padding:
-                            "8px 10px",
-                        }}
-                      >
-                        <b>
-                          {
-                            prospect.first_name
-                          }{" "}
-                          {
-                            prospect.last_name
-                          }
-                        </b>
-                      </td>
+                      justifyContent:
+                        "space-between",
 
-                      <td
+                      alignItems:
+                        "flex-start",
+
+                      gap:
+                        12,
+                    }}
+                  >
+                    <div>
+                      <b>
+                        {
+                          prospect
+                            .first_name
+                        }{" "}
+                        {
+                          prospect
+                            .last_name
+                        }
+                      </b>
+
+                      <div
                         style={{
-                          padding:
-                            "8px 10px",
+                          marginTop:
+                            4,
+
+                          fontSize:
+                            13,
+
+                          color:
+                            "#666",
                         }}
                       >
                         <a
@@ -836,118 +1522,207 @@ function ProspectsSection({
                           }
                         >
                           {
-                            prospect.email
+                            prospect
+                              .email
                           }
                         </a>
-                      </td>
+                      </div>
+                    </div>
 
-                      <td
-                        style={{
-                          padding:
-                            "8px 10px",
-                        }}
-                      >
-                        {
-                          prospect.company
-                          || "—"
-                        }
-                      </td>
 
-                      <td
-                        style={{
-                          padding:
-                            "8px 10px",
-                        }}
-                      >
-                        {
-                          prospect.event_type
-                          || "—"
-                        }
-                      </td>
+                    <span
+                      style={{
+                        padding:
+                          "4px 8px",
 
-                      <td
-                        style={{
-                          padding:
-                            "8px 10px",
-                        }}
-                      >
-                        <select
-                          aria-label={
-                            `Statut de ${prospect.first_name} ${prospect.last_name}`
+                        borderRadius:
+                          999,
+
+                        fontSize:
+                          12,
+
+                        background:
+                          STATUS_COLORS[
+                            prospect
+                              .status
+                          ]
+                          || "#f5f5f5",
+                      }}
+                    >
+                      {
+                        STATUS_LABELS[
+                          prospect
+                            .status
+                        ]
+                        || prospect
+                          .status
+                      }
+                    </span>
+                  </div>
+
+
+                  <div
+                    style={{
+                      marginTop:
+                        10,
+
+                      fontSize:
+                        13,
+                    }}
+                  >
+                    {prospect.company
+                      && (
+                        <div>
+                          Société :{" "}
+                          {
+                            prospect
+                              .company
                           }
-                          value={
-                            prospect.status
+                        </div>
+                      )}
+
+                    {prospect.event_type
+                      && (
+                        <div>
+                          Événement :{" "}
+                          {
+                            prospect
+                              .event_type
                           }
+                        </div>
+                      )}
+
+                    {prospect.created_at
+                      && (
+                        <div>
+                          Reçue le :{" "}
+                          {
+                            new Date(
+                              prospect
+                                .created_at
+                            )
+                              .toLocaleDateString(
+                                "fr-FR"
+                              )
+                          }
+                        </div>
+                      )}
+                  </div>
+
+
+                  <div
+                    style={{
+                      display:
+                        "flex",
+
+                      gap:
+                        8,
+
+                      flexWrap:
+                        "wrap",
+
+                      marginTop:
+                        12,
+                    }}
+                  >
+                    {
+                      prospect.status
+                      === "TO_CONTACT"
+                      && (
+                        <button
+                          type="button"
                           disabled={
                             updatingId
                             === prospect.id
                           }
-                          onChange={
-                            (event) =>
+                          onClick={
+                            () =>
                               onStatusChange(
                                 prospect.id,
-                                event.target
-                                  .value
+                                "CONTACTED"
                               )
                           }
-                          style={{
-                            padding:
-                              "4px 6px",
-                            borderRadius:
-                              4,
-                            border:
-                              "1px solid #ddd",
-                            background:
-                              STATUS_COLORS[
-                                prospect
-                                  .status
-                              ]
-                              || "#fff",
-                          }}
                         >
-                          {Object.entries(
-                            STATUS_LABELS
-                          ).map(
-                            ([
-                              value,
-                              label,
-                            ]) => (
-                              <option
-                                key={value}
-                                value={value}
-                              >
-                                {label}
-                              </option>
-                            )
-                          )}
-                        </select>
-                      </td>
+                          Marquer contactée
+                        </button>
+                      )
+                    }
 
 
-                      <td
-                        style={{
-                          padding:
-                            "8px 10px",
-                          color: "#888",
-                        }}
-                      >
-                        {
-                          prospect.created_at
-                            ? new Date(
-                                prospect
-                                  .created_at
+                    {
+                      prospect.status
+                      === "CONTACTED"
+                      && (
+                        <button
+                          type="button"
+                          disabled={
+                            updatingId
+                            === prospect.id
+                          }
+                          onClick={
+                            () =>
+                              onStatusChange(
+                                prospect.id,
+                                "QUALIFIED"
                               )
-                                .toLocaleDateString(
-                                  "fr-FR"
-                                )
-                            : "—"
-                        }
-                      </td>
-                    </tr>
-                  )
-                )}
-              </tbody>
-            </table>
+                          }
+                        >
+                          Qualifier
+                        </button>
+                      )
+                    }
+
+
+                    {
+                      prospect.status
+                      !== "ARCHIVED"
+                      && (
+                        <button
+                          type="button"
+                          disabled={
+                            updatingId
+                            === prospect.id
+                          }
+                          onClick={
+                            () =>
+                              onStatusChange(
+                                prospect.id,
+                                "ARCHIVED"
+                              )
+                          }
+                        >
+                          Archiver
+                        </button>
+                      )
+                    }
+
+
+                    {
+                      prospect.status
+                      === "ARCHIVED"
+                      && (
+                        <button
+                          type="button"
+                          disabled={
+                            updatingId
+                            === prospect.id
+                          }
+                          onClick={
+                            () =>
+                              onStatusChange(
+                                prospect.id,
+                                "TO_CONTACT"
+                              )
+                          }
+                        >
+                          Restaurer
+                        </button>
+                      )
+                    }
+                  </div>
+                </article>
+              )
+            )}
           </div>
         )}
     </section>

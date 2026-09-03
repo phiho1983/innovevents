@@ -179,6 +179,38 @@ class ContactMessageViewSet(
                 ]
             )
 
+    def destroy(
+        self,
+        request,
+        *args,
+        **kwargs,
+    ):
+        message = self.get_object()
+
+        if (
+            message.status
+            != ContactMessage.Status.ARCHIVED
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Un message doit être "
+                        "archivé avant sa "
+                        "suppression définitive."
+                    )
+                },
+                status=(
+                    drf_status
+                    .HTTP_400_BAD_REQUEST
+                ),
+            )
+
+        return super().destroy(
+            request,
+            *args,
+            **kwargs,
+        )
+
 
 class ProspectViewSet(
     viewsets.ModelViewSet
@@ -292,6 +324,38 @@ class ProspectViewSet(
                 to_email
             ],
             fail_silently=True,
+        )
+
+    def destroy(
+        self,
+        request,
+        *args,
+        **kwargs,
+    ):
+        prospect = self.get_object()
+
+        if (
+            prospect.status
+            != Prospect.Status.ARCHIVED
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Une demande doit être "
+                        "archivée avant sa "
+                        "suppression définitive."
+                    )
+                },
+                status=(
+                    drf_status
+                    .HTTP_400_BAD_REQUEST
+                ),
+            )
+
+        return super().destroy(
+            request,
+            *args,
+            **kwargs,
         )
 
     @action(
