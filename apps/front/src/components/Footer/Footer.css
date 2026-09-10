@@ -512,11 +512,11 @@
 
 @media (max-width: 520px) {
   .footer {
-    margin-top: 90px;
+    margin-top: 0;
 
     padding:
-      62px 20px
-      24px;
+      58px 20px
+      22px;
   }
 
   .footer::before {
@@ -534,16 +534,18 @@
   }
 
   .footerCta {
-    padding-bottom: 60px;
+    gap: 30px;
+
+    padding-bottom: 52px;
   }
 
   .footerEyebrow {
-    margin-bottom: 16px;
+    margin-bottom: 14px;
   }
 
   .footerCtaTitle {
     font-size:
-      clamp(46px, 14vw, 60px);
+      clamp(44px, 13vw, 58px);
 
     line-height: 0.97;
   }
@@ -553,16 +555,23 @@
   }
 
   .footerCtaText {
-    margin-top: 24px;
+    margin-top: 22px;
+
+    font-size: 15px;
+    line-height: 1.65;
+  }
+
+  .footerCtaButton {
+    min-height: 54px;
   }
 
   .footerMain {
     grid-template-columns: 1fr;
 
-    gap: 38px;
+    gap: 32px;
 
     padding:
-      55px 0;
+      48px 0;
   }
 
   .footerBrand,
@@ -570,12 +579,28 @@
     grid-column: auto;
   }
 
+  .footerBrandText {
+    margin-top: 18px;
+  }
+
   .footerCol h3 {
-    margin-bottom: 15px;
+    margin-bottom: 14px;
+  }
+
+  .footerCol a {
+    margin-bottom: 11px;
+  }
+
+  .footerBottom {
+    gap: 14px;
+
+    padding-top: 22px;
   }
 
   .footerLegal {
     align-items: flex-start;
     flex-wrap: wrap;
+
+    gap: 8px;
   }
 }

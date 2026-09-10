@@ -1092,10 +1092,6 @@ a.underline:hover::after,
 /* ========================================================= */
 
 @media (max-width: 900px) {
-  .navbarInner {
-    align-items: flex-start;
-  }
-
   .hero {
     grid-template-columns: 1fr;
 
@@ -1150,41 +1146,35 @@ a.underline:hover::after,
     --gutter: 20px;
   }
 
-  .navbar {
-    padding: 20px 0;
-  }
-
-  .navbarInner {
-    flex-direction: column;
-  }
-
-  .navlinks {
-    justify-content: flex-start;
-
-    gap: 15px;
-  }
-
   .hero {
-    gap: 44px;
+    gap: 34px;
+
+    margin-top: 24px;
+    margin-bottom: 88px;
   }
 
   .hero-eyebrow {
-    margin-bottom: 18px;
+    margin-bottom: 16px;
   }
 
   .hero-title {
     font-size:
-      clamp(44px, 13vw, 60px);
+      clamp(42px, 12vw, 56px);
   }
 
   .hero-sub {
-    margin-top: 24px;
+    margin-top: 22px;
+
+    font-size: 15px;
+    line-height: 1.65;
   }
 
   .hero-actions {
     align-items: stretch;
 
-    margin-top: 28px;
+    gap: 12px;
+
+    margin-top: 26px;
   }
 
   .hero-actions .btn,
@@ -1200,14 +1190,15 @@ a.underline:hover::after,
   }
 
   .hero-scroll-hint {
-    margin-top: 36px;
+    display: none;
   }
 
   .hero-image,
   .hero-placeholder {
-    height: 72vw;
+    height: 92vw;
 
     min-height: 320px;
+    max-height: 430px;
   }
 
   .quoteGrid2 {
