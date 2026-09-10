@@ -393,7 +393,7 @@ class EmployeeCommercialWorkflowTest(TestCase):
 
         self.assertIn(
             (
-                f'devis_{quote.id}.pdf'
+                f'devis_{quote.reference}.pdf'
             ),
             response["Content-Disposition"],
         )

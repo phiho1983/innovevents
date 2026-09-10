@@ -738,6 +738,38 @@ class QuoteViewSet(
             IsBusinessAdmin()
         ]
 
+    def destroy(
+        self,
+        request,
+        *args,
+        **kwargs,
+    ):
+        quote = self.get_object()
+
+        if (
+            quote.status
+            != Quote.Status.DRAFT
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Seul un devis en brouillon "
+                        "peut être supprimé."
+                    )
+                },
+                status=(
+                    drf_status
+                    .HTTP_400_BAD_REQUEST
+                ),
+            )
+
+        return super().destroy(
+            request,
+            *args,
+            **kwargs,
+        )
+
+
     def get_queryset(self):
         queryset = (
             super()
@@ -1121,7 +1153,7 @@ class QuoteViewSet(
                         f"{client.first_name or client.username},\n\n"
 
                         "Votre devis Innov'Events "
-                        f"n°{quote.id} est disponible.\n\n"
+                        f"n°{quote.reference} est disponible.\n\n"
 
                         "Un espace client a été préparé "
                         "pour vous permettre de consulter "
@@ -1160,7 +1192,7 @@ class QuoteViewSet(
                     f"Bonjour "
                     f"{client.first_name or client.username},\n\n"
 
-                    f"Le devis n°{quote.id} "
+                    f"Le devis n°{quote.reference} "
                     "est maintenant disponible "
                     "dans votre espace client."
                 ),
@@ -1267,7 +1299,7 @@ class QuoteViewSet(
         send_mail(
             "Devis accepté",
             (
-                f"Le devis #{quote.id} "
+                f"Le devis {quote.reference} "
                 "a été accepté "
                 "par le client."
             ),
@@ -1352,7 +1384,7 @@ class QuoteViewSet(
             client=quote.client,
             content=(
                 f"[Modif devis "
-                f"#{quote.id}] "
+                f"{quote.reference}] "
                 f"{reason}"
             ),
         )
@@ -1419,7 +1451,7 @@ class QuoteViewSet(
             20 * mm,
             height - 35 * mm,
             (
-                f"Devis N° {quote.id}   |   "
+                f"Devis N° {quote.reference}   |   "
                 "Date : "
                 f"{quote.created_at.strftime('%d/%m/%Y')}"
             ),
@@ -1556,7 +1588,7 @@ class QuoteViewSet(
             "Content-Disposition"
         ] = (
             'attachment; '
-            f'filename="devis_{quote.id}.pdf"'
+            f'filename="devis_{quote.reference}.pdf"'
         )
 
         return response

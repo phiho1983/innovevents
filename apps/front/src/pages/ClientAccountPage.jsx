@@ -54,7 +54,7 @@ export default function ClientAccountPage(){
       {quotes.map(q=>(
         <div key={q.id} style={{border:"1px solid #eee",borderRadius:8,padding:14,marginBottom:10,background:"#fff"}}>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
-            <b>Devis #{q.id}</b>
+            <b>Devis {q.reference||`#${q.id}`}</b>
             <span style={{padding:"3px 10px",borderRadius:20,fontSize:12,background:SCOLORS[q.status]||"#eee"}}>{SLABELS[q.status]||q.status}</span>
           </div>
           <p style={{fontSize:13,color:"#555",margin:"4px 0"}}>Total TTC : <b>{q.total_ttc} €</b></p>

@@ -216,9 +216,16 @@ class Quote(models.Model):
         auto_now_add=True,
     )
 
+    @property
+    def reference(self) -> str:
+        return (
+            f"{self.id}-"
+            f"{self.created_at.strftime('%d%m%y')}"
+        )
+
     def __str__(self) -> str:
         return (
-            f"Quote#{self.id} "
+            f"Quote {self.reference} "
             f"{self.status}"
         )
 

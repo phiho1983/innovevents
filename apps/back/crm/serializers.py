@@ -304,6 +304,8 @@ class QuoteItemSerializer(
 class QuoteSerializer(
     serializers.ModelSerializer
 ):
+    reference = serializers.ReadOnlyField()
+
     items = QuoteItemSerializer(
         many=True,
         required=False,
@@ -332,6 +334,7 @@ class QuoteSerializer(
 
         fields = (
             "id",
+            "reference",
             "client",
             "prospect",
             "event",

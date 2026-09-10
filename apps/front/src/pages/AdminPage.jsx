@@ -5,12 +5,8 @@ import HomeHeroAdmin from"../components/admin/HomeHeroAdmin"
 import HomePhotosAdminTab from"../components/admin/HomePhotosAdminTab"
 import{useAuth}from"../auth/useAuth"
 import{getProspects,updateProspectStatus,deleteProspect}from"../api/prospects"
-import{getQuotes,createQuote,sendQuote}from"../api/quotes"
-import{
-  getContactMessages,
-  updateContactMessage,
-  deleteContactMessage,
-}from"../api/contactMessages"
+import{getQuotes,createQuote,sendQuote,deleteQuote,}from"../api/quotes"
+import{getContactMessages,updateContactMessage,deleteContactMessage,}from"../api/contactMessages"
 
 const API=import.meta.env.VITE_API_URL||"http://localhost:8000"
 const ah=()=>({
@@ -1057,6 +1053,7 @@ function QuotesTab(){
   const[loading,setLoading]=useState(true)
   const[show,setShow]=useState(false)
   const[sending,setSending]=useState(null)
+  const[deleting,setDeleting]=useState(null)
   const[error,setError]=useState("")
   const[success,setSuccess]=useState("")
 
@@ -1110,7 +1107,10 @@ function QuotesTab(){
       )
 
       setSuccess(
-        `Devis #${quote.id} envoyé.`
+        `Devis ${
+          quote.reference
+          ||`#${quote.id}`
+        } envoyé.`
       )
     }catch(err){
       setError(
@@ -1118,6 +1118,51 @@ function QuotesTab(){
       )
     }finally{
       setSending(null)
+    }
+  }
+
+  async function handleDelete(
+    quote
+  ){
+    const confirmed=
+      window.confirm(
+        `Supprimer définitivement le devis ${
+          quote.reference
+          ||`#${quote.id}`
+        } ?`
+      )
+
+    if(!confirmed){
+      return
+    }
+
+    setDeleting(quote.id)
+    setError("")
+    setSuccess("")
+
+    try{
+      await deleteQuote(
+        quote.id
+      )
+
+      setQuotes(previous=>
+        previous.filter(current=>
+          current.id!==quote.id
+        )
+      )
+
+      setSuccess(
+        `Devis ${
+          quote.reference
+          ||`#${quote.id}`
+        } supprimé.`
+      )
+    }catch(err){
+      setError(
+        formatError(err)
+      )
+    }finally{
+      setDeleting(null)
     }
   }
 
@@ -1202,7 +1247,11 @@ function QuotesTab(){
               }}
             >
               <b>
-                Devis #{quote.id}
+                Devis{" "}
+                {
+                  quote.reference
+                  ||`#${quote.id}`
+                }
               </b>
 
               <span
@@ -1299,6 +1348,24 @@ function QuotesTab(){
                   {sending===quote.id
                     ?"Envoi..."
                     :"Envoyer le devis"}
+                </button>
+              )}
+
+              {quote.status==="DRAFT"&&(
+                <button
+                  type="button"
+                  disabled={
+                    deleting===quote.id
+                  }
+                  onClick={()=>
+                    handleDelete(
+                      quote
+                    )
+                  }
+                >
+                  {deleting===quote.id
+                    ?"Suppression..."
+                    :"Supprimer"}
                 </button>
               )}
             </div>

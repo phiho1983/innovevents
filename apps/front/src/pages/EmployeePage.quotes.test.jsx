@@ -115,6 +115,9 @@ const QUOTES = [
   {
     id: 42,
 
+    reference:
+      "42-290826",
+
     prospect:
       1,
 
@@ -203,7 +206,7 @@ describe(
 
 
     it(
-      "affiche les devis accessibles a l employe",
+      "affiche les devis accessibles a l employe avec leur reference commerciale",
       async () => {
         await openQuotesTab();
 
@@ -219,7 +222,7 @@ describe(
 
         expect(
           await screen.findByText(
-            "Devis #42"
+            "Devis 42-290826"
           )
         ).toBeTruthy();
 
@@ -236,6 +239,17 @@ describe(
             /2400\.00 €/
           )
         ).toBeTruthy();
+
+
+        expect(
+          screen.queryByRole(
+            "button",
+            {
+              name:
+                "Supprimer",
+            }
+          )
+        ).toBeNull();
       }
     );
 
@@ -247,6 +261,9 @@ describe(
           .mockResolvedValue({
             id:
               99,
+
+            reference:
+              "99-300826",
 
             prospect:
               1,
@@ -372,7 +389,7 @@ describe(
 
         expect(
           await screen.findByText(
-            "Devis #99"
+            "Devis 99-300826"
           )
         ).toBeTruthy();
       }

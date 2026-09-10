@@ -114,6 +114,28 @@ export async function sendQuote(
 }
 
 
+export async function deleteQuote(
+  id
+) {
+  const response =
+    await fetch(
+      `${API}/api/quotes/${id}/`,
+      {
+        method:
+          "DELETE",
+
+        headers:
+          authHeaders(),
+      }
+    );
+
+
+  return readResponse(
+    response
+  );
+}
+
+
 export async function getMyQuotes() {
   const response =
     await fetch(

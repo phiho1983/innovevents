@@ -1757,6 +1757,10 @@ function QuotesSection({
   async function handleSendQuote(
     quote
   ) {
+    const quoteLabel =
+      quote.reference
+      || `#${quote.id}`;
+
     setSendingId(
       quote.id
     );
@@ -1798,7 +1802,7 @@ function QuotesSection({
         && result?.activation_email_sent
       ) {
         setSuccess(
-          `Devis #${quote.id} envoyé. `
+          `Devis ${quoteLabel} envoyé. `
           + "Le compte client a été créé "
           + "et le lien d'activation "
           + "a été envoyé par e-mail."
@@ -1809,14 +1813,14 @@ function QuotesSection({
         && !result?.activation_email_sent
       ) {
         setSuccess(
-          `Devis #${quote.id} envoyé, `
+          `Devis ${quoteLabel} envoyé, `
           + "mais l'e-mail d'activation "
           + "n'a pas pu être envoyé."
         );
 
       } else {
         setSuccess(
-          `Devis #${quote.id} envoyé au client.`
+          `Devis ${quoteLabel} envoyé au client.`
         );
       }
 
@@ -1976,6 +1980,9 @@ function QuotesSection({
 }
 
 
+
+
+
 function QuoteCard({
   quote,
   sending,
@@ -2007,7 +2014,11 @@ function QuoteCard({
         }}
       >
         <strong>
-          Devis #{quote.id}
+          Devis{" "}
+            {
+              quote.reference
+              || `#${quote.id}`
+            }
         </strong>
 
         <span>
