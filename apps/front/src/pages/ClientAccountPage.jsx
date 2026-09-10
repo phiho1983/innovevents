@@ -1,80 +1,441 @@
-import{useState,useEffect}from"react"
-import{useNavigate}from"react-router-dom"
-import Navbar from"../components/Navbar"
-import{useAuth}from"../auth/useAuth"
-import{getMyQuotes,quoteAction}from"../api/quotes"
-import{selectUpcomingClientEvents}from"../utils/selectUpcomingClientEvents"
+import {
+  useEffect,
+  useState,
+} from "react";
 
-const SLABELS={DRAFT:"Brouillon",SENT:"Envoyé",ACCEPTED:"Accepté",REFUSED:"Refusé",CHANGE_REQUESTED:"Modification demandée"}
-const SCOLORS={DRAFT:"#f5f5f5",SENT:"#cce5ff",ACCEPTED:"#d4edda",REFUSED:"#f8d7da",CHANGE_REQUESTED:"#fff3cd"}
-const API=import.meta.env.VITE_API_URL||"http://localhost:8000"
+import Navbar
+  from "../components/Navbar";
 
-export default function ClientAccountPage(){
-  const{user,logout}=useAuth(); const nav=useNavigate()
-  const[quotes,setQuotes]=useState([]); const[loading,setLoading]=useState(true)
-  const[activeId,setActiveId]=useState(null); const[reason,setReason]=useState("")
-  const[events,setEvents]=useState([])
+import {
+  useAuth,
+} from "../auth/useAuth";
 
-  useEffect(()=>{
-    getMyQuotes().then(d=>setQuotes(d.results||d)).catch(console.error).finally(()=>setLoading(false))
-    const tok=localStorage.getItem("access_token")
-    fetch(`${API}/api/events/mine/`,{headers:{"Authorization":`Bearer ${tok}`}})
-      .then(r=>r.json())
-      .then(d=>setEvents(selectUpcomingClientEvents(d.results||d)))
-      .catch(()=>{})
-  },[])
+import {
+  getMyQuotes,
+  quoteAction,
+} from "../api/quotes";
 
-  async function doAction(id,action,r=""){
-    try{
-      const upd=await quoteAction(id,action,r)
-      setQuotes(p=>p.map(q=>q.id===id?{...q,status:upd.status}:q))
-      setActiveId(null); setReason("")
-    }catch(e){alert("Erreur: "+JSON.stringify(e))}
+import {
+  selectUpcomingClientEvents,
+} from "../utils/selectUpcomingClientEvents";
+
+import "./ClientAccountPage.css";
+
+
+const STATUS_LABELS = {
+  DRAFT: "Brouillon",
+  SENT: "Envoyé",
+  ACCEPTED: "Accepté",
+  REFUSED: "Refusé",
+  CHANGE_REQUESTED:
+    "Modification demandée",
+};
+
+
+const API =
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:8000";
+
+
+export default function ClientAccountPage() {
+  const {
+    user,
+  } = useAuth();
+
+  const [
+    quotes,
+    setQuotes,
+  ] = useState([]);
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+
+  const [
+    activeId,
+    setActiveId,
+  ] = useState(null);
+
+  const [
+    reason,
+    setReason,
+  ] = useState("");
+
+  const [
+    events,
+    setEvents,
+  ] = useState([]);
+
+
+  useEffect(() => {
+    getMyQuotes()
+      .then(
+        (data) =>
+          setQuotes(
+            data.results ||
+            data
+          )
+      )
+      .catch(console.error)
+      .finally(
+        () =>
+          setLoading(false)
+      );
+
+    const token =
+      localStorage.getItem(
+        "access_token"
+      );
+
+    fetch(
+      `${API}/api/events/mine/`,
+      {
+        headers: {
+          Authorization:
+            `Bearer ${token}`,
+        },
+      }
+    )
+      .then(
+        (response) =>
+          response.json()
+      )
+      .then(
+        (data) =>
+          setEvents(
+            selectUpcomingClientEvents(
+              data.results ||
+              data
+            )
+          )
+      )
+      .catch(() => {});
+  }, []);
+
+
+  async function doAction(
+    id,
+    action,
+    actionReason = ""
+  ) {
+    try {
+      const updated =
+        await quoteAction(
+          id,
+          action,
+          actionReason
+        );
+
+      setQuotes(
+        (previous) =>
+          previous.map(
+            (quote) =>
+              quote.id === id
+                ? {
+                    ...quote,
+                    status:
+                      updated.status,
+                  }
+                : quote
+          )
+      );
+
+      setActiveId(null);
+      setReason("");
+    } catch (error) {
+      alert(
+        `Erreur: ${JSON.stringify(
+          error
+        )}`
+      );
+    }
   }
 
-  return(<><Navbar/>
-    <main className="container" style={{padding:"20px 0"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-        <div><h1 style={{margin:0}}>Mon espace</h1><p style={{color:"#666",margin:0}}>{user?.username} — {user?.email}</p></div>
-        <button className="btn" onClick={()=>{logout();nav("/")}}>Déconnexion</button>
-      </div>
+return (
+    <>
+      <Navbar />
 
-      {events.length>0&&(<div style={{background:"#f0f7ff",border:"1px solid #b8d4f0",borderRadius:8,padding:14,marginBottom:20}}>
-        <p style={{fontWeight:"600",marginBottom:10,fontSize:14}}>Prochains événements</p>
-        {events.map(e=>(
-          <div key={e.id} style={{display:"flex",justifyContent:"space-between",fontSize:13,padding:"4px 0",borderBottom:"1px solid #d0e8f8"}}>
-            <span>{e.title}</span><span style={{color:"#555"}}>{new Date(e.start_at).toLocaleDateString("fr-FR")}</span>
-          </div>
-        ))}
-      </div>)}
+      <main className="clientPage">
+        <div className="container">
+          <header className="clientHeader">
+            <div>
+              <p className="clientEyebrow">
+                Espace client
+              </p>
 
-      <h2 style={{marginBottom:12}}>Mes devis ({quotes.length})</h2>
-      {loading&&<p>Chargement...</p>}
-      {!loading&&quotes.length===0&&<p style={{color:"#888"}}>Aucun devis pour le moment.</p>}
-      {quotes.map(q=>(
-        <div key={q.id} style={{border:"1px solid #eee",borderRadius:8,padding:14,marginBottom:10,background:"#fff"}}>
-          <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
-            <b>Devis {q.reference||`#${q.id}`}</b>
-            <span style={{padding:"3px 10px",borderRadius:20,fontSize:12,background:SCOLORS[q.status]||"#eee"}}>{SLABELS[q.status]||q.status}</span>
-          </div>
-          <p style={{fontSize:13,color:"#555",margin:"4px 0"}}>Total TTC : <b>{q.total_ttc} €</b></p>
-          {q.items?.map(i=><div key={i.id} style={{fontSize:12,color:"#888",marginTop:2}}>• {i.label} — {i.amount_ht}€ HT</div>)}
-          {q.status==="SENT"&&(
-            <div style={{display:"flex",gap:8,marginTop:12,flexWrap:"wrap"}}>
-              <button onClick={()=>doAction(q.id,"accept")} style={{padding:"5px 12px",background:"#d4edda",border:"1px solid #c3e6cb",borderRadius:4,cursor:"pointer",fontSize:13}}>✓ Accepter</button>
-              <button onClick={()=>doAction(q.id,"refuse")} style={{padding:"5px 12px",background:"#f8d7da",border:"1px solid #f5c6cb",borderRadius:4,cursor:"pointer",fontSize:13}}>✕ Refuser</button>
-              <button onClick={()=>setActiveId(activeId===q.id?null:q.id)} style={{padding:"5px 12px",background:"#fff3cd",border:"1px solid #ffeeba",borderRadius:4,cursor:"pointer",fontSize:13}}>✎ Modification</button>
+              <h1 className="clientTitle">
+                Bonjour{" "}
+                {user?.username ||
+                  ""}
+              </h1>
+
+              <p className="clientIdentity">
+                {user?.email}
+              </p>
             </div>
+</header>
+
+
+          {events.length > 0 && (
+            <section
+              className="clientEvents"
+              aria-labelledby="client-events-title"
+            >
+              <div className="clientSectionHeader">
+                <div>
+                  <p className="clientSectionEyebrow">
+                    Agenda
+                  </p>
+
+                  <h2
+                    id="client-events-title"
+                    className="clientSectionTitle"
+                  >
+                    Prochains événements
+                  </h2>
+                </div>
+
+                <span className="clientCount">
+                  {events.length}
+                </span>
+              </div>
+
+              <div className="clientEventList">
+                {events.map(
+                  (event) => (
+                    <article
+                      key={event.id}
+                      className="clientEventRow"
+                    >
+                      <strong>
+                        {event.title}
+                      </strong>
+
+                      <time
+                        dateTime={
+                          event.start_at
+                        }
+                      >
+                        {new Date(
+                          event.start_at
+                        ).toLocaleDateString(
+                          "fr-FR"
+                        )}
+                      </time>
+                    </article>
+                  )
+                )}
+              </div>
+            </section>
           )}
-          {activeId===q.id&&(
-            <div style={{marginTop:10}}>
-              <textarea value={reason} onChange={e=>setReason(e.target.value)} placeholder="Expliquez le motif de modification..." rows={3}
-                style={{width:"100%",padding:8,border:"1px solid #ddd",borderRadius:4,boxSizing:"border-box"}}/>
-              <button className="btn" style={{marginTop:6}} onClick={()=>doAction(q.id,"request-change",reason)}>Envoyer la demande</button>
+
+
+          <section
+            className="clientQuotes"
+            aria-labelledby="client-quotes-title"
+          >
+            <div className="clientSectionHeader">
+              <div>
+                <p className="clientSectionEyebrow">
+                  Suivi commercial
+                </p>
+
+                <h2
+                  id="client-quotes-title"
+                  className="clientSectionTitle"
+                >
+                  Mes devis
+                </h2>
+              </div>
+
+              <span className="clientCount">
+                {quotes.length}
+              </span>
             </div>
-          )}
+
+
+            {loading && (
+              <div className="clientEmpty">
+                Chargement des devis...
+              </div>
+            )}
+
+
+            {!loading &&
+              quotes.length === 0 && (
+                <div className="clientEmpty">
+                  Aucun devis pour le moment.
+                </div>
+              )}
+
+
+            <div className="clientQuoteList">
+              {quotes.map(
+                (quote) => (
+                  <article
+                    key={quote.id}
+                    className="clientQuoteCard"
+                  >
+                    <div className="clientQuoteHeader">
+                      <div>
+                        <p className="clientQuoteLabel">
+                          Devis
+                        </p>
+
+                        <h3>
+                          Devis{" "}
+                          {quote.reference ||
+                            `#${quote.id}`}
+                        </h3>
+                      </div>
+
+                      <span
+                        className={`clientStatus clientStatus--${quote.status?.toLowerCase()}`}
+                      >
+                        {STATUS_LABELS[
+                          quote.status
+                        ] ||
+                          quote.status}
+                      </span>
+                    </div>
+
+
+                    <div className="clientQuoteTotal">
+                      <span>
+                        Total TTC
+                      </span>
+
+                      <strong>
+                        {quote.total_ttc} €
+                      </strong>
+                    </div>
+
+
+                    {quote.items?.length >
+                      0 && (
+                      <div className="clientQuoteItems">
+                        {quote.items.map(
+                          (item) => (
+                            <div
+                              key={
+                                item.id
+                              }
+                              className="clientQuoteItem"
+                            >
+                              <span>
+                                {
+                                  item.label
+                                }
+                              </span>
+
+                              <span>
+                                {
+                                  item.amount_ht
+                                }{" "}
+                                € HT
+                              </span>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    )}
+
+
+                    {quote.status ===
+                      "SENT" && (
+                      <div className="clientQuoteActions">
+                        <button
+                          type="button"
+                          className="clientAction clientAction--accept"
+                          onClick={() =>
+                            doAction(
+                              quote.id,
+                              "accept"
+                            )
+                          }
+                        >
+                          ✓ Accepter
+                        </button>
+
+                        <button
+                          type="button"
+                          className="clientAction clientAction--refuse"
+                          onClick={() =>
+                            doAction(
+                              quote.id,
+                              "refuse"
+                            )
+                          }
+                        >
+                          ✕ Refuser
+                        </button>
+
+                        <button
+                          type="button"
+                          className="clientAction clientAction--change"
+                          onClick={() =>
+                            setActiveId(
+                              activeId ===
+                                quote.id
+                                ? null
+                                : quote.id
+                            )
+                          }
+                        >
+                          ✎ Modification
+                        </button>
+                      </div>
+                    )}
+
+
+                    {activeId ===
+                      quote.id && (
+                      <div className="clientChangeRequest">
+                        <label
+                          htmlFor={`quote-reason-${quote.id}`}
+                        >
+                          Motif de modification
+                        </label>
+
+                        <textarea
+                          id={`quote-reason-${quote.id}`}
+                          value={reason}
+                          onChange={(
+                            event
+                          ) =>
+                            setReason(
+                              event
+                                .target
+                                .value
+                            )
+                          }
+                          placeholder="Expliquez le motif de modification..."
+                          rows={4}
+                        />
+
+                        <button
+                          type="button"
+                          className="btn"
+                          onClick={() =>
+                            doAction(
+                              quote.id,
+                              "request-change",
+                              reason
+                            )
+                          }
+                        >
+                          Envoyer la demande
+                        </button>
+                      </div>
+                    )}
+                  </article>
+                )
+              )}
+            </div>
+          </section>
         </div>
-      ))}
-    </main>
-  </>)
+      </main>
+    </>
+  );
 }
