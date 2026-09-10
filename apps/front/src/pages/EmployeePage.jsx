@@ -30,6 +30,9 @@ import {
 } from "../api/contactMessages";
 
 
+import "./EmployeePage.css";
+
+
 const STATUS_LABELS = {
   TO_CONTACT: "À contacter",
   CONTACTED: "Contacté",
@@ -672,116 +675,96 @@ export default function EmployeePage() {
     <>
       <Navbar />
 
-      <main
-        className="container"
-        style={{
-          padding: "24px 0",
-        }}
-      >
-        <div
-          style={{
-            marginBottom: 24,
-          }}
-        >
-          <h1
-            style={{
-              marginBottom: 4,
-            }}
-          >
-            Espace employé
-          </h1>
+      <main className="employeePage">
+        <div className="container">
+          <header className="employeeHeader">
+            <p className="employeeEyebrow">
+              Pilotage opérationnel
+            </p>
 
-          <p
-            style={{
-              color: "#666",
-              margin: 0,
-            }}
-          >
-            Connecté : {user?.username}
-          </p>
-        </div>
+            <h1 className="employeeTitle">
+              Espace employé
+            </h1>
 
-        <div
-          style={{
-            display: "flex",
-            gap: 4,
-            marginBottom: 24,
-            borderBottom:
-              "1px solid #ddd",
-            flexWrap: "wrap",
-          }}
-        >
-          <TabButton
-            active={
-              activeTab === "prospects"
-            }
-            onClick={
-              () =>
-                setActiveTab(
-                  "prospects"
-                )
-            }
-          >
-            Demandes
-          </TabButton>
+            <p className="employeeIdentity">
+              Connecté : {user?.username}
+            </p>
+          </header>
 
-          <TabButton
-            active={
-              activeTab === "messages"
-            }
-            onClick={
-              () =>
-                setActiveTab(
-                  "messages"
-                )
-            }
+          <nav
+            className="employeeTabs"
+            aria-label="Navigation espace employé"
           >
-            Messages
-          </TabButton>
+            <TabButton
+              active={
+                activeTab === "prospects"
+              }
+              onClick={
+                () =>
+                  setActiveTab(
+                    "prospects"
+                  )
+              }
+            >
+              Demandes
+            </TabButton>
 
-          <TabButton
-            active={
-              activeTab === "quotes"
-            }
-            onClick={
-              () =>
-                setActiveTab(
-                  "quotes"
-                )
-            }
-          >
-            Devis
-          </TabButton>
+            <TabButton
+              active={
+                activeTab === "messages"
+              }
+              onClick={
+                () =>
+                  setActiveTab(
+                    "messages"
+                  )
+              }
+            >
+              Messages
+            </TabButton>
 
-          <TabButton
-            active={
-              activeTab === "events"
-            }
-            onClick={
-              () =>
-                setActiveTab(
-                  "events"
-                )
-            }
-          >
-            Événements
-          </TabButton>
+            <TabButton
+              active={
+                activeTab === "quotes"
+              }
+              onClick={
+                () =>
+                  setActiveTab(
+                    "quotes"
+                  )
+              }
+            >
+              Devis
+            </TabButton>
 
-          <TabButton
-            active={
-              activeTab === "notes"
-            }
-            onClick={
-              () =>
-                setActiveTab(
-                  "notes"
-                )
-            }
-          >
-            Notes
-          </TabButton>
-        </div>
+            <TabButton
+              active={
+                activeTab === "events"
+              }
+              onClick={
+                () =>
+                  setActiveTab(
+                    "events"
+                  )
+              }
+            >
+              Événements
+            </TabButton>
 
+            <TabButton
+              active={
+                activeTab === "notes"
+              }
+              onClick={
+                () =>
+                  setActiveTab(
+                    "notes"
+                  )
+              }
+            >
+              Notes
+            </TabButton>
+          </nav>
         {activeTab === "prospects" && (
           <ProspectsSection
             prospects={prospects}
@@ -856,6 +839,7 @@ export default function EmployeePage() {
             }
           />
         )}
+        </div>
       </main>
     </>
   );
@@ -871,26 +855,16 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      style={{
-        padding: "9px 16px",
-        border: "none",
-        background: "none",
-        cursor: "pointer",
-        fontWeight:
-          active
-            ? "600"
-            : "400",
-        borderBottom:
-          active
-            ? "2px solid #000"
-            : "2px solid transparent",
-      }}
+      className={
+        active
+          ? "employeeTab employeeTab--active"
+          : "employeeTab"
+      }
     >
       {children}
     </button>
   );
 }
-
 
 function MessagesSection({
   messages,
