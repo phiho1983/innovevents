@@ -454,6 +454,11 @@ class QuoteSerializer(
 class NoteSerializer(
     serializers.ModelSerializer
 ):
+    author_name = serializers.CharField(
+        source="author.username",
+        read_only=True,
+    )
+
     class Meta:
         model = Note
 
@@ -461,5 +466,6 @@ class NoteSerializer(
 
         read_only_fields = (
             "author",
+            "author_name",
             "created_at",
         )
