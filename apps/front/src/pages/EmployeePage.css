@@ -205,3 +205,314 @@
       clamp(30px, 9vw, 38px);
   }
 }
+/* ========================================================= */
+/* EMPLOYEE PHASE B                                          */
+/* Cartes, formulaires et actions                            */
+/* ========================================================= */
+
+.employeePage section {
+  min-width: 0;
+}
+
+
+.employeePage section > p {
+  max-width: 760px;
+
+  color:
+    var(--color-muted) !important;
+
+  line-height: 1.65;
+}
+
+
+.employeePage section article {
+  border-radius:
+    var(--radius-md) !important;
+
+  padding:
+    clamp(18px, 2vw, 24px) !important;
+
+  margin-bottom:
+    14px !important;
+
+  box-shadow:
+    var(--shadow-xs);
+
+  transition:
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+
+.employeePage section article:hover {
+  transform:
+    translateY(-2px);
+
+  box-shadow:
+    var(--shadow-soft);
+}
+
+
+.employeePage section article h3 {
+  margin-top: 0;
+
+  color:
+    var(--color-text);
+
+  font-size:
+    clamp(18px, 2vw, 22px);
+
+  line-height: 1.25;
+}
+
+
+.employeePage section article > div:first-child > strong,
+.employeePage section article > div:first-child strong {
+  color:
+    var(--color-text);
+
+  font-size: 15px;
+}
+
+
+.employeePage section article > div:first-child > span {
+  border:
+    1px solid rgba(23, 22, 20, 0.08);
+
+  font-weight: 700;
+}
+
+
+.employeePage section a {
+  color:
+    var(--color-text);
+
+  text-decoration-color:
+    var(--color-accent);
+
+  text-underline-offset: 3px;
+}
+
+
+.employeePage section a:hover {
+  color:
+    var(--color-accent);
+}
+
+
+.employeePage section button:not(.employeeTab):not(.btn) {
+  min-height: 38px;
+
+  padding:
+    8px 13px !important;
+
+  border-radius:
+    999px !important;
+
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    transform var(--transition-fast),
+    background var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+
+.employeePage section button:not(.employeeTab):not(.btn):hover:not(:disabled) {
+  transform:
+    translateY(-1px);
+}
+
+
+.employeePage section button:disabled {
+  cursor: not-allowed;
+
+  opacity: 0.55;
+}
+
+
+.employeePage section form {
+  border:
+    1px solid var(--color-line) !important;
+
+  border-radius:
+    var(--radius-lg) !important;
+
+  padding:
+    clamp(20px, 3vw, 30px) !important;
+
+  background:
+    var(--color-surface) !important;
+
+  box-shadow:
+    var(--shadow-xs);
+}
+
+
+.employeePage section form h3 {
+  margin-top: 0;
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    ui-serif,
+    serif;
+
+  font-size:
+    clamp(24px, 3vw, 32px);
+
+  font-weight: 500;
+
+  letter-spacing: -0.03em;
+}
+
+
+.employeePage section label {
+  color:
+    var(--color-text-soft);
+
+  font-size: 13px;
+  font-weight: 700;
+}
+
+
+.employeePage section input:not([type="checkbox"]),
+.employeePage section select,
+.employeePage section textarea {
+  width: 100%;
+
+  min-height: 44px;
+
+  padding:
+    10px 12px;
+
+  border:
+    1px solid var(--color-line);
+
+  border-radius:
+    var(--radius-sm);
+
+  background:
+    var(--color-surface);
+
+  color:
+    var(--color-text);
+
+  font: inherit;
+
+  outline: none;
+
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+
+.employeePage section textarea {
+  min-height: 120px;
+
+  resize: vertical;
+}
+
+
+.employeePage section input:not([type="checkbox"]):focus,
+.employeePage section select:focus,
+.employeePage section textarea:focus {
+  border-color:
+    var(--color-accent);
+
+  box-shadow:
+    0 0 0 3px
+    var(--color-accent-soft);
+}
+
+
+.employeePage section input[type="checkbox"] {
+  accent-color:
+    var(--color-accent);
+}
+
+
+.employeePage section .btn {
+  min-height: 42px;
+
+  border-radius: 999px;
+}
+
+
+.employeePage section > div:has(> div > h2),
+.employeePage section > div:has(> h2) {
+  gap:
+    24px !important;
+
+  margin-bottom:
+    24px !important;
+}
+
+
+.employeePage section > div:has(> div > h2) h2,
+.employeePage section > div:has(> h2) h2 {
+  font-family:
+    Georgia,
+    "Times New Roman",
+    ui-serif,
+    serif;
+
+  font-size:
+    clamp(30px, 3vw, 42px);
+
+  font-weight: 500;
+
+  line-height: 1;
+
+  letter-spacing:
+    -0.035em;
+}
+
+
+@media (max-width: 700px) {
+  .employeePage section article {
+    padding:
+      18px !important;
+  }
+
+  .employeePage section article > div:first-child {
+    flex-direction:
+      column !important;
+
+    align-items:
+      flex-start !important;
+  }
+
+  .employeePage section > div:has(> div > h2),
+  .employeePage section > div:has(> h2) {
+    flex-direction:
+      column !important;
+
+    align-items:
+      stretch !important;
+  }
+
+  .employeePage section > div:has(> div > h2) .btn,
+  .employeePage section > div:has(> h2) .btn {
+    width: 100%;
+  }
+
+  .employeePage section form {
+    padding:
+      18px !important;
+  }
+
+  .employeePage section form > div {
+    max-width: 100%;
+  }
+
+  .employeePage section button:not(.employeeTab) {
+    max-width: 100%;
+  }
+}
