@@ -1,0 +1,642 @@
+.adminPage {
+  padding:
+    clamp(42px, 6vw, 82px)
+    0
+    clamp(80px, 10vw, 130px);
+}
+
+
+.adminHeader {
+  padding-bottom:
+    clamp(32px, 5vw, 54px);
+
+  border-bottom:
+    1px solid var(--color-line);
+}
+
+
+.adminEyebrow {
+  margin:
+    0 0 14px;
+
+  color:
+    var(--color-accent);
+
+  font-size: 11px;
+  font-weight: 800;
+
+  letter-spacing: 0.18em;
+
+  text-transform: uppercase;
+}
+
+
+.adminTitle {
+  margin: 0;
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    ui-serif,
+    serif;
+
+  font-size:
+    clamp(48px, 6vw, 76px);
+
+  font-weight: 500;
+
+  line-height: 0.98;
+
+  letter-spacing: -0.05em;
+}
+
+
+.adminIdentity {
+  margin:
+    18px 0 0;
+
+  color:
+    var(--color-muted);
+
+  font-size: 14px;
+}
+
+
+.adminTabs {
+  display: flex;
+
+  gap: 8px;
+
+  margin:
+    28px 0
+    42px;
+
+  padding-bottom: 8px;
+
+  overflow-x: auto;
+
+  border-bottom:
+    1px solid var(--color-line);
+
+  scrollbar-width: none;
+}
+
+
+.adminTabs::-webkit-scrollbar {
+  display: none;
+}
+
+
+.adminTab {
+  flex-shrink: 0;
+
+  min-height: 42px;
+
+  padding:
+    9px 15px;
+
+  border:
+    1px solid transparent;
+
+  border-radius: 999px;
+
+  background: transparent;
+
+  color:
+    var(--color-muted);
+
+  font-size: 13px;
+  font-weight: 700;
+
+  white-space: nowrap;
+
+  cursor: pointer;
+
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+
+.adminTab:hover {
+  transform:
+    translateY(-1px);
+
+  border-color:
+    var(--color-line);
+
+  background:
+    var(--color-surface);
+}
+
+
+.adminTab--active {
+  border-color:
+    var(--color-dark);
+
+  background:
+    var(--color-dark);
+
+  color:
+    var(--color-on-dark);
+}
+
+
+.adminPage section > h2 {
+  margin:
+    0 0 18px;
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    ui-serif,
+    serif;
+
+  font-size:
+    clamp(30px, 3vw, 42px);
+
+  font-weight: 500;
+
+  line-height: 1;
+
+  letter-spacing: -0.035em;
+}
+
+
+.adminPage section > h2 + p {
+  max-width: 760px;
+
+  color:
+    var(--color-muted);
+
+  font-size: 14px;
+
+  line-height: 1.65;
+}
+
+
+@media (max-width: 600px) {
+  .adminPage {
+    padding:
+      30px 0
+      80px;
+  }
+
+  .adminHeader {
+    padding-bottom: 30px;
+  }
+
+  .adminTitle {
+    font-size:
+      clamp(42px, 13vw, 54px);
+  }
+
+  .adminTabs {
+    margin:
+      22px calc(var(--gutter) * -1)
+      34px;
+
+    padding:
+      0 var(--gutter)
+      10px;
+  }
+
+  .adminTab {
+    min-height: 40px;
+
+    padding:
+      8px 13px;
+  }
+
+  .adminPage section > h2 {
+    font-size:
+      clamp(30px, 9vw, 38px);
+  }
+}
+
+/* ========================================================= */
+/* ADMIN PHASE B                                             */
+/* Panels, cartes, formulaires et tableau                    */
+/* ========================================================= */
+
+.adminPanel {
+  min-width: 0;
+}
+
+
+.adminPanel > h2,
+.adminPanel > div:first-child > h2,
+.adminPanel > div:first-child > div > h2 {
+  margin-top: 0 !important;
+
+  margin-bottom:
+    22px !important;
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    ui-serif,
+    serif;
+
+  font-size:
+    clamp(30px, 3vw, 42px);
+
+  font-weight: 500;
+
+  line-height: 1;
+
+  letter-spacing:
+    -0.035em;
+}
+
+
+.adminPanel > p {
+  color:
+    var(--color-muted);
+
+  line-height: 1.65;
+}
+
+
+/* Pipeline */
+
+.adminPanel button:not(.adminTab):not(.btn) {
+  min-height: 38px;
+
+  padding:
+    8px 13px !important;
+
+  border-radius:
+    999px !important;
+
+  font-family: inherit;
+
+  font-size: 12px;
+
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    transform var(--transition-fast),
+    border-color var(--transition-fast),
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+
+.adminPanel button:not(.adminTab):not(.btn):hover:not(:disabled) {
+  transform:
+    translateY(-1px);
+}
+
+
+.adminPanel button:disabled {
+  opacity: 0.55;
+
+  cursor: not-allowed;
+}
+
+
+.adminPanel .btn {
+  min-height: 42px;
+
+  border-radius: 999px;
+}
+
+
+/* Cartes métier */
+
+.adminPanel > div:has(> div:first-child > span) {
+  border:
+    1px solid var(--color-line) !important;
+
+  border-radius:
+    var(--radius-md) !important;
+
+  padding:
+    clamp(18px, 2vw, 24px) !important;
+
+  margin-bottom:
+    14px !important;
+
+  background:
+    var(--color-surface) !important;
+
+  box-shadow:
+    var(--shadow-xs);
+
+  transition:
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+
+.adminPanel > div:has(> div:first-child > span):hover {
+  transform:
+    translateY(-2px);
+
+  box-shadow:
+    var(--shadow-soft);
+}
+
+
+.adminPanel > div:has(> div:first-child > span)
+> div:first-child {
+  gap:
+    16px !important;
+}
+
+
+.adminPanel > div:has(> div:first-child > span)
+> div:first-child
+> span {
+  border:
+    1px solid rgba(23, 22, 20, 0.08);
+
+  font-weight: 700;
+}
+
+
+.adminPanel h3 {
+  color:
+    var(--color-text);
+}
+
+
+/* Liens */
+
+.adminPanel a {
+  color:
+    var(--color-text);
+
+  text-decoration-color:
+    var(--color-accent);
+
+  text-underline-offset: 3px;
+}
+
+
+.adminPanel a:hover {
+  color:
+    var(--color-accent);
+}
+
+
+/* Formulaires */
+
+.adminPanel > form {
+  padding:
+    clamp(18px, 2.5vw, 26px);
+
+  border:
+    1px solid var(--color-line);
+
+  border-radius:
+    var(--radius-md);
+
+  background:
+    var(--color-surface);
+
+  box-shadow:
+    var(--shadow-xs);
+}
+
+
+.adminPanel div:has(> h3 + form) {
+  border:
+    1px solid var(--color-line) !important;
+
+  border-radius:
+    var(--radius-md) !important;
+
+  padding:
+    clamp(18px, 2.5vw, 26px) !important;
+
+  background:
+    var(--color-surface) !important;
+
+  box-shadow:
+    var(--shadow-xs);
+}
+
+
+.adminPanel div:has(> h3 + form) > h3 {
+  margin-top: 0;
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    ui-serif,
+    serif;
+
+  font-size:
+    clamp(24px, 2.5vw, 30px);
+
+  font-weight: 500;
+
+  letter-spacing:
+    -0.025em;
+}
+
+
+.adminPanel div:has(> h3 + form) > form {
+  margin: 0;
+}
+
+
+.adminPanel label {
+  color:
+    var(--color-text-soft);
+
+  font-size: 13px;
+
+  font-weight: 700;
+}
+
+
+.adminPanel textarea,
+.adminPanel select,
+.adminPanel input:not([type="checkbox"]) {
+  min-height: 44px;
+
+  border:
+    1px solid var(--color-line) !important;
+
+  border-radius:
+    var(--radius-sm) !important;
+
+  background:
+    var(--color-surface);
+
+  color:
+    var(--color-text);
+
+  font: inherit;
+
+  outline: none;
+
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+
+.adminPanel textarea {
+  min-height: 112px;
+
+  resize: vertical;
+}
+
+
+.adminPanel textarea:focus,
+.adminPanel select:focus,
+.adminPanel input:not([type="checkbox"]):focus {
+  border-color:
+    var(--color-accent) !important;
+
+  box-shadow:
+    0 0 0 3px
+    var(--color-accent-soft);
+}
+
+
+/* Tableau utilisateurs */
+
+.adminPanel table {
+  width: 100%;
+
+  border:
+    1px solid var(--color-line);
+
+  border-collapse:
+    separate !important;
+
+  border-spacing: 0 !important;
+
+  border-radius:
+    var(--radius-md);
+
+  overflow: hidden;
+
+  background:
+    var(--color-surface);
+}
+
+
+.adminPanel thead tr {
+  background:
+    rgba(23, 22, 20, 0.04) !important;
+}
+
+
+.adminPanel th {
+  padding:
+    13px 14px !important;
+
+  border-bottom:
+    1px solid var(--color-line) !important;
+
+  color:
+    var(--color-muted);
+
+  font-size: 11px;
+
+  font-weight: 800;
+
+  letter-spacing: 0.08em;
+
+  text-transform: uppercase;
+}
+
+
+.adminPanel td {
+  padding:
+    13px 14px !important;
+
+  vertical-align: middle;
+}
+
+
+.adminPanel tbody tr {
+  border-bottom:
+    1px solid var(--color-line) !important;
+}
+
+
+.adminPanel tbody tr:hover {
+  background:
+    rgba(23, 22, 20, 0.025);
+}
+
+
+/* Feedback */
+
+.adminPanel [role="alert"] {
+  padding:
+    11px 14px;
+
+  border:
+    1px solid var(--color-danger);
+
+  border-radius:
+    var(--radius-sm);
+
+  color:
+    var(--color-danger);
+}
+
+
+/* Notes */
+
+.adminPanel > form + div,
+.adminPanel > form ~ div {
+  line-height: 1.55;
+}
+
+
+/* Mobile */
+
+@media (max-width: 760px) {
+  .adminPanel > h2,
+  .adminPanel > div:first-child > h2,
+  .adminPanel > div:first-child > div > h2 {
+    font-size:
+      clamp(30px, 9vw, 38px);
+  }
+
+  .adminPanel > div:first-child:has(> h2) {
+    flex-direction:
+      column !important;
+
+    align-items:
+      stretch !important;
+
+    gap:
+      16px !important;
+  }
+
+  .adminPanel > div:first-child:has(> h2) .btn {
+    width: 100%;
+  }
+
+  .adminPanel > div:has(> div:first-child > span)
+  > div:first-child {
+    flex-direction:
+      column !important;
+
+    align-items:
+      flex-start !important;
+  }
+
+  .adminPanel form > div {
+    max-width: 100%;
+  }
+
+  .adminPanel table {
+    min-width: 760px;
+  }
+}

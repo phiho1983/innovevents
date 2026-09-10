@@ -1,12 +1,12 @@
 import{useState,useEffect}from"react"
-import{useNavigate}from"react-router-dom"
 import Navbar from"../components/Navbar"
 import HomeHeroAdmin from"../components/admin/HomeHeroAdmin"
 import HomePhotosAdminTab from"../components/admin/HomePhotosAdminTab"
 import{useAuth}from"../auth/useAuth"
 import{getProspects,updateProspectStatus,deleteProspect}from"../api/prospects"
-import{getQuotes,createQuote,sendQuote,deleteQuote,}from"../api/quotes"
+import{getQuotes,createQuote,sendQuote,deleteQuote,downloadQuotePdf,}from"../api/quotes"
 import{getContactMessages,updateContactMessage,deleteContactMessage,}from"../api/contactMessages"
+import"./AdminPage.css"
 
 const API=import.meta.env.VITE_API_URL||"http://localhost:8000"
 const ah=()=>({
@@ -61,8 +61,7 @@ function formatError(error){
 
 
 export default function AdminPage(){
-  const{user,logout}=useAuth()
-  const nav=useNavigate()
+  const{user}=useAuth()
   const[tab,setTab]=useState("requests")
 
   const tabs=[
@@ -79,79 +78,41 @@ export default function AdminPage(){
     <>
       <Navbar/>
 
-      <main
-        className="container"
-        style={{padding:"20px 0"}}
-      >
-        <div
-          style={{
-            display:"flex",
-            justifyContent:"space-between",
-            alignItems:"center",
-            marginBottom:16,
-          }}
-        >
-          <div>
-            <h1 style={{margin:0}}>
+      <main className="adminPage">
+        <div className="container">
+          <header className="adminHeader">
+            <p className="adminEyebrow">
+              Pilotage global
+            </p>
+
+            <h1 className="adminTitle">
               Dashboard Admin
             </h1>
 
-            <p
-              style={{
-                color:"#666",
-                margin:0,
-              }}
-            >
-              {user?.username}
+            <p className="adminIdentity">
+              Connecté : {user?.username}
             </p>
-          </div>
+          </header>
 
-          <button
-            className="btn"
-            onClick={()=>{
-              logout()
-              nav("/")
-            }}
+          <nav
+            className="adminTabs"
+            aria-label="Navigation administration"
           >
-            Déconnexion
-          </button>
-        </div>
-
-        <div
-          style={{
-            display:"flex",
-            gap:4,
-            marginBottom:20,
-            borderBottom:"1px solid #eee",
-            overflowX:"auto",
-          }}
-        >
-          {tabs.map(([key,label])=>(
-            <button
-              key={key}
-              onClick={()=>setTab(key)}
-              style={{
-                padding:"8px 16px",
-                border:"none",
-                background:"none",
-                cursor:"pointer",
-                fontWeight:
+            {tabs.map(([key,label])=>(
+              <button
+                key={key}
+                type="button"
+                onClick={()=>setTab(key)}
+                className={
                   tab===key
-                    ?"600"
-                    :"400",
-                borderBottom:
-                  tab===key
-                    ?"2px solid #000"
-                    :"none",
-                marginBottom:-1,
-                whiteSpace:"nowrap",
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
+                    ?"adminTab adminTab--active"
+                    :"adminTab"
+                }
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
         {tab==="requests"&&(
           <RequestsTab currentUser={user}/>
         )}
@@ -184,6 +145,7 @@ export default function AdminPage(){
             <HomePhotosAdminTab/>
           </>
         )}
+        </div>
       </main>
     </>
   )
@@ -343,7 +305,7 @@ function RequestsTab({currentUser}){
   }
 
   return(
-    <div>
+    <div className="adminPanel">
       <h2 style={{marginBottom:12}}>
         Demandes ({requests.length})
       </h2>
@@ -814,7 +776,7 @@ function MessagesTab({currentUser}){
   }
 
   return(
-    <div>
+    <div className="adminPanel">
       <h2>
         Messages ({messages.length})
       </h2>
@@ -1167,7 +1129,7 @@ function QuotesTab(){
   }
 
   return(
-    <div>
+    <div className="adminPanel">
       <div
         style={{
           display:"flex",
@@ -1315,23 +1277,24 @@ function QuotesTab(){
                 flexWrap:"wrap",
               }}
             >
-              <a
-                href={
-                  `${API}/api/quotes/${quote.id}/pdf/`
-                }
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  fontSize:12,
-                  padding:"3px 10px",
-                  border:"1px solid #ddd",
-                  borderRadius:4,
-                  textDecoration:"none",
-                  color:"#333",
+              <button
+                type="button"
+                onClick={async()=>{
+                  setError("")
+                  try{
+                    await downloadQuotePdf(
+                      quote.id,
+                      quote.reference
+                    )
+                  }catch(err){
+                    setError(
+                      formatError(err)
+                    )
+                  }
                 }}
               >
                 Télécharger PDF
-              </a>
+              </button>
 
               {quote.status==="DRAFT"&&(
                 <button
@@ -1795,7 +1758,7 @@ function ReviewsAdminTab() {
   }
 
   return (
-    <div>
+    <div className="adminPanel">
       <h2 style={{ marginBottom: 12 }}>
         Avis clients ({reviews.length})
       </h2>
@@ -2020,7 +1983,7 @@ function UsersRightsTab({currentUser}){
   }
 
   return(
-    <div>
+    <div className="adminPanel">
       <h2 style={{marginBottom:12}}>
         Gestion des utilisateurs
       </h2>
@@ -2295,7 +2258,7 @@ function NotesTab(){
     const r=await fetch(`${API}/api/notes/`,{method:"POST",headers:ah(),body:JSON.stringify({content:text,pinned:false})})
     const n=await r.json(); setNotes(p=>[n,...p]); setText(""); setSaving(false)
   }
-  return(<div>
+  return(<div className="adminPanel">
     <h2 style={{marginBottom:12}}>Notes globales</h2>
     <form onSubmit={add} style={{marginBottom:16}}>
       <textarea value={text} onChange={e=>setText(e.target.value)} rows={3} placeholder="Ajouter une note..."

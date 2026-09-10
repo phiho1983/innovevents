@@ -20,6 +20,7 @@ import {
 
 import {
   createQuote,
+  downloadQuotePdf,
   getQuotes,
   sendQuote,
 } from "../api/quotes";
@@ -2055,18 +2056,25 @@ function QuoteCard({
           flexWrap: "wrap",
         }}
       >
-        <a
-          href={
-            `${API}/api/quotes/${quote.id}/pdf/`
+        <button
+          type="button"
+          onClick={() =>
+            downloadQuotePdf(
+              quote.id,
+              quote.reference
+            ).catch(
+              (error) => {
+                window.alert(
+                  formatError(
+                    error
+                  )
+                );
+              }
+            )
           }
-          target="_blank"
-          rel="noreferrer"
-          style={{
-            fontSize: 12,
-          }}
         >
           Télécharger PDF
-        </a>
+        </button>
 
 
         {quote.status === "DRAFT" && (

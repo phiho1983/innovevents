@@ -180,3 +180,69 @@ export async function quoteAction(
     response
   );
 }
+export async function downloadQuotePdf(
+  id,
+  reference = ""
+) {
+  const token =
+    localStorage.getItem(
+      "access_token"
+    );
+
+  const response =
+    await fetch(
+      `${API}/api/quotes/${id}/pdf/`,
+      {
+        headers: {
+          Authorization:
+            `Bearer ${token}`,
+        },
+      }
+    );
+
+  if (!response.ok) {
+    const data =
+      await response
+        .json()
+        .catch(
+          () => null
+        );
+
+    throw (
+      data
+      || {
+        detail:
+          `HTTP ${response.status}`,
+      }
+    );
+  }
+
+  const blob =
+    await response.blob();
+
+  const blobUrl =
+    URL.createObjectURL(
+      blob
+    );
+
+  const link =
+    document.createElement(
+      "a"
+    );
+
+  link.href = blobUrl;
+
+  link.download =
+    `devis_${reference || id}.pdf`;
+
+  document.body.appendChild(
+    link
+  );
+
+  link.click();
+  link.remove();
+
+  URL.revokeObjectURL(
+    blobUrl
+  );
+}
