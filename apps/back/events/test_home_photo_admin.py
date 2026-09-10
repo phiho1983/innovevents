@@ -35,11 +35,13 @@ class HomePhotoAdminAccessTest(APITestCase):
             role=User.Role.CLIENT,
         )
 
-        self.photo = HomePhoto.objects.create(
+        self.photo, _ = HomePhoto.objects.update_or_create(
             slot=1,
-            image_url="",
-            cloudinary_public_id="",
-            alt_text="Photo accueil initiale",
+            defaults={
+                "image_url": "",
+                "cloudinary_public_id": "",
+                "alt_text": "Photo accueil initiale",
+            },
         )
 
         self.list_url = reverse(

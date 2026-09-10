@@ -33,11 +33,13 @@ class HomePhotoReplacementTest(APITestCase):
             role=User.Role.ADMIN,
         )
 
-        self.photo = HomePhoto.objects.create(
+        self.photo, _ = HomePhoto.objects.update_or_create(
             slot=1,
-            image_url="",
-            cloudinary_public_id="",
-            alt_text="Ancienne photo",
+            defaults={
+                "image_url": "",
+                "cloudinary_public_id": "",
+                "alt_text": "Ancienne photo",
+            },
         )
 
         self.upload_url = (
