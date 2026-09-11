@@ -19,6 +19,11 @@ import {
 
 import LoginScreen from "./src/screens/LoginScreen";
 import TwoFactorScreen from "./src/screens/TwoFactorScreen";
+import TeamHomeScreen from "./src/screens/TeamHomeScreen";
+import ProspectsScreen from "./src/screens/ProspectsScreen";
+import QuotesScreen from "./src/screens/QuotesScreen";
+import QuoteDetailScreen from "./src/screens/QuoteDetailScreen";
+import NotesScreen from "./src/screens/NotesScreen";
 import EventsScreen from "./src/screens/EventsScreen";
 import EventDetailScreen from "./src/screens/EventDetailScreen";
 
@@ -26,6 +31,7 @@ import {
   getCurrentUser,
   logout,
 } from "./src/api";
+
 
 const Stack =
   createStackNavigator();
@@ -110,6 +116,7 @@ export default function App() {
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
+
           cardStyle: {
             backgroundColor:
               "#f7f4ee",
@@ -118,6 +125,48 @@ export default function App() {
       >
         {user ? (
           <>
+            <Stack.Screen
+              name="TeamHome"
+            >
+              {(props) => (
+                <TeamHomeScreen
+                  {...props}
+                  user={user}
+                  onLogout={
+                    handleLogout
+                  }
+                />
+              )}
+            </Stack.Screen>
+
+            <Stack.Screen
+              name="Prospects"
+              component={
+                ProspectsScreen
+              }
+            />
+
+            <Stack.Screen
+              name="Quotes"
+              component={
+                QuotesScreen
+              }
+            />
+
+            <Stack.Screen
+              name="QuoteDetail"
+              component={
+                QuoteDetailScreen
+              }
+            />
+
+            <Stack.Screen
+              name="Notes"
+              component={
+                NotesScreen
+              }
+            />
+
             <Stack.Screen
               name="Events"
             >
@@ -172,9 +221,13 @@ const styles =
   StyleSheet.create({
     loadingScreen: {
       flex: 1,
+
       backgroundColor:
         "#f7f4ee",
-      alignItems: "center",
+
+      alignItems:
+        "center",
+
       justifyContent:
         "center",
     },

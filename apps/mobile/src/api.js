@@ -5,38 +5,70 @@ import {
   setTokens,
 } from "./authStorage";
 
+import * as FileSystem from "expo-file-system/legacy";
+
+
 const API_URL =
   process.env.EXPO_PUBLIC_API_URL ||
   "https://innovevents-back.onrender.com";
 
 
-async function parseResponse(response) {
-  const text = await response.text();
+async function parseResponse(
+  response
+) {
+  const text =
+    await response.text();
 
   let data = null;
 
   if (text) {
     try {
-      data = JSON.parse(text);
+      data =
+        JSON.parse(text);
     } catch {
       data = text;
     }
   }
 
   if (!response.ok) {
-    const error = new Error(
-      data?.detail ||
-        data?.message ||
-        `Erreur HTTP ${response.status}`
-    );
+    const error =
+      new Error(
+        data?.detail ||
+          data?.message ||
+          `Erreur HTTP ${response.status}`
+      );
 
-    error.status = response.status;
-    error.data = data;
+    error.status =
+      response.status;
+
+    error.data =
+      data;
 
     throw error;
   }
 
   return data;
+}
+
+
+function normalizeCollection(
+  data
+) {
+  if (
+    Array.isArray(data)
+  ) {
+    return data;
+  }
+
+  if (
+    Array.isArray(
+      data?.results
+    )
+  ) {
+    return data.results;
+  }
+
+  return [];
 }
 
 
@@ -50,22 +82,29 @@ async function refreshAccessToken() {
     );
   }
 
-  const response = await fetch(
-    `${API_URL}/api/token/refresh/`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type":
-          "application/json",
-      },
-      body: JSON.stringify({
-        refresh: refreshToken,
-      }),
-    }
-  );
+  const response =
+    await fetch(
+      `${API_URL}/api/token/refresh/`,
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+
+        body:
+          JSON.stringify({
+            refresh:
+              refreshToken,
+          }),
+      }
+    );
 
   const data =
-    await parseResponse(response);
+    await parseResponse(
+      response
+    );
 
   if (!data?.access) {
     throw new Error(
@@ -75,7 +114,8 @@ async function refreshAccessToken() {
 
   await setTokens(
     data.access,
-    data.refresh || refreshToken
+    data.refresh ||
+      refreshToken
   );
 
   return data.access;
@@ -95,8 +135,10 @@ export async function apiFetch(
   };
 
   const isFormData =
-    typeof FormData !== "undefined" &&
-    options.body instanceof FormData;
+    typeof FormData !==
+      "undefined" &&
+    options.body
+      instanceof FormData;
 
   if (
     !isFormData &&
@@ -111,13 +153,14 @@ export async function apiFetch(
       `Bearer ${accessToken}`;
   }
 
-  let response = await fetch(
-    `${API_URL}${path}`,
-    {
-      ...options,
-      headers,
-    }
-  );
+  let response =
+    await fetch(
+      `${API_URL}${path}`,
+      {
+        ...options,
+        headers,
+      }
+    );
 
   if (
     response.status === 401 &&
@@ -128,17 +171,20 @@ export async function apiFetch(
       const newAccessToken =
         await refreshAccessToken();
 
-      response = await fetch(
-        `${API_URL}${path}`,
-        {
-          ...options,
-          headers: {
-            ...headers,
-            Authorization:
-              `Bearer ${newAccessToken}`,
-          },
-        }
-      );
+      response =
+        await fetch(
+          `${API_URL}${path}`,
+          {
+            ...options,
+
+            headers: {
+              ...headers,
+
+              Authorization:
+                `Bearer ${newAccessToken}`,
+            },
+          }
+        );
     } catch {
       await clearTokens();
 
@@ -148,7 +194,9 @@ export async function apiFetch(
     }
   }
 
-  return parseResponse(response);
+  return parseResponse(
+    response
+  );
 }
 
 
@@ -160,10 +208,14 @@ export async function login(
     "/api/login/",
     {
       method: "POST",
-      body: JSON.stringify({
-        username: username.trim(),
-        password,
-      }),
+
+      body:
+        JSON.stringify({
+          username:
+            username.trim(),
+
+          password,
+        }),
     },
     false
   );
@@ -174,17 +226,23 @@ export async function verifyLogin2FA(
   username,
   code
 ) {
-  const data = await apiFetch(
-    "/api/login-2fa/",
-    {
-      method: "POST",
-      body: JSON.stringify({
-        username: username.trim(),
-        code: code.trim(),
-      }),
-    },
-    false
-  );
+  const data =
+    await apiFetch(
+      "/api/login-2fa/",
+      {
+        method: "POST",
+
+        body:
+          JSON.stringify({
+            username:
+              username.trim(),
+
+            code:
+              code.trim(),
+          }),
+      },
+      false
+    );
 
   if (
     !data?.access ||
@@ -211,21 +269,184 @@ export async function getCurrentUser() {
 }
 
 
+/*
+ * DEMANDES / PROSPECTS
+ */
+
+export async function getProspects() {
+  const data =
+    await apiFetch(
+      "/api/prospects/"
+    );
+
+  return normalizeCollection(
+    data
+  );
+}
+
+
+export async function getProspect(
+  prospectId
+) {
+  return apiFetch(
+    `/api/prospects/${prospectId}/`
+  );
+}
+
+
+export async function updateProspectStatus(
+  prospectId,
+  status
+) {
+  return apiFetch(
+    `/api/prospects/${prospectId}/status/`,
+    {
+      method: "PATCH",
+
+      body:
+        JSON.stringify({
+          status,
+        }),
+    }
+  );
+}
+
+
+/*
+ * DEVIS
+ */
+
+export async function getQuotes() {
+  const data =
+    await apiFetch(
+      "/api/quotes/"
+    );
+
+  return normalizeCollection(
+    data
+  );
+}
+
+
+export async function getQuote(
+  quoteId
+) {
+  return apiFetch(
+    `/api/quotes/${quoteId}/`
+  );
+}
+
+
+export async function sendQuote(
+  quoteId
+) {
+  return apiFetch(
+    `/api/quotes/${quoteId}/send/`,
+    {
+      method: "POST",
+
+      body:
+        JSON.stringify({}),
+    }
+  );
+}
+
+
+export async function downloadQuotePdf(
+  quoteId,
+  reference
+) {
+  const safeReference =
+    String(
+      reference ||
+        quoteId
+    ).replace(
+      /[^a-zA-Z0-9_-]/g,
+      "_"
+    );
+
+  const directory =
+    FileSystem.cacheDirectory ||
+    FileSystem.documentDirectory;
+
+  if (!directory) {
+    throw new Error(
+      "Stockage local indisponible."
+    );
+  }
+
+  const fileUri =
+    `${directory}devis_${safeReference}.pdf`;
+
+  const url =
+    `${API_URL}/api/quotes/${quoteId}/pdf/`;
+
+  async function download(
+    accessToken
+  ) {
+    return FileSystem.downloadAsync(
+      url,
+      fileUri,
+      {
+        headers: {
+          Authorization:
+            `Bearer ${accessToken}`,
+        },
+      }
+    );
+  }
+
+  let accessToken =
+    await getAccessToken();
+
+  if (!accessToken) {
+    accessToken =
+      await refreshAccessToken();
+  }
+
+  let result =
+    await download(
+      accessToken
+    );
+
+  if (
+    result.status === 401
+  ) {
+    accessToken =
+      await refreshAccessToken();
+
+    result =
+      await download(
+        accessToken
+      );
+  }
+
+  if (
+    result.status < 200 ||
+    result.status >= 300
+  ) {
+    throw new Error(
+      `Téléchargement du PDF impossible (${result.status}).`
+    );
+  }
+
+  return result.uri;
+}
+
+
+/*
+ * EVENEMENTS
+ */
+
 export async function getEvents() {
   const data =
     await apiFetch(
       "/api/events/"
     );
 
-  if (Array.isArray(data)) {
-    return data;
-  }
-
-  if (Array.isArray(data?.results)) {
-    return data.results;
-  }
-
-  return [];
+  return normalizeCollection(
+    data
+  );
 }
 
 
@@ -262,41 +483,51 @@ export async function completeEvent(
 }
 
 
+/*
+ * NOTES INTERNES
+ */
+
 export async function getNotes() {
   const data =
     await apiFetch(
       "/api/notes/"
     );
 
-  if (Array.isArray(data)) {
-    return data;
-  }
-
-  if (Array.isArray(data?.results)) {
-    return data.results;
-  }
-
-  return [];
+  return normalizeCollection(
+    data
+  );
 }
 
 
 export async function createNote({
-  clientId,
+  clientId = null,
   content,
 }) {
+  const payload = {
+    content:
+      content.trim(),
+  };
+
+  if (
+    clientId !== null &&
+    clientId !== undefined
+  ) {
+    payload.client =
+      clientId;
+  }
+
   return apiFetch(
     "/api/notes/",
     {
       method: "POST",
-      body: JSON.stringify({
-        client: clientId,
-        content:
-          content.trim(),
-      }),
+
+      body:
+        JSON.stringify(
+          payload
+        ),
     }
   );
 }
-
 
 export async function updateNote(
   noteId,
@@ -306,10 +537,12 @@ export async function updateNote(
     `/api/notes/${noteId}/`,
     {
       method: "PATCH",
-      body: JSON.stringify({
-        content:
-          content.trim(),
-      }),
+
+      body:
+        JSON.stringify({
+          content:
+            content.trim(),
+        }),
     }
   );
 }
