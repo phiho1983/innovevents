@@ -19,6 +19,10 @@ from accounts.permissions import IsBusinessAdmin
 from .models import HomeHero
 from .home_hero_serializers import HomeHeroSerializer
 
+from .upload_security import (
+    validate_uploaded_image_file,
+)
+
 
 class HomeHeroViewSet(viewsets.GenericViewSet):
     """
@@ -82,73 +86,9 @@ class HomeHeroViewSet(viewsets.GenericViewSet):
         self,
         uploaded_file,
     ):
-        if uploaded_file is None:
-            raise ValidationError(
-                {
-                    "image": (
-                        "Veuillez sélectionner "
-                        "une image."
-                    )
-                }
-            )
-
-        image_format = None
-
-        try:
-            image = Image.open(
-                uploaded_file
-            )
-
-            image_format = (
-                image.format or ""
-            ).upper()
-
-            image.verify()
-
-        except (
-            UnidentifiedImageError,
-            OSError,
-            ValueError,
-        ):
-            raise ValidationError(
-                {
-                    "image": (
-                        "Le fichier envoyé "
-                        "n'est pas une image valide."
-                    )
-                }
-            )
-
-        finally:
-            try:
-                uploaded_file.seek(0)
-            except (
-                AttributeError,
-                OSError,
-            ):
-                pass
-
-        allowed_formats = {
-            "JPEG": "jpg",
-            "PNG": "png",
-            "WEBP": "webp",
-        }
-
-        if image_format not in allowed_formats:
-            raise ValidationError(
-                {
-                    "image": (
-                        "Format d'image non autorisé. "
-                        "Formats acceptés : "
-                        "JPEG, PNG, WEBP."
-                    )
-                }
-            )
-
-        return allowed_formats[
-            image_format
-        ]
-
+        return validate_uploaded_image_file(
+            uploaded_file
+        )
 
     def should_use_cloudinary(self):
         return bool(
