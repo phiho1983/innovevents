@@ -551,17 +551,6 @@ export default function EventDetailScreen({
           }
         />
 
-        <DetailRow
-          label="PLACES RESTANTES"
-          value={
-            event.remaining_capacity !=
-            null
-              ? String(
-                  event.remaining_capacity
-                )
-              : "—"
-          }
-        />
 
         {event.theme ? (
           <DetailRow

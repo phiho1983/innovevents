@@ -5,7 +5,6 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from accounts.models import User
-from bookings.models import Booking
 from crm.models import Note
 from events.models import Event
 from reviews.models import Review
@@ -200,12 +199,6 @@ class UserAnonymizationTests(APITestCase):
             content="Note historique à conserver",
         )
 
-        booking = Booking.objects.create(
-            user=target,
-            event=event,
-            quantity=2,
-            status=Booking.Status.CONFIRMED,
-        )
 
         review = Review.objects.create(
             author=target,
@@ -240,11 +233,6 @@ class UserAnonymizationTests(APITestCase):
             ).exists()
         )
 
-        self.assertTrue(
-            Booking.objects.filter(
-                pk=booking.pk
-            ).exists()
-        )
 
         self.assertTrue(
             Review.objects.filter(
@@ -254,7 +242,6 @@ class UserAnonymizationTests(APITestCase):
 
         event.refresh_from_db()
         note.refresh_from_db()
-        booking.refresh_from_db()
         review.refresh_from_db()
 
         self.assertEqual(
@@ -277,10 +264,6 @@ class UserAnonymizationTests(APITestCase):
             target.id,
         )
 
-        self.assertEqual(
-            booking.user_id,
-            target.id,
-        )
 
         self.assertEqual(
             review.author_id,

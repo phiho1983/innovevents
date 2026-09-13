@@ -9,10 +9,6 @@ from events.home_hero_views import (
     HomeHeroViewSet,
 )
 
-from bookings.views import (
-    BookingViewSet,
-)
-
 from crm.views import (
     ContactMessageViewSet,
     NoteViewSet,
@@ -48,12 +44,6 @@ router.register(
     "home-hero",
     HomeHeroViewSet,
     basename="home-hero",
-)
-
-router.register(
-    "bookings",
-    BookingViewSet,
-    basename="booking",
 )
 
 router.register(
