@@ -88,8 +88,39 @@ class EventViewSet(viewsets.ModelViewSet):
             qs = qs.filter(start_at__date__lte=start_before)
 
         upcoming = self.request.query_params.get("upcoming")
-        if upcoming:
-            qs = qs.order_by("start_at")[:int(upcoming)]
+
+        if upcoming is not None:
+            try:
+                upcoming_limit = int(upcoming)
+
+            except (
+                TypeError,
+                ValueError,
+            ):
+                raise ValidationError(
+                    {
+                        "upcoming": (
+                            "Le paramètre upcoming "
+                            "doit être un entier "
+                            "compris entre 1 et 50."
+                        )
+                    }
+                )
+
+            if not 1 <= upcoming_limit <= 50:
+                raise ValidationError(
+                    {
+                        "upcoming": (
+                            "Le paramètre upcoming "
+                            "doit être un entier "
+                            "compris entre 1 et 50."
+                        )
+                    }
+                )
+
+            qs = qs.order_by(
+                "start_at"
+            )[:upcoming_limit]
 
         return qs
 
