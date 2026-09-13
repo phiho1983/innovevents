@@ -12,6 +12,7 @@ import {
 
 import {
   login as apiLogin,
+  logout as apiLogout,
   me as apiMe,
   verifyLogin2FA as apiVerifyLogin2FA,
 } from "../api/auth";
@@ -134,9 +135,22 @@ export function AuthProvider({
     return authenticatedUser;
   }
 
-  function logout() {
-    clearTokens();
+  async function logout() {
+    /*
+     * La session disparaît immédiatement
+     * de l'interface.
+     */
     setUser(null);
+
+    try {
+      await apiLogout();
+    } catch {
+      /*
+       * Le nettoyage local reste garanti même
+       * si la révocation distante échoue.
+       */
+      clearTokens();
+    }
   }
 
   useEffect(() => {

@@ -1,4 +1,9 @@
-import { apiFetch, setTokens } from "./client";
+import {
+  apiFetch,
+  clearTokens,
+  getRefreshToken,
+  setTokens,
+} from "./client";
 
 export async function login(username, password) {
   return apiFetch("/api/login/", {
@@ -118,4 +123,35 @@ export async function resetPassword(
       password,
     }),
   });
+}
+
+export async function logout() {
+  const refresh =
+    getRefreshToken();
+
+  if (!refresh) {
+    clearTokens();
+    return;
+  }
+
+  try {
+    await apiFetch(
+      "/api/logout/",
+      {
+        method: "POST",
+
+        body:
+          JSON.stringify({
+            refresh,
+          }),
+      }
+    );
+  } finally {
+    /*
+     * Même si le serveur est momentanément
+     * inaccessible, aucun JWT ne doit rester
+     * dans le navigateur.
+     */
+    clearTokens();
+  }
 }

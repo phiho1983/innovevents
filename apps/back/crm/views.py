@@ -44,6 +44,10 @@ from .serializers import (
     ProspectStatusSerializer,
     QuoteSerializer,
 )
+from .throttles import (
+    ContactMessageCreateThrottle,
+    ProspectCreateThrottle,
+)
 
 
 User = get_user_model()
@@ -124,6 +128,14 @@ class ContactMessageViewSet(
     serializer_class = (
         ContactMessageSerializer
     )
+
+    def get_throttles(self):
+        if self.action == "create":
+            return [
+                ContactMessageCreateThrottle()
+            ]
+
+        return super().get_throttles()
 
     def get_permissions(self):
         if self.action == "create":
@@ -242,6 +254,14 @@ class ProspectViewSet(
             "-created_at"
         )
     )
+
+    def get_throttles(self):
+        if self.action == "create":
+            return [
+                ProspectCreateThrottle()
+            ]
+
+        return super().get_throttles()
 
     def get_permissions(self):
         if self.action == "create":

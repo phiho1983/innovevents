@@ -8,6 +8,8 @@ from pathlib import Path
 from datetime import timedelta
 import os
 
+from django.core.exceptions import ImproperlyConfigured
+
 import dj_database_url
 
 
@@ -18,15 +20,47 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # GENERAL
 # -------------------------
 
+DEBUG = os.getenv(
+    "DEBUG",
+    "1",
+) == "1"
+
+
 SECRET_KEY = os.getenv(
     "SECRET_KEY",
-    "dev-only-change-me",
+    "",
+).strip()
+
+if DEBUG:
+    SECRET_KEY = (
+        SECRET_KEY
+        or "dev-only-change-me"
+    )
+
+elif (
+    not SECRET_KEY
+    or SECRET_KEY == "dev-only-change-me"
+):
+    raise ImproperlyConfigured(
+        "SECRET_KEY doit être définie avec "
+        "une valeur forte lorsque DEBUG=0."
+    )
+
+
+allowed_hosts = os.getenv(
+    "ALLOWED_HOSTS",
+    "",
 )
 
-DEBUG = os.getenv("DEBUG", "1") == "1"
+if (
+    not DEBUG
+    and not allowed_hosts.strip()
+):
+    raise ImproperlyConfigured(
+        "ALLOWED_HOSTS doit être défini "
+        "lorsque DEBUG=0."
+    )
 
-
-allowed_hosts = os.getenv("ALLOWED_HOSTS", "")
 
 ALLOWED_HOSTS = [
     h.strip()
@@ -44,6 +78,7 @@ ALLOWED_HOSTS = [
 
 INSTALLED_APPS = [
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
     "events",
     "bookings",
 
@@ -118,8 +153,27 @@ WSGI_APPLICATION = "config.wsgi.application"
 # REQUIRE_DB_SSL=0 en local
 # REQUIRE_DB_SSL=1 en production
 
-DATABASE_URL = os.getenv("DATABASE_URL", "")
-REQUIRE_DB_SSL = os.getenv("REQUIRE_DB_SSL", "0") == "1"
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "",
+).strip()
+
+REQUIRE_DB_SSL = (
+    os.getenv(
+        "REQUIRE_DB_SSL",
+        "0",
+    )
+    == "1"
+)
+
+if (
+    not DEBUG
+    and not DATABASE_URL
+):
+    raise ImproperlyConfigured(
+        "DATABASE_URL doit être définie "
+        "lorsque DEBUG=0."
+    )
 
 
 DATABASES = {
@@ -135,6 +189,68 @@ SECURE_PROXY_SSL_HEADER = (
     "HTTP_X_FORWARDED_PROTO",
     "https",
 )
+
+
+# -------------------------
+# SECURITE HTTP
+# -------------------------
+
+SECURE_SSL_REDIRECT = (
+    os.getenv(
+        "SECURE_SSL_REDIRECT",
+        "0",
+    )
+    == "1"
+)
+
+SESSION_COOKIE_SECURE = (
+    os.getenv(
+        "SESSION_COOKIE_SECURE",
+        "0",
+    )
+    == "1"
+)
+
+CSRF_COOKIE_SECURE = (
+    os.getenv(
+        "CSRF_COOKIE_SECURE",
+        "0",
+    )
+    == "1"
+)
+
+SECURE_HSTS_SECONDS = int(
+    os.getenv(
+        "SECURE_HSTS_SECONDS",
+        "0",
+    )
+)
+
+SECURE_HSTS_INCLUDE_SUBDOMAINS = (
+    os.getenv(
+        "SECURE_HSTS_INCLUDE_SUBDOMAINS",
+        "0",
+    )
+    == "1"
+)
+
+SECURE_HSTS_PRELOAD = (
+    os.getenv(
+        "SECURE_HSTS_PRELOAD",
+        "0",
+    )
+    == "1"
+)
+
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
+SECURE_REFERRER_POLICY = "same-origin"
+
+X_FRAME_OPTIONS = "DENY"
+
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
 
 
 # -------------------------

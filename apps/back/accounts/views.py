@@ -14,6 +14,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from config.mongo import log_action
@@ -876,10 +877,51 @@ def reset_password(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def change_password(request):
-    new_password = (
-        request.data.get("password")
+    """
+    Change le mot de passe de l'utilisateur connecté.
+
+    Sécurité :
+    - mot de passe actuel obligatoire ;
+    - vérification du secret actuel ;
+    - nouveau mot de passe validé avec les
+      validateurs Django.
+    """
+
+    current_password = (
+        request.data.get(
+            "current_password"
+        )
         or ""
     )
+
+    new_password = (
+        request.data.get(
+            "password"
+        )
+        or ""
+    )
+
+    if not current_password:
+        return Response(
+            {
+                "current_password": [
+                    "Obligatoire."
+                ]
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not request.user.check_password(
+        current_password
+    ):
+        return Response(
+            {
+                "current_password": [
+                    "Mot de passe actuel incorrect."
+                ]
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     if not new_password:
         return Response(
@@ -900,9 +942,8 @@ def change_password(request):
     except ValidationError as exc:
         return Response(
             {
-                "password": list(
-                    exc.messages
-                )
+                "password":
+                    list(exc.messages)
             },
             status=status.HTTP_400_BAD_REQUEST,
         )
@@ -920,6 +961,15 @@ def change_password(request):
         ]
     )
 
+    log_action(
+        "MOT_DE_PASSE_MODIFIE",
+        request.user.id,
+        {
+            "username":
+                request.user.username,
+        },
+    )
+
     return Response(
         {
             "detail":
@@ -928,6 +978,85 @@ def change_password(request):
         status=status.HTTP_200_OK,
     )
 
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def logout(request):
+    """
+    Déconnecte l'utilisateur côté serveur.
+
+    Le refresh token transmis est ajouté
+    à la blacklist SimpleJWT.
+
+    L'access token déjà délivré reste valable
+    jusqu'à son expiration naturelle courte.
+    """
+
+    refresh_value = (
+        request.data.get(
+            "refresh"
+        )
+        or ""
+    ).strip()
+
+    if not refresh_value:
+        return Response(
+            {
+                "refresh": [
+                    "Obligatoire."
+                ]
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        refresh = RefreshToken(
+            refresh_value
+        )
+
+        token_user_id = (
+            refresh.payload.get(
+                "user_id"
+            )
+        )
+
+        if (
+            str(token_user_id)
+            != str(request.user.id)
+        ):
+            return Response(
+                {
+                    "refresh": [
+                        "Jeton de rafraîchissement invalide."
+                    ]
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        refresh.blacklist()
+
+    except TokenError:
+        return Response(
+            {
+                "refresh": [
+                    "Jeton de rafraîchissement invalide."
+                ]
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    log_action(
+        "DECONNEXION",
+        request.user.id,
+        {
+            "username":
+                request.user.username,
+        },
+    )
+
+    return Response(
+        status=status.HTTP_204_NO_CONTENT,
+    )
 
 class UserAdminRightsViewSet(
     viewsets.ReadOnlyModelViewSet

@@ -549,5 +549,104 @@ export async function updateNote(
 
 
 export async function logout() {
-  await clearTokens();
+  /*
+   * Le nettoyage local est toujours garanti.
+   *
+   * Si une session serveur existe encore,
+   * on tente également de blacklister
+   * le refresh token côté Django.
+   */
+
+  try {
+    let refreshToken =
+      await getRefreshToken();
+
+    if (!refreshToken) {
+      return;
+    }
+
+    let accessToken =
+      await getAccessToken();
+
+    /*
+     * Cas rare :
+     * refresh présent mais access absent.
+     *
+     * On tente d'abord de recréer un access
+     * afin de pouvoir authentifier /api/logout/.
+     */
+    if (!accessToken) {
+      accessToken =
+        await refreshAccessToken();
+
+      /*
+       * Le refresh peut avoir été renouvelé
+       * par le backend.
+       */
+      refreshToken =
+        await getRefreshToken();
+    }
+
+    async function revoke(
+      currentAccess,
+      currentRefresh
+    ) {
+      return fetch(
+        `${API_URL}/api/logout/`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+
+            Authorization:
+              `Bearer ${currentAccess}`,
+          },
+
+          body:
+            JSON.stringify({
+              refresh:
+                currentRefresh,
+            }),
+        }
+      );
+    }
+
+    let response =
+      await revoke(
+        accessToken,
+        refreshToken
+      );
+
+    /*
+     * Si l'access a expiré entre-temps,
+     * on renouvelle la session une seule fois
+     * puis on retente la révocation.
+     */
+    if (
+      response.status === 401
+    ) {
+      accessToken =
+        await refreshAccessToken();
+
+      refreshToken =
+        await getRefreshToken();
+
+      response =
+        await revoke(
+          accessToken,
+          refreshToken
+        );
+    }
+
+    /*
+     * Une erreur serveur au logout ne doit
+     * jamais empêcher la déconnexion locale.
+     */
+  } catch {
+    // Best effort côté serveur.
+  } finally {
+    await clearTokens();
+  }
 }

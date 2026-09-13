@@ -10,14 +10,23 @@ export function getAccessToken() {
 }
 
 
+export function getRefreshToken() {
+  return localStorage.getItem(
+    "refresh_token"
+  );
+}
+
+
 export function setTokens(
   access,
   refresh
 ) {
-  localStorage.setItem(
-    "access_token",
-    access
-  );
+  if (access) {
+    localStorage.setItem(
+      "access_token",
+      access
+    );
+  }
 
   if (refresh) {
     localStorage.setItem(
@@ -39,11 +48,137 @@ export function clearTokens() {
 }
 
 
+async function parseResponse(
+  res
+) {
+  const text =
+    await res.text();
+
+  let data = null;
+
+  if (text) {
+    try {
+      data =
+        JSON.parse(text);
+    } catch {
+      data =
+        text;
+    }
+  }
+
+  return data;
+}
+
+
+function buildError(
+  res,
+  data
+) {
+  let msg =
+    data?.detail ||
+    data?.message;
+
+  if (
+    !msg &&
+    data &&
+    typeof data === "object"
+  ) {
+    msg =
+      Object.entries(data)
+        .map(
+          ([field, value]) => {
+            const fieldMessage =
+              Array.isArray(value)
+                ? value.join(" ")
+                : String(value);
+
+            return (
+              `${field} : ` +
+              fieldMessage
+            );
+          }
+        )
+        .join(" | ");
+  }
+
+  if (!msg) {
+    msg =
+      `HTTP ${res.status}`;
+  }
+
+  const error =
+    new Error(msg);
+
+  error.status =
+    res.status;
+
+  error.data =
+    data;
+
+  return error;
+}
+
+
+async function refreshAccessToken() {
+  const refreshToken =
+    getRefreshToken();
+
+  if (!refreshToken) {
+    throw new Error(
+      "Session expirée."
+    );
+  }
+
+  const res =
+    await fetch(
+      `${API_URL}/api/token/refresh/`,
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+
+        body:
+          JSON.stringify({
+            refresh:
+              refreshToken,
+          }),
+      }
+    );
+
+  const data =
+    await parseResponse(
+      res
+    );
+
+  if (
+    !res.ok ||
+    !data?.access
+  ) {
+    throw buildError(
+      res,
+      data
+    );
+  }
+
+  setTokens(
+    data.access,
+    data.refresh ||
+      refreshToken
+  );
+
+  return data.access;
+}
+
+
 export async function apiFetch(
   path,
-  options = {}
+  options = {},
+  retry = true
 ) {
-  const token =
+  const accessToken =
     getAccessToken();
 
   const headers =
@@ -52,11 +187,16 @@ export async function apiFetch(
     );
 
   const isFormData =
-    options.body instanceof FormData;
+    typeof FormData !==
+      "undefined" &&
+    options.body
+      instanceof FormData;
 
   if (
     !isFormData &&
-    !headers.has("Content-Type")
+    !headers.has(
+      "Content-Type"
+    )
   ) {
     headers.set(
       "Content-Type",
@@ -64,68 +204,67 @@ export async function apiFetch(
     );
   }
 
-  if (token) {
+  if (accessToken) {
     headers.set(
       "Authorization",
-      `Bearer ${token}`
+      `Bearer ${accessToken}`
     );
   }
 
-  const res = await fetch(
-    `${API_URL}${path}`,
-    {
-      ...options,
-      headers,
-    }
-  );
+  let res =
+    await fetch(
+      `${API_URL}${path}`,
+      {
+        ...options,
+        headers,
+      }
+    );
 
-  const text =
-    await res.text();
-
-  let data = null;
-
-  if (text) {
+  if (
+    res.status === 401 &&
+    retry &&
+    accessToken
+  ) {
     try {
-      data = JSON.parse(text);
-    } catch {
-      data = text;
+      const newAccessToken =
+        await refreshAccessToken();
+
+      const retryHeaders =
+        new Headers(
+          headers
+        );
+
+      retryHeaders.set(
+        "Authorization",
+        `Bearer ${newAccessToken}`
+      );
+
+      res =
+        await fetch(
+          `${API_URL}${path}`,
+          {
+            ...options,
+            headers:
+              retryHeaders,
+          }
+        );
+    } catch (error) {
+      clearTokens();
+
+      throw error;
     }
   }
 
+  const data =
+    await parseResponse(
+      res
+    );
+
   if (!res.ok) {
-    let msg =
-      data?.detail ||
-      data?.message;
-
-    if (
-      !msg &&
-      data &&
-      typeof data === "object"
-    ) {
-      msg =
-        Object.entries(data)
-          .map(
-            ([field, value]) => {
-              const fieldMessage =
-                Array.isArray(value)
-                  ? value.join(" ")
-                  : String(value);
-
-              return (
-                `${field} : ` +
-                fieldMessage
-              );
-            }
-          )
-          .join(" | ");
-    }
-
-    if (!msg) {
-      msg =
-        `HTTP ${res.status}`;
-    }
-
-    throw new Error(msg);
+    throw buildError(
+      res,
+      data
+    );
   }
 
   return data;

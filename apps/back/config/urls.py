@@ -21,6 +21,7 @@ from accounts.views import (
     change_password,
     forgot_password,
     login_2fa,
+    logout,
     resend_code,
     reset_password,
     signup,
@@ -107,6 +108,11 @@ urlpatterns = [
     path(
         "api/change-password/",
         change_password,
+    ),
+
+    path(
+        "api/logout/",
+        logout,
     ),
 
     path(
