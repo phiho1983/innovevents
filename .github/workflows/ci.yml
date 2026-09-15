@@ -4,14 +4,19 @@ on:
   push:
     branches:
       - dev
+      - staging
       - main
 
   pull_request:
     branches:
       - dev
+      - staging
       - main
 
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   backend:
@@ -58,10 +63,10 @@ jobs:
 
     steps:
       - name: Récupérer le dépôt
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Installer Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -86,7 +91,7 @@ jobs:
 
       - name: Afficher le rapport de couverture
         run: coverage report -m --fail-under=60
-  
+
   frontend:
     name: Frontend React
     runs-on: ubuntu-latest
@@ -97,12 +102,12 @@ jobs:
 
     steps:
       - name: Récupérer le dépôt
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Installer Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "24"
           cache: npm
           cache-dependency-path: apps/front/package-lock.json
 
@@ -111,6 +116,9 @@ jobs:
 
       - name: Vérifier le code avec ESLint
         run: npm run lint
+
+      - name: Exécuter les tests frontend
+        run: npm test
 
       - name: Compiler l'application
         env:

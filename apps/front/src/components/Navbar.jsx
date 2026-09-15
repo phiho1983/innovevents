@@ -1,11 +1,9 @@
 import {
-  useEffect,
   useState,
 } from "react";
 
 import {
   Link,
-  useLocation,
   useNavigate,
 } from "react-router-dom";
 
@@ -29,26 +27,21 @@ export default function Navbar() {
   const navigate =
     useNavigate();
 
-  const location =
-    useLocation();
-
   const [
     menuOpen,
     setMenuOpen,
   ] = useState(false);
 
 
-  useEffect(() => {
+  function closeMenu() {
     setMenuOpen(false);
-  }, [
-    location.pathname,
-  ]);
+  }
 
 
   function handleLogout() {
     logout();
 
-    setMenuOpen(false);
+    closeMenu();
 
     navigate("/");
   }
@@ -61,6 +54,7 @@ export default function Navbar() {
           to="/"
           className="brandBtn"
           aria-label="Innov'Events - Accueil"
+          onClick={closeMenu}
         >
           <span>
             Innov
@@ -116,15 +110,24 @@ export default function Navbar() {
           }`}
           aria-label="Navigation principale"
         >
-          <Link to="/evenements">
+          <Link
+            to="/evenements"
+            onClick={closeMenu}
+          >
             Événements
           </Link>
 
-          <Link to="/avis">
+          <Link
+            to="/avis"
+            onClick={closeMenu}
+          >
             Avis
           </Link>
 
-          <Link to="/contact">
+          <Link
+            to="/contact"
+            onClick={closeMenu}
+          >
             Contact
           </Link>
 
@@ -137,6 +140,7 @@ export default function Navbar() {
                     user
                   )
                 }
+                onClick={closeMenu}
               >
                 {user.username ||
                   "Mon espace"}
@@ -153,7 +157,10 @@ export default function Navbar() {
               </button>
             </>
           ) : (
-            <Link to="/login">
+            <Link
+              to="/login"
+              onClick={closeMenu}
+            >
               Se connecter
             </Link>
           )}
@@ -162,6 +169,7 @@ export default function Navbar() {
           <Link
             to="/demande-de-devis"
             className="btn navProjectButton"
+            onClick={closeMenu}
           >
             Parler de votre projet
           </Link>
