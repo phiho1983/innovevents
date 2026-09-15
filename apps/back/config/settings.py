@@ -345,6 +345,27 @@ STORAGES = {
 # DRF / JWT
 # -------------------------
 
+drf_num_proxies_raw = os.getenv(
+    "DRF_NUM_PROXIES",
+    "0",
+).strip()
+
+try:
+    DRF_NUM_PROXIES = int(
+        drf_num_proxies_raw
+    )
+
+except ValueError as exc:
+    raise ImproperlyConfigured(
+        "DRF_NUM_PROXIES doit etre un entier >= 0."
+    ) from exc
+
+if DRF_NUM_PROXIES < 0:
+    raise ImproperlyConfigured(
+        "DRF_NUM_PROXIES doit etre un entier >= 0."
+    )
+
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         (
@@ -359,6 +380,7 @@ REST_FRAMEWORK = {
         "rest_framework.pagination.PageNumberPagination"
     ),
     "PAGE_SIZE": 10,
+    "NUM_PROXIES": DRF_NUM_PROXIES,
 }
 
 
