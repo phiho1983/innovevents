@@ -1,4 +1,7 @@
-from rest_framework.throttling import UserRateThrottle
+from rest_framework.throttling import (
+    SimpleRateThrottle,
+    UserRateThrottle,
+)
 
 
 class LoginRateThrottle(UserRateThrottle):
@@ -83,3 +86,27 @@ class AccountActivationRateThrottle(
 
     scope = "account_activation"
     rate = "10/hour"
+
+
+class TokenRefreshRateThrottle(
+    SimpleRateThrottle
+):
+    """
+    Limite le renouvellement des JWT par IP.
+
+    Les requêtes avec un refresh token valide
+    ou invalide utilisent le même compteur.
+    """
+
+    scope = "token_refresh"
+    rate = "30/min"
+
+    def get_cache_key(
+        self,
+        request,
+        view,
+    ):
+        return self.cache_format % {
+            "scope": self.scope,
+            "ident": self.get_ident(request),
+        }

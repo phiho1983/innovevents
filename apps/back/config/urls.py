@@ -16,6 +16,9 @@ from .views import (
 from accounts.activation import (
     activate_account,
 )
+from accounts.throttles import (
+    TokenRefreshRateThrottle,
+)
 from accounts.views import (
     LoggedTokenObtainPairView,
     change_password,
@@ -67,7 +70,11 @@ urlpatterns = [
 
     path(
         "api/token/refresh/",
-        TokenRefreshView.as_view(),
+        TokenRefreshView.as_view(
+            throttle_classes=[
+                TokenRefreshRateThrottle,
+            ],
+        ),
     ),
 
     path(
