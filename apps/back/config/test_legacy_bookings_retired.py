@@ -17,6 +17,15 @@ class LegacyBookingsRetirementTests(
             404,
         )
 
+    def test_bookings_app_is_not_installed(
+        self,
+    ):
+        self.assertFalse(
+            apps.is_installed(
+                "bookings",
+            )
+        )
+
     def test_booking_model_is_not_registered(
         self,
     ):

@@ -80,7 +80,6 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
     "events",
-    "bookings",
 
     "django.contrib.admin",
     "django.contrib.auth",
