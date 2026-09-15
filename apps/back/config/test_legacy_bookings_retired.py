@@ -1,3 +1,4 @@
+from django.apps import apps
 from django.test import SimpleTestCase
 
 
@@ -15,3 +16,14 @@ class LegacyBookingsRetirementTests(
             response.status_code,
             404,
         )
+
+    def test_booking_model_is_not_registered(
+        self,
+    ):
+        with self.assertRaises(
+            LookupError
+        ):
+            apps.get_model(
+                "bookings",
+                "Booking",
+            )
