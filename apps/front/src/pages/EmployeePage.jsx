@@ -3357,11 +3357,33 @@ function EventCard({
   busy,
   onTransition,
 }) {
+  const [
+    showDetails,
+    setShowDetails,
+  ] = useState(false);
+
+  const clientLabel =
+    typeof event.client === "object"
+      ? (
+          event.client.username
+          || event.client.email
+          || [
+            event.client.first_name,
+            event.client.last_name,
+          ]
+            .filter(Boolean)
+            .join(" ")
+          || `Client #${event.client.id}`
+        )
+      : (
+          event.client
+            ? `Client #${event.client}`
+            : "—"
+        );
+
   return (
     <article
-      aria-label={
-        event.title
-      }
+      aria-label={event.title}
       style={{
         border:
           "1px solid #eee",
@@ -3420,51 +3442,99 @@ function EventCard({
         </strong>
       </div>
 
-      {event.description && (
-        <p
+      <button
+        type="button"
+        onClick={
+          () =>
+            setShowDetails(
+              (previous) =>
+                !previous
+            )
+        }
+        style={{
+          marginBottom: 10,
+        }}
+      >
+        {showDetails
+          ? "Masquer détails"
+          : "Voir détails"}
+      </button>
+
+      {showDetails && (
+        <div
           style={{
+            borderTop:
+              "1px solid #eee",
+            paddingTop: 10,
+            marginBottom: 12,
             fontSize: 13,
             color: "#555",
           }}
         >
-          {event.description}
-        </p>
+          {event.description && (
+            <p>
+              {event.description}
+            </p>
+          )}
+
+          <div>
+            Client : {clientLabel}
+          </div>
+
+          <div>
+            Début :{" "}
+            {event.start_at
+              ? new Date(
+                  event.start_at
+                ).toLocaleString(
+                  "fr-FR"
+                )
+              : "—"}
+          </div>
+
+          <div>
+            Fin :{" "}
+            {event.end_at
+              ? new Date(
+                  event.end_at
+                ).toLocaleString(
+                  "fr-FR"
+                )
+              : "—"}
+          </div>
+
+          <div>
+            Capacité :{" "}
+            {event.capacity ?? "—"}
+          </div>
+
+          <div>
+            Type :{" "}
+            {
+              EVENT_TYPE_LABELS[
+                event.event_type
+              ]
+              || event.event_type
+              || "—"
+            }
+          </div>
+
+          <div>
+            Thème :{" "}
+            {event.theme || "—"}
+          </div>
+
+          <div>
+            Statut :{" "}
+            {
+              EVENT_STATUS_LABELS[
+                event.status
+              ]
+              || event.status
+            }
+          </div>
+        </div>
       )}
-
-      <div
-        style={{
-          fontSize: 13,
-          color: "#666",
-          marginBottom: 10,
-        }}
-      >
-        <div>
-          Début :{" "}
-          {event.start_at
-            ? new Date(
-                event.start_at
-              ).toLocaleString(
-                "fr-FR"
-              )
-            : "—"}
-        </div>
-
-        <div>
-          Fin :{" "}
-          {event.end_at
-            ? new Date(
-                event.end_at
-              ).toLocaleString(
-                "fr-FR"
-              )
-            : "—"}
-        </div>
-
-        <div>
-          Capacité :{" "}
-          {event.capacity ?? "—"}
-        </div>
-      </div>
 
       {event.status
         === "ACCEPTED"
@@ -3508,7 +3578,6 @@ function EventCard({
     </article>
   );
 }
-
 
 function NotesSection({
   notes,

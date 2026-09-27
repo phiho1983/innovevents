@@ -1846,6 +1846,7 @@ function AdminEventsTab(){
   const[creating,setCreating]=useState(false)
   const[actionId,setActionId]=useState(null)
   const[deletingId,setDeletingId]=useState(null)
+  const[expandedEventId,setExpandedEventId]=useState(null)
 
   useEffect(()=>{
     let active=true
@@ -2242,8 +2243,23 @@ function AdminEventsTab(){
               marginBottom:10,
             }}>
               Client : {
-                event.client
-                  ?(
+                (()=>{
+                  const clientId=
+                    typeof event.client
+                      ==="object"
+                      ?event.client?.id
+                      :event.client
+
+                  const client=
+                    clients.find(
+                      item=>
+                        String(item.id)
+                        ===String(clientId)
+                    )
+
+                  return(
+                    client?.label
+                    ||(
                       typeof event.client
                         ==="object"
                         ?(
@@ -2251,11 +2267,108 @@ function AdminEventsTab(){
                             ||event.client.email
                             ||`#${event.client.id}`
                           )
-                        :`#${event.client}`
+                        :(
+                            event.client
+                              ?`#${event.client}`
+                              :"—"
+                          )
                     )
-                  :"—"
+                  )
+                })()
               }
             </div>
+
+            <button
+              type="button"
+              onClick={()=>
+                setExpandedEventId(
+                  previous=>
+                    previous===event.id
+                      ?null
+                      :event.id
+                )
+              }
+              style={{
+                marginBottom:10,
+              }}
+            >
+              {
+                expandedEventId===event.id
+                  ?"Masquer détails"
+                  :"Voir détails"
+              }
+            </button>
+
+            {expandedEventId===event.id&&(
+              <div style={{
+                borderTop:"1px solid #eee",
+                paddingTop:10,
+                marginBottom:10,
+                fontSize:13,
+                color:"#555",
+              }}>
+                {event.description&&(
+                  <p>
+                    {event.description}
+                  </p>
+                )}
+
+                <div>
+                  Début : {
+                    event.start_at
+                      ?new Date(
+                          event.start_at
+                        ).toLocaleString(
+                          "fr-FR"
+                        )
+                      :"—"
+                  }
+                </div>
+
+                <div>
+                  Fin : {
+                    event.end_at
+                      ?new Date(
+                          event.end_at
+                        ).toLocaleString(
+                          "fr-FR"
+                        )
+                      :"—"
+                  }
+                </div>
+
+                <div>
+                  Capacité : {
+                    event.capacity??"—"
+                  }
+                </div>
+
+                <div>
+                  Type : {
+                    ADMIN_EVENT_TYPE_LABELS[
+                      event.event_type
+                    ]
+                    ||event.event_type
+                    ||"—"
+                  }
+                </div>
+
+                <div>
+                  Thème : {
+                    event.theme||"—"
+                  }
+                </div>
+
+                <div>
+                  Statut : {
+                    ADMIN_EVENT_STATUS_LABELS[
+                      event.status
+                    ]
+                    ||event.status
+                  }
+                </div>
+              </div>
+            )}
 
             <div style={{
               display:"flex",

@@ -15,9 +15,6 @@ import {
   quoteAction,
 } from "../api/quotes";
 
-import {
-  selectUpcomingClientEvents,
-} from "../utils/selectUpcomingClientEvents";
 
 import "./ClientAccountPage.css";
 
@@ -29,6 +26,15 @@ const STATUS_LABELS = {
   REFUSED: "Refusé",
   CHANGE_REQUESTED:
     "Modification demandée",
+};
+
+
+const EVENT_STATUS_LABELS = {
+  DRAFT: "Brouillon",
+  ACCEPTED: "Accepté",
+  IN_PROGRESS: "En cours",
+  DONE: "Terminé",
+  CANCELLED: "Annulé",
 };
 
 
@@ -67,6 +73,11 @@ export default function ClientAccountPage() {
     setEvents,
   ] = useState([]);
 
+  const [
+    expandedEventId,
+    setExpandedEventId,
+  ] = useState(null);
+
 
   useEffect(() => {
     getMyQuotes()
@@ -102,13 +113,24 @@ export default function ClientAccountPage() {
           response.json()
       )
       .then(
-        (data) =>
+        (data) => {
+          const eventList =
+            data.results ||
+            data ||
+            [];
+
           setEvents(
-            selectUpcomingClientEvents(
-              data.results ||
-              data
+            [...eventList].sort(
+              (first, second) =>
+                new Date(
+                  first.start_at
+                )
+                - new Date(
+                    second.start_at
+                  )
             )
-          )
+          );
+        }
       )
       .catch(() => {});
   }, []);
@@ -192,7 +214,7 @@ return (
                     id="client-events-title"
                     className="clientSectionTitle"
                   >
-                    Prochains événements
+                    Mes événements
                   </h2>
                 </div>
 
@@ -207,6 +229,9 @@ return (
                     <article
                       key={event.id}
                       className="clientEventRow"
+                      aria-label={
+                        event.title
+                      }
                     >
                       <strong>
                         {event.title}
@@ -223,6 +248,119 @@ return (
                           "fr-FR"
                         )}
                       </time>
+
+                      <button
+                        type="button"
+                        onClick={
+                          () =>
+                            setExpandedEventId(
+                              (previous) =>
+                                previous
+                                  === event.id
+                                  ? null
+                                  : event.id
+                            )
+                        }
+                      >
+                        {
+                          expandedEventId
+                            === event.id
+                            ? "Masquer détails"
+                            : "Voir détails"
+                        }
+                      </button>
+
+                      {expandedEventId
+                        === event.id
+                        && (
+                          <div
+                            style={{
+                              width: "100%",
+                              marginTop: 10,
+                              paddingTop: 10,
+                              borderTop:
+                                "1px solid #eee",
+                            }}
+                          >
+                            {event.description && (
+                              <p>
+                                {
+                                  event.description
+                                }
+                              </p>
+                            )}
+
+                            <div>
+                              Ville :{" "}
+                              {
+                                event.city
+                                || "—"
+                              }
+                            </div>
+
+                            <div>
+                              Début :{" "}
+                              {
+                                event.start_at
+                                  ? new Date(
+                                      event.start_at
+                                    )
+                                      .toLocaleString(
+                                        "fr-FR"
+                                      )
+                                  : "—"
+                              }
+                            </div>
+
+                            <div>
+                              Fin :{" "}
+                              {
+                                event.end_at
+                                  ? new Date(
+                                      event.end_at
+                                    )
+                                      .toLocaleString(
+                                        "fr-FR"
+                                      )
+                                  : "—"
+                              }
+                            </div>
+
+                            <div>
+                              Capacité :{" "}
+                              {
+                                event.capacity
+                                ?? "—"
+                              }
+                            </div>
+
+                            <div>
+                              Thème :{" "}
+                              {
+                                event.theme
+                                || "—"
+                              }
+                            </div>
+
+                            <div>
+                              Type :{" "}
+                              {
+                                event.event_type
+                                || "—"
+                              }
+                            </div>
+
+                            <div>
+                              Statut :{" "}
+                              {
+                                EVENT_STATUS_LABELS[
+                                  event.status
+                                ]
+                                || event.status
+                              }
+                            </div>
+                          </div>
+                        )}
                     </article>
                   )
                 )}
