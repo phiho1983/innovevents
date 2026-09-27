@@ -1181,6 +1181,199 @@ class UserAdminRightsViewSet(
     @action(
         detail=True,
         methods=["patch"],
+        url_path="promote-employee",
+    )
+    def promote_employee(
+        self,
+        request,
+        pk=None,
+    ):
+        target_user = self.get_object()
+
+        if (
+            target_user.id
+            == request.user.id
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Vous ne pouvez pas modifier "
+                        "vos propres droits."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if target_user.is_superuser:
+            return Response(
+                {
+                    "detail": (
+                        "Un super admin Django "
+                        "doit être géré côté technique."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if (
+            target_user.role
+            == User.Role.EMPLOYEE
+        ):
+            serializer = self.get_serializer(
+                target_user
+            )
+
+            return Response(
+                serializer.data,
+                status=status.HTTP_200_OK,
+            )
+
+        if (
+            target_user.role
+            != User.Role.CLIENT
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Seul un compte client "
+                        "peut être transformé "
+                        "en employé."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        previous_role = target_user.role
+
+        target_user.role = (
+            User.Role.EMPLOYEE
+        )
+
+        target_user.is_staff = False
+
+        target_user.save(
+            update_fields=[
+                "role",
+                "is_staff",
+            ]
+        )
+
+        log_action(
+            "ROLE_EMPLOYEE_AJOUTE",
+            request.user.id,
+            {
+                "target_user_id":
+                    target_user.id,
+                "target_username":
+                    target_user.username,
+                "previous_role":
+                    previous_role,
+                "new_role":
+                    User.Role.EMPLOYEE,
+            },
+        )
+
+        serializer = self.get_serializer(
+            target_user
+        )
+
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK,
+        )
+
+    @action(
+        detail=True,
+        methods=["patch"],
+        url_path="remove-employee",
+    )
+    def remove_employee(
+        self,
+        request,
+        pk=None,
+    ):
+        target_user = self.get_object()
+
+        if (
+            target_user.id
+            == request.user.id
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Vous ne pouvez pas modifier "
+                        "vos propres droits."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if target_user.is_superuser:
+            return Response(
+                {
+                    "detail": (
+                        "Un super admin Django "
+                        "doit être géré côté technique."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if (
+            target_user.role
+            != User.Role.EMPLOYEE
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Cet utilisateur n'est "
+                        "pas employé."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        previous_role = target_user.role
+
+        target_user.role = (
+            User.Role.CLIENT
+        )
+
+        target_user.is_staff = False
+
+        target_user.save(
+            update_fields=[
+                "role",
+                "is_staff",
+            ]
+        )
+
+        log_action(
+            "ROLE_EMPLOYEE_RETIRE",
+            request.user.id,
+            {
+                "target_user_id":
+                    target_user.id,
+                "target_username":
+                    target_user.username,
+                "previous_role":
+                    previous_role,
+                "new_role":
+                    User.Role.CLIENT,
+            },
+        )
+
+        serializer = self.get_serializer(
+            target_user
+        )
+
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK,
+        )
+    @action(
+        detail=True,
+        methods=["patch"],
         url_path="remove-admin",
     )
     def remove_admin(

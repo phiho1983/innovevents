@@ -365,7 +365,10 @@ export default function EmployeePage() {
 
   useEffect(() => {
     if (
-      activeTab !== "events"
+      ![
+        "events",
+        "quotes",
+      ].includes(activeTab)
       || eventsLoaded
     ) {
       return;
@@ -805,6 +808,7 @@ export default function EmployeePage() {
         {activeTab === "quotes" && (
           <QuotesSection
             prospects={prospects}
+            events={events}
             quotes={quotes}
             setQuotes={setQuotes}
             loading={quotesLoading}
@@ -822,6 +826,18 @@ export default function EmployeePage() {
             error={eventsError}
             actionId={
               eventActionId
+            }
+            quotes={quotes}
+            prospects={prospects}
+            onCreated={
+              (createdEvent) => {
+                setEvents(
+                  (previousEvents) => [
+                    createdEvent,
+                    ...previousEvents,
+                  ]
+                );
+              }
             }
             onTransition={
               transitionEvent
@@ -1707,6 +1723,7 @@ function ProspectsSection({
 
 function QuotesSection({
   prospects,
+  events,
   quotes,
   setQuotes,
   loading,
@@ -1892,6 +1909,9 @@ function QuotesSection({
         <CreateQuoteForm
           prospects={
             prospects
+          }
+          events={
+            events
           }
           onSuccess={
             (quote) => {
@@ -2110,6 +2130,7 @@ function QuoteCard({
 
 function CreateQuoteForm({
   prospects,
+  events,
   onSuccess,
   onError,
 }) {
@@ -2118,6 +2139,7 @@ function CreateQuoteForm({
     setForm,
   ] = useState({
     prospect: "",
+    event: "",
     tva_rate: "0.20",
   });
 
@@ -2224,6 +2246,16 @@ function CreateQuoteForm({
 
     onError("");
 
+    if (
+      !form.prospect
+      && !form.event
+    ) {
+      onError(
+        "Sélectionnez une demande ou un événement privé."
+      );
+      return;
+    }
+
     const validItems =
       items.filter(
         (item) =>
@@ -2231,11 +2263,23 @@ function CreateQuoteForm({
           && item.amount_ht !== ""
       );
 
+    const sourcePayload =
+      form.event
+        ? {
+            event:
+              Number(
+                form.event
+              ),
+          }
+        : {
+            prospect:
+              Number(
+                form.prospect
+              ),
+          };
+
     const payload = {
-      prospect:
-        Number(
-          form.prospect
-        ),
+      ...sourcePayload,
       tva_rate:
         form.tva_rate,
       items:
@@ -2312,7 +2356,6 @@ function CreateQuoteForm({
 
           <select
             id="quote-prospect"
-            required
             value={
               form.prospect
             }
@@ -2324,6 +2367,7 @@ function CreateQuoteForm({
                     prospect:
                       event.target
                         .value,
+                    event: "",
                   })
                 )
             }
@@ -2382,6 +2426,60 @@ function CreateQuoteForm({
           )}
         </div>
 
+        <div>
+          <label
+            htmlFor="quote-event"
+            style={{
+              display: "block",
+              marginBottom: 4,
+            }}
+          >
+            Événement privé
+          </label>
+
+          <select
+            id="quote-event"
+            value={
+              form.event
+            }
+            onChange={
+              (event) =>
+                setForm(
+                  (previous) => ({
+                    ...previous,
+                    event:
+                      event.target
+                        .value,
+                    prospect: "",
+                  })
+                )
+            }
+          >
+            <option value="">
+              Sélectionner un événement
+            </option>
+
+            {events
+              .filter(
+                (eventItem) =>
+                  eventItem.visible
+                  === false
+              )
+              .map(
+                (eventItem) => (
+                  <option
+                    key={eventItem.id}
+                    value={eventItem.id}
+                  >
+                    {
+                      eventItem.title
+                      || `Événement #${eventItem.id}`
+                    }
+                  </option>
+                )
+              )}
+          </select>
+        </div>
         <div>
           <label
             htmlFor="quote-tva"
@@ -2594,24 +2692,139 @@ function EventsSection({
   loading,
   error,
   actionId,
+  quotes,
+  prospects,
+  onCreated,
   onTransition,
 }) {
+  const [
+    showCreateForm,
+    setShowCreateForm,
+  ] = useState(false);
+
+  const [
+    createError,
+    setCreateError,
+  ] = useState("");
+
+  const [
+    creating,
+    setCreating,
+  ] = useState(false);
+
+
+  const clientOptions =
+    buildEventClientOptions(
+      events,
+      quotes,
+      prospects
+    );
+
+
   return (
     <section>
-      <h2>
-        Événements privés
-      </h2>
-
-      <p
+      <div
         style={{
-          color: "#666",
-          fontSize: 14,
+          display: "flex",
+          justifyContent:
+            "space-between",
+          alignItems: "flex-start",
+          gap: 16,
+          marginBottom: 12,
         }}
       >
-        Suivi de la réalisation
-        des événements appartenant
-        aux clients.
-      </p>
+        <div>
+          <h2
+            style={{
+              marginTop: 0,
+              marginBottom: 6,
+            }}
+          >
+            Événements privés
+          </h2>
+
+          <p
+            style={{
+              color: "#666",
+              fontSize: 14,
+              margin: 0,
+            }}
+          >
+            Suivi de la réalisation
+            des événements appartenant
+            aux clients.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            setCreateError("");
+            setShowCreateForm(
+              (previous) =>
+                !previous
+            );
+          }}
+        >
+          {
+            showCreateForm
+              ? "Fermer"
+              : "Créer un événement"
+          }
+        </button>
+      </div>
+
+      {showCreateForm && (
+        <EventCreateForm
+          clients={clientOptions}
+          submitting={creating}
+          error={createError}
+          onCancel={() => {
+            setCreateError("");
+            setShowCreateForm(false);
+          }}
+          onSubmit={
+            async (payload) => {
+              setCreating(true);
+              setCreateError("");
+
+              try {
+                const createdEvent =
+                  await apiFetch(
+                    "/api/events/",
+                    {
+                      method: "POST",
+                      body:
+                        JSON.stringify(
+                          payload
+                        ),
+                    }
+                  );
+
+                onCreated(
+                  createdEvent
+                );
+
+                setShowCreateForm(
+                  false
+                );
+
+              } catch (
+                submitError
+              ) {
+                setCreateError(
+                  formatError(
+                    submitError
+                  )
+                );
+
+              } finally {
+                setCreating(false);
+              }
+            }
+          }
+        />
+      )}
 
       {error && (
         <ErrorMessage
@@ -2644,7 +2857,8 @@ function EventsSection({
               key={event.id}
               event={event}
               busy={
-                actionId === event.id
+                actionId
+                === event.id
               }
               onTransition={
                 onTransition
@@ -2653,6 +2867,487 @@ function EventsSection({
           )
         )}
     </section>
+  );
+}
+
+
+function buildEventClientOptions(
+  events,
+  quotes,
+  prospects,
+) {
+  const clients =
+    new Map();
+
+
+  function addClient(
+    value,
+    label = null,
+  ) {
+    if (
+      value === null
+      || value === undefined
+      || value === ""
+    ) {
+      return;
+    }
+
+    const id =
+      typeof value === "object"
+        ? value.id
+        : value;
+
+    if (
+      id === null
+      || id === undefined
+      || id === ""
+    ) {
+      return;
+    }
+
+    const objectLabel =
+      typeof value === "object"
+        ? (
+            value.username
+            || value.email
+            || [
+              value.first_name,
+              value.last_name,
+            ]
+              .filter(Boolean)
+              .join(" ")
+          )
+        : null;
+
+    clients.set(
+      String(id),
+      {
+        id:
+          Number(id),
+        label:
+          label
+          || objectLabel
+          || `Client #${id}`,
+      }
+    );
+  }
+
+
+  events.forEach(
+    (event) => {
+      addClient(
+        event.client
+      );
+    }
+  );
+
+
+  quotes.forEach(
+    (quote) => {
+      addClient(
+        quote.client
+      );
+    }
+  );
+
+
+  prospects.forEach(
+    (prospect) => {
+      const convertedClient =
+        prospect.converted_client
+        ?? prospect.converted_client_id;
+
+      if (!convertedClient) {
+        return;
+      }
+
+      const name = [
+        prospect.first_name,
+        prospect.last_name,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+
+      addClient(
+        convertedClient,
+        name
+          ? `${name} — client`
+          : null
+      );
+    }
+  );
+
+
+  return Array.from(
+    clients.values()
+  );
+}
+
+
+function EventCreateForm({
+  clients,
+  submitting,
+  error,
+  onCancel,
+  onSubmit,
+}) {
+  const [
+    form,
+    setForm,
+  ] = useState({
+    client: "",
+    title: "",
+    description: "",
+    city: "",
+    start_at: "",
+    end_at: "",
+    capacity: "1",
+    event_type: "OTHER",
+    theme: "",
+  });
+
+
+  function updateField(
+    field,
+    value,
+  ) {
+    setForm(
+      (previous) => ({
+        ...previous,
+        [field]: value,
+      })
+    );
+  }
+
+
+  function submit(
+    submitEvent,
+  ) {
+    submitEvent.preventDefault();
+
+    onSubmit({
+      client:
+        Number(form.client),
+
+      title:
+        form.title.trim(),
+
+      description:
+        form.description.trim(),
+
+      city:
+        form.city.trim(),
+
+      start_at:
+        form.start_at,
+
+      end_at:
+        form.end_at
+        || null,
+
+      capacity:
+        Number(
+          form.capacity
+        ),
+
+      event_type:
+        form.event_type,
+
+      theme:
+        form.theme.trim(),
+
+      visible:
+        false,
+
+      client_agreed:
+        false,
+    });
+  }
+
+
+  const fieldStyle = {
+    width: "100%",
+    padding: "8px 10px",
+    border:
+      "1px solid #ddd",
+    borderRadius: 6,
+    boxSizing:
+      "border-box",
+  };
+
+
+  return (
+    <form
+      onSubmit={submit}
+      style={{
+        border:
+          "1px solid #e5e5e5",
+        borderRadius: 8,
+        padding: 16,
+        marginBottom: 20,
+        background: "#fafafa",
+      }}
+    >
+      <h3
+        style={{
+          marginTop: 0,
+        }}
+      >
+        Nouvel événement
+      </h3>
+
+      {error && (
+        <ErrorMessage
+          message={error}
+        />
+      )}
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: 12,
+        }}
+      >
+        <label>
+          Client
+          <select
+            aria-label="Client"
+            required
+            value={form.client}
+            onChange={
+              (event) =>
+                updateField(
+                  "client",
+                  event.target.value
+                )
+            }
+            style={fieldStyle}
+          >
+            <option value="">
+              Sélectionner un client
+            </option>
+
+            {clients.map(
+              (client) => (
+                <option
+                  key={client.id}
+                  value={client.id}
+                >
+                  {client.label}
+                </option>
+              )
+            )}
+          </select>
+        </label>
+
+        <label>
+          Titre
+          <input
+            aria-label="Titre"
+            required
+            value={form.title}
+            onChange={
+              (event) =>
+                updateField(
+                  "title",
+                  event.target.value
+                )
+            }
+            style={fieldStyle}
+          />
+        </label>
+
+        <label>
+          Ville
+          <input
+            aria-label="Ville"
+            required
+            value={form.city}
+            onChange={
+              (event) =>
+                updateField(
+                  "city",
+                  event.target.value
+                )
+            }
+            style={fieldStyle}
+          />
+        </label>
+
+        <label>
+          Début
+          <input
+            aria-label="Début"
+            type="datetime-local"
+            required
+            value={form.start_at}
+            onChange={
+              (event) =>
+                updateField(
+                  "start_at",
+                  event.target.value
+                )
+            }
+            style={fieldStyle}
+          />
+        </label>
+
+        <label>
+          Fin
+          <input
+            aria-label="Fin"
+            type="datetime-local"
+            value={form.end_at}
+            onChange={
+              (event) =>
+                updateField(
+                  "end_at",
+                  event.target.value
+                )
+            }
+            style={fieldStyle}
+          />
+        </label>
+
+        <label>
+          Capacité
+          <input
+            aria-label="Capacité"
+            type="number"
+            min="1"
+            required
+            value={form.capacity}
+            onChange={
+              (event) =>
+                updateField(
+                  "capacity",
+                  event.target.value
+                )
+            }
+            style={fieldStyle}
+          />
+        </label>
+
+        <label>
+          Type
+          <select
+            aria-label="Type"
+            value={
+              form.event_type
+            }
+            onChange={
+              (event) =>
+                updateField(
+                  "event_type",
+                  event.target.value
+                )
+            }
+            style={fieldStyle}
+          >
+            <option value="SEMINAR">
+              Séminaire
+            </option>
+
+            <option value="CONFERENCE">
+              Conférence
+            </option>
+
+            <option value="PARTY">
+              Soirée d'entreprise
+            </option>
+
+            <option value="OTHER">
+              Autre
+            </option>
+          </select>
+        </label>
+
+        <label>
+          Thème
+          <input
+            aria-label="Thème"
+            value={form.theme}
+            onChange={
+              (event) =>
+                updateField(
+                  "theme",
+                  event.target.value
+                )
+            }
+            style={fieldStyle}
+          />
+        </label>
+      </div>
+
+      <label
+        style={{
+          display: "block",
+          marginTop: 12,
+        }}
+      >
+        Description
+        <textarea
+          aria-label="Description"
+          rows={4}
+          value={
+            form.description
+          }
+          onChange={
+            (event) =>
+              updateField(
+                "description",
+                event.target.value
+              )
+          }
+          style={fieldStyle}
+        />
+      </label>
+
+      {clients.length === 0 && (
+        <p
+          style={{
+            color: "#856404",
+            fontSize: 13,
+          }}
+        >
+          Aucun client identifiable
+          dans les données chargées.
+        </p>
+      )}
+
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          marginTop: 14,
+        }}
+      >
+        <button
+          type="submit"
+          disabled={
+            submitting
+            || !form.client
+          }
+        >
+          {
+            submitting
+              ? "Création..."
+              : "Enregistrer l'événement"
+          }
+        </button>
+
+        <button
+          type="button"
+          disabled={submitting}
+          onClick={onCancel}
+        >
+          Annuler
+        </button>
+      </div>
+    </form>
   );
 }
 
