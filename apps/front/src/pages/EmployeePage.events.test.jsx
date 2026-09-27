@@ -287,6 +287,223 @@ describe(
 
 
     it(
+      "permet a l employe de creer un evenement prive",
+      async () => {
+        const createdEvent = {
+          id: 15,
+          title: "Séminaire Marseille",
+          description: "Événement créé par un employé.",
+          city: "Marseille",
+          start_at: "2026-10-20T09:00:00Z",
+          end_at: "2026-10-20T18:00:00Z",
+          capacity: 60,
+          event_type: "SEMINAR",
+          theme: "Innovation",
+          status: "DRAFT",
+          visible: false,
+          client_agreed: false,
+          client: 31,
+        };
+
+        apiFetch.mockImplementation(
+          (
+            path,
+            options = {},
+          ) => {
+            if (
+              path === "/api/events/"
+              && !options.method
+            ) {
+              return Promise.resolve({
+                results: EVENTS,
+              });
+            }
+
+            if (
+              path === "/api/events/"
+              && options.method === "POST"
+            ) {
+              return Promise.resolve(
+                createdEvent
+              );
+            }
+
+            return Promise.reject(
+              new Error(
+                `Appel API inattendu : ${path}`
+              )
+            );
+          }
+        );
+
+        await openEventsTab();
+
+        fireEvent.click(
+          screen.getByRole(
+            "button",
+            {
+              name: "Créer un événement",
+            }
+          )
+        );
+
+        fireEvent.change(
+          screen.getByLabelText(
+            "Client"
+          ),
+          {
+            target: {
+              value: "31",
+            },
+          }
+        );
+
+        fireEvent.change(
+          screen.getByLabelText(
+            "Titre"
+          ),
+          {
+            target: {
+              value:
+                "Séminaire Marseille",
+            },
+          }
+        );
+
+        fireEvent.change(
+          screen.getByLabelText(
+            "Ville"
+          ),
+          {
+            target: {
+              value: "Marseille",
+            },
+          }
+        );
+
+        fireEvent.change(
+          screen.getByLabelText(
+            "Début"
+          ),
+          {
+            target: {
+              value:
+                "2026-10-20T09:00",
+            },
+          }
+        );
+
+        fireEvent.change(
+          screen.getByLabelText(
+            "Fin"
+          ),
+          {
+            target: {
+              value:
+                "2026-10-20T18:00",
+            },
+          }
+        );
+
+        fireEvent.change(
+          screen.getByLabelText(
+            "Capacité"
+          ),
+          {
+            target: {
+              value: "60",
+            },
+          }
+        );
+
+        fireEvent.change(
+          screen.getByLabelText(
+            "Type"
+          ),
+          {
+            target: {
+              value: "SEMINAR",
+            },
+          }
+        );
+
+        fireEvent.change(
+          screen.getByLabelText(
+            "Thème"
+          ),
+          {
+            target: {
+              value: "Innovation",
+            },
+          }
+        );
+
+        fireEvent.click(
+          screen.getByRole(
+            "button",
+            {
+              name:
+                "Enregistrer l'événement",
+            }
+          )
+        );
+
+        await waitFor(() => {
+          expect(
+            apiFetch
+          ).toHaveBeenCalledWith(
+            "/api/events/",
+            expect.objectContaining({
+              method: "POST",
+            })
+          );
+        });
+
+        const createCall =
+          apiFetch.mock.calls.find(
+            ([path, options]) =>
+              path === "/api/events/"
+              && options?.method
+                === "POST"
+          );
+
+        const payload =
+          JSON.parse(
+            createCall[1].body
+          );
+
+        expect(
+          payload
+        ).toMatchObject({
+          client: 31,
+          title:
+            "Séminaire Marseille",
+          city: "Marseille",
+          capacity: 60,
+          event_type:
+            "SEMINAR",
+          theme:
+            "Innovation",
+          visible: false,
+          client_agreed: false,
+        });
+
+        expect(
+          await screen.findByText(
+            "Séminaire Marseille"
+          )
+        ).toBeTruthy();
+
+        expect(
+          screen.getByText(
+            "Brouillon"
+          )
+        ).toBeTruthy();
+      }
+    );
+
+
+    it(
       "permet a l employe de terminer un evenement en cours",
       async () => {
         await openEventsTab();

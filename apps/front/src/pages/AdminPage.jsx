@@ -3,6 +3,7 @@ import Navbar from"../components/Navbar"
 import HomeHeroAdmin from"../components/admin/HomeHeroAdmin"
 import HomePhotosAdminTab from"../components/admin/HomePhotosAdminTab"
 import{useAuth}from"../auth/useAuth"
+import{apiFetch}from"../api/client"
 import{getProspects,updateProspectStatus,deleteProspect}from"../api/prospects"
 import{getQuotes,createQuote,sendQuote,deleteQuote,downloadQuotePdf,}from"../api/quotes"
 import{getContactMessages,updateContactMessage,deleteContactMessage,}from"../api/contactMessages"
@@ -68,6 +69,7 @@ export default function AdminPage(){
     ["requests","Demandes"],
     ["messages","Messages"],
     ["quotes","Devis"],
+    ["events","Événements"],
     ["reviews","Avis"],
     ["users","Utilisateurs"],
     ["notes","Notes"],
@@ -123,6 +125,10 @@ export default function AdminPage(){
 
         {tab==="quotes"&&(
           <QuotesTab/>
+        )}
+
+        {tab==="events"&&(
+          <AdminEventsTab/>
         )}
 
         {tab==="reviews"&&(
@@ -1012,6 +1018,7 @@ function MessagesTab({currentUser}){
 function QuotesTab(){
   const[quotes,setQuotes]=useState([])
   const[requests,setRequests]=useState([])
+  const[events,setEvents]=useState([])
   const[loading,setLoading]=useState(true)
   const[show,setShow]=useState(false)
   const[sending,setSending]=useState(null)
@@ -1036,6 +1043,28 @@ function QuotesTab(){
       .finally(()=>
         setLoading(false)
       )
+  },[])
+
+  useEffect(()=>{
+    let active=true
+
+    apiFetch("/api/events/")
+      .then(data=>{
+        if(active){
+          setEvents(
+            list(data)
+          )
+        }
+      })
+      .catch(()=>{
+        if(active){
+          setEvents([])
+        }
+      })
+
+    return()=>{
+      active=false
+    }
   },[])
 
   async function handleSend(
@@ -1171,6 +1200,7 @@ function QuotesTab(){
       {show&&(
         <CreateQuoteForm
           requests={requests}
+          events={events}
           onSuccess={quote=>{
             setQuotes(previous=>[
               quote,
@@ -1342,6 +1372,7 @@ function QuotesTab(){
 
 function CreateQuoteForm({
   requests=[],
+  events=[],
   initialRequestId="",
   requestName="",
   onSuccess,
@@ -1352,6 +1383,7 @@ function CreateQuoteForm({
       initialRequestId
         ?String(initialRequestId)
         :"",
+    event:"",
     tva_rate:"0.20",
   })
 
@@ -1397,7 +1429,16 @@ function CreateQuoteForm({
 
   async function submit(event){
     event.preventDefault()
-    setLoading(true)
+
+    if(
+      !form.prospect
+      &&!form.event
+    ){
+      alert(
+        "Sélectionnez une demande ou un événement privé."
+      )
+      return
+    }
 
     const validItems=
       items
@@ -1412,13 +1453,27 @@ function CreateQuoteForm({
             item.amount_ht,
         }))
 
+    const sourcePayload=
+      form.event
+        ?{
+            event:
+              Number(
+                form.event
+              ),
+          }
+        :{
+            prospect:
+              Number(
+                form.prospect
+              ),
+          }
+
+    setLoading(true)
+
     try{
       const quote=
         await createQuote({
-          prospect:
-            Number(
-              form.prospect
-            ),
+          ...sourcePayload,
           tva_rate:
             form.tva_rate,
           items:
@@ -1464,9 +1519,10 @@ function CreateQuoteForm({
             display:"flex",
             gap:12,
             marginBottom:10,
+            flexWrap:"wrap",
           }}
         >
-          <div style={{flex:1}}>
+          <div style={{flex:1,minWidth:200}}>
             <label
               htmlFor="quote-request"
               style={{
@@ -1480,7 +1536,6 @@ function CreateQuoteForm({
 
             <select
               id="quote-request"
-              required
               value={
                 form.prospect
               }
@@ -1489,6 +1544,7 @@ function CreateQuoteForm({
                   ...previous,
                   prospect:
                     event.target.value,
+                  event:"",
                 }))
               }
               style={{
@@ -1514,6 +1570,60 @@ function CreateQuoteForm({
                   >
                     {request.first_name}{" "}
                     {request.last_name}
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          <div style={{flex:1,minWidth:200}}>
+            <label
+              htmlFor="quote-event"
+              style={{
+                display:"block",
+                fontSize:13,
+                marginBottom:3,
+              }}
+            >
+              Événement privé
+            </label>
+
+            <select
+              id="quote-event"
+              value={
+                form.event
+              }
+              onChange={event=>
+                setForm(previous=>({
+                  ...previous,
+                  event:
+                    event.target.value,
+                  prospect:"",
+                }))
+              }
+              style={{
+                width:"100%",
+                padding:"6px 8px",
+                border:"1px solid #ddd",
+                borderRadius:4,
+              }}
+            >
+              <option value="">
+                Sélectionner un événement
+              </option>
+
+              {events
+                .filter(event=>
+                  event.visible===false
+                )
+                .map(event=>(
+                  <option
+                    key={event.id}
+                    value={event.id}
+                  >
+                    {
+                      event.title
+                      ||`Événement #${event.id}`
+                    }
                   </option>
                 ))}
             </select>
@@ -1710,6 +1820,848 @@ function CreateQuoteForm({
 }
 
 
+const ADMIN_EVENT_STATUS_LABELS={
+  DRAFT:"Brouillon",
+  ACCEPTED:"Accepté",
+  IN_PROGRESS:"En cours",
+  DONE:"Terminé",
+  CANCELLED:"Annulé",
+}
+
+
+const ADMIN_EVENT_TYPE_LABELS={
+  SEMINAR:"Séminaire",
+  CONFERENCE:"Conférence",
+  PARTY:"Soirée d'entreprise",
+  OTHER:"Autre",
+}
+
+
+function AdminEventsTab(){
+  const[events,setEvents]=useState([])
+  const[clients,setClients]=useState([])
+  const[loading,setLoading]=useState(true)
+  const[error,setError]=useState("")
+  const[showCreate,setShowCreate]=useState(false)
+  const[creating,setCreating]=useState(false)
+  const[actionId,setActionId]=useState(null)
+  const[deletingId,setDeletingId]=useState(null)
+
+  useEffect(()=>{
+    let active=true
+
+    async function load(){
+      setLoading(true)
+      setError("")
+
+      try{
+        const eventData=
+          await apiFetch(
+            "/api/events/"
+          )
+
+        if(!active){
+          return
+        }
+
+        const eventList=
+          eventData?.results
+          ||eventData
+          ||[]
+
+        setEvents(eventList)
+
+        let userData=[]
+
+        try{
+          userData=
+            await apiFetch(
+              "/api/users-rights/"
+            )
+        }catch{
+          userData=[]
+        }
+
+        if(!active){
+          return
+        }
+
+        const userList=
+          userData?.results
+          ||userData
+          ||[]
+
+        const clientMap=
+          new Map()
+
+        userList
+          .filter(user=>
+            user.role==="CLIENT"
+          )
+          .forEach(user=>{
+            const name=[
+              user.first_name,
+              user.last_name,
+            ]
+              .filter(Boolean)
+              .join(" ")
+              .trim()
+
+            clientMap.set(
+              String(user.id),
+              {
+                id:user.id,
+                label:
+                  name
+                  ||user.email
+                  ||user.username
+                  ||`Client #${user.id}`,
+              }
+            )
+          })
+
+        eventList.forEach(event=>{
+          if(
+            event.client===null
+            ||event.client===undefined
+          ){
+            return
+          }
+
+          const value=
+            typeof event.client==="object"
+              ?event.client.id
+              :event.client
+
+          if(
+            value===null
+            ||value===undefined
+          ){
+            return
+          }
+
+          if(
+            !clientMap.has(
+              String(value)
+            )
+          ){
+            clientMap.set(
+              String(value),
+              {
+                id:Number(value),
+                label:
+                  `Client #${value}`,
+              }
+            )
+          }
+        })
+
+        setClients(
+          Array.from(
+            clientMap.values()
+          )
+        )
+      }catch(loadError){
+        if(active){
+          setError(
+            formatApiError(
+              loadError
+            )
+          )
+        }
+      }finally{
+        if(active){
+          setLoading(false)
+        }
+      }
+    }
+
+    load()
+
+    return()=>{
+      active=false
+    }
+  },[])
+
+
+  async function createEvent(
+    payload
+  ){
+    setCreating(true)
+    setError("")
+
+    try{
+      const created=
+        await apiFetch(
+          "/api/events/",
+          {
+            method:"POST",
+            body:
+              JSON.stringify(
+                payload
+              ),
+          }
+        )
+
+      setEvents(previous=>[
+        created,
+        ...previous,
+      ])
+
+      setShowCreate(false)
+    }catch(createError){
+      setError(
+        formatApiError(
+          createError
+        )
+      )
+    }finally{
+      setCreating(false)
+    }
+  }
+
+
+  async function transitionEvent(
+    event,
+    action
+  ){
+    setActionId(event.id)
+    setError("")
+
+    try{
+      const result=
+        await apiFetch(
+          `/api/events/${event.id}/${action}/`,
+          {
+            method:"POST",
+          }
+        )
+
+      setEvents(previous=>
+        previous.map(current=>
+          current.id===event.id
+            ?{
+                ...current,
+                status:
+                  result?.status
+                  ||current.status,
+              }
+            :current
+        )
+      )
+    }catch(actionError){
+      setError(
+        formatApiError(
+          actionError
+        )
+      )
+    }finally{
+      setActionId(null)
+    }
+  }
+
+
+  async function deleteEvent(
+    event
+  ){
+    const confirmed=
+      window.confirm(
+        `Supprimer définitivement l'événement "${event.title}" ?`
+      )
+
+    if(!confirmed){
+      return
+    }
+
+    setDeletingId(event.id)
+    setError("")
+
+    try{
+      await apiFetch(
+        `/api/events/${event.id}/`,
+        {
+          method:"DELETE",
+        }
+      )
+
+      setEvents(previous=>
+        previous.filter(current=>
+          current.id!==event.id
+        )
+      )
+    }catch(deleteError){
+      setError(
+        formatApiError(
+          deleteError
+        )
+      )
+    }finally{
+      setDeletingId(null)
+    }
+  }
+
+
+  return(
+    <div className="adminPanel">
+      <div style={{
+        display:"flex",
+        justifyContent:"space-between",
+        alignItems:"flex-start",
+        gap:16,
+        marginBottom:16,
+      }}>
+        <div>
+          <h2 style={{
+            marginTop:0,
+            marginBottom:6,
+          }}>
+            Gestion des événements
+          </h2>
+
+          <p style={{
+            margin:0,
+            color:"#666",
+            fontSize:14,
+          }}>
+            Création et suivi du cycle
+            de vie des événements.
+          </p>
+        </div>
+
+        {!loading&&(
+          <button
+            type="button"
+            onClick={()=>{
+              setError("")
+              setShowCreate(
+                previous=>!previous
+              )
+            }}
+          >
+            {
+              showCreate
+                ?"Fermer"
+                :"Créer un événement"
+            }
+          </button>
+        )}
+      </div>
+
+      {error&&(
+        <p style={{
+          color:"#c62828",
+        }}>
+          {error}
+        </p>
+      )}
+
+      {showCreate&&(
+        <AdminEventCreateForm
+          clients={clients}
+          submitting={creating}
+          onCancel={()=>
+            setShowCreate(false)
+          }
+          onSubmit={
+            createEvent
+          }
+        />
+      )}
+
+      {loading&&(
+        <p>Chargement...</p>
+      )}
+
+      {!loading
+        &&events.length===0
+        &&(
+          <p style={{
+            color:"#888",
+          }}>
+            Aucun événement.
+          </p>
+        )}
+
+      {!loading
+        &&events.map(event=>(
+          <article
+            key={event.id}
+            aria-label={event.title}
+            style={{
+              border:"1px solid #e5e5e5",
+              borderRadius:8,
+              padding:14,
+              marginBottom:10,
+              background:"#fff",
+            }}
+          >
+            <div style={{
+              display:"flex",
+              justifyContent:
+                "space-between",
+              alignItems:"flex-start",
+              gap:16,
+              marginBottom:8,
+            }}>
+              <div>
+                <h3 style={{
+                  margin:"0 0 4px",
+                }}>
+                  {event.title}
+                </h3>
+
+                <div style={{
+                  color:"#666",
+                  fontSize:13,
+                }}>
+                  {event.city||"—"}
+                  {" · "}
+                  {
+                    ADMIN_EVENT_TYPE_LABELS[
+                      event.event_type
+                    ]
+                    ||event.event_type
+                    ||"Autre"
+                  }
+                </div>
+              </div>
+
+              <strong>
+                {
+                  ADMIN_EVENT_STATUS_LABELS[
+                    event.status
+                  ]
+                  ||event.status
+                }
+              </strong>
+            </div>
+
+            <div style={{
+              fontSize:13,
+              color:"#666",
+              marginBottom:10,
+            }}>
+              Client : {
+                event.client
+                  ?(
+                      typeof event.client
+                        ==="object"
+                        ?(
+                            event.client.username
+                            ||event.client.email
+                            ||`#${event.client.id}`
+                          )
+                        :`#${event.client}`
+                    )
+                  :"—"
+              }
+            </div>
+
+            <div style={{
+              display:"flex",
+              gap:8,
+              flexWrap:"wrap",
+            }}>
+              {event.status==="ACCEPTED"&&(
+                <button
+                  type="button"
+                  disabled={
+                    actionId===event.id
+                  }
+                  onClick={()=>
+                    transitionEvent(
+                      event,
+                      "start"
+                    )
+                  }
+                >
+                  {
+                    actionId===event.id
+                      ?"Traitement..."
+                      :"Démarrer"
+                  }
+                </button>
+              )}
+
+              {event.status==="IN_PROGRESS"&&(
+                <button
+                  type="button"
+                  disabled={
+                    actionId===event.id
+                  }
+                  onClick={()=>
+                    transitionEvent(
+                      event,
+                      "complete"
+                    )
+                  }
+                >
+                  {
+                    actionId===event.id
+                      ?"Traitement..."
+                      :"Terminer"
+                  }
+                </button>
+              )}
+
+              <button
+                type="button"
+                disabled={
+                  deletingId===event.id
+                }
+                onClick={()=>
+                  deleteEvent(event)
+                }
+                style={{
+                  color:"#dc3545",
+                }}
+              >
+                {
+                  deletingId===event.id
+                    ?"Suppression..."
+                    :"Supprimer"
+                }
+              </button>
+            </div>
+          </article>
+        ))}
+    </div>
+  )
+}
+
+
+function AdminEventCreateForm({
+  clients,
+  submitting,
+  onCancel,
+  onSubmit,
+}){
+  const[form,setForm]=useState({
+    client:"",
+    title:"",
+    description:"",
+    city:"",
+    start_at:"",
+    end_at:"",
+    capacity:"1",
+    event_type:"OTHER",
+    theme:"",
+  })
+
+
+  function updateField(
+    field,
+    value
+  ){
+    setForm(previous=>({
+      ...previous,
+      [field]:value,
+    }))
+  }
+
+
+  function submit(
+    submitEvent
+  ){
+    submitEvent.preventDefault()
+
+    onSubmit({
+      client:Number(
+        form.client
+      ),
+
+      title:
+        form.title.trim(),
+
+      description:
+        form.description.trim(),
+
+      city:
+        form.city.trim(),
+
+      start_at:
+        form.start_at,
+
+      end_at:
+        form.end_at
+        ||null,
+
+      capacity:Number(
+        form.capacity
+      ),
+
+      event_type:
+        form.event_type,
+
+      theme:
+        form.theme.trim(),
+
+      visible:false,
+
+      client_agreed:false,
+    })
+  }
+
+
+  const fieldStyle={
+    width:"100%",
+    padding:"8px 10px",
+    border:"1px solid #ddd",
+    borderRadius:6,
+    boxSizing:"border-box",
+  }
+
+
+  return(
+    <form
+      onSubmit={submit}
+      style={{
+        border:"1px solid #e5e5e5",
+        borderRadius:8,
+        padding:16,
+        marginBottom:20,
+        background:"#fafafa",
+      }}
+    >
+      <h3 style={{
+        marginTop:0,
+      }}>
+        Nouvel événement
+      </h3>
+
+      <div style={{
+        display:"grid",
+        gridTemplateColumns:
+          "repeat(auto-fit, minmax(220px, 1fr))",
+        gap:12,
+      }}>
+        <label>
+          Client
+
+          <select
+            aria-label="Client"
+            required
+            value={form.client}
+            onChange={event=>
+              updateField(
+                "client",
+                event.target.value
+              )
+            }
+            style={fieldStyle}
+          >
+            <option value="">
+              Sélectionner un client
+            </option>
+
+            {clients.map(client=>(
+              <option
+                key={client.id}
+                value={client.id}
+              >
+                {client.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          Titre
+
+          <input
+            aria-label="Titre"
+            required
+            value={form.title}
+            onChange={event=>
+              updateField(
+                "title",
+                event.target.value
+              )
+            }
+            style={fieldStyle}
+          />
+        </label>
+
+        <label>
+          Ville
+
+          <input
+            aria-label="Ville"
+            required
+            value={form.city}
+            onChange={event=>
+              updateField(
+                "city",
+                event.target.value
+              )
+            }
+            style={fieldStyle}
+          />
+        </label>
+
+        <label>
+          Début
+
+          <input
+            aria-label="Début"
+            type="datetime-local"
+            required
+            value={form.start_at}
+            onChange={event=>
+              updateField(
+                "start_at",
+                event.target.value
+              )
+            }
+            style={fieldStyle}
+          />
+        </label>
+
+        <label>
+          Fin
+
+          <input
+            aria-label="Fin"
+            type="datetime-local"
+            value={form.end_at}
+            onChange={event=>
+              updateField(
+                "end_at",
+                event.target.value
+              )
+            }
+            style={fieldStyle}
+          />
+        </label>
+
+        <label>
+          Capacité
+
+          <input
+            aria-label="Capacité"
+            type="number"
+            min="1"
+            required
+            value={form.capacity}
+            onChange={event=>
+              updateField(
+                "capacity",
+                event.target.value
+              )
+            }
+            style={fieldStyle}
+          />
+        </label>
+
+        <label>
+          Type
+
+          <select
+            aria-label="Type"
+            value={form.event_type}
+            onChange={event=>
+              updateField(
+                "event_type",
+                event.target.value
+              )
+            }
+            style={fieldStyle}
+          >
+            <option value="SEMINAR">
+              Séminaire
+            </option>
+
+            <option value="CONFERENCE">
+              Conférence
+            </option>
+
+            <option value="PARTY">
+              Soirée d'entreprise
+            </option>
+
+            <option value="OTHER">
+              Autre
+            </option>
+          </select>
+        </label>
+
+        <label>
+          Thème
+
+          <input
+            aria-label="Thème"
+            value={form.theme}
+            onChange={event=>
+              updateField(
+                "theme",
+                event.target.value
+              )
+            }
+            style={fieldStyle}
+          />
+        </label>
+      </div>
+
+      <label style={{
+        display:"block",
+        marginTop:12,
+      }}>
+        Description
+
+        <textarea
+          aria-label="Description"
+          rows={4}
+          value={form.description}
+          onChange={event=>
+            updateField(
+              "description",
+              event.target.value
+            )
+          }
+          style={fieldStyle}
+        />
+      </label>
+
+      {clients.length===0&&(
+        <p style={{
+          color:"#856404",
+          fontSize:13,
+        }}>
+          Aucun compte client disponible.
+        </p>
+      )}
+
+      <div style={{
+        display:"flex",
+        gap:8,
+        marginTop:14,
+      }}>
+        <button
+          type="submit"
+          disabled={
+            submitting
+            ||!form.client
+          }
+        >
+          {
+            submitting
+              ?"Création..."
+              :"Enregistrer l'événement"
+          }
+        </button>
+
+        <button
+          type="button"
+          disabled={submitting}
+          onClick={onCancel}
+        >
+          Annuler
+        </button>
+      </div>
+    </form>
+  )
+}
+
 function ReviewsAdminTab() {
   const [reviews, setReviews] = useState([])
   const [loading, setLoading] = useState(true)
@@ -1883,13 +2835,37 @@ function UsersRightsTab({currentUser}){
   })
 
   async function updateAdminRights(userId,action){
-    const isPromotion=action==="promote-admin"
+    const actions={
+      "promote-admin":{
+        confirm:"Donner les droits admin à cet utilisateur ?",
+        success:username=>
+          `Droits admin accordés à ${username}.`,
+      },
+      "remove-admin":{
+        confirm:"Retirer les droits admin à cet utilisateur ?",
+        success:username=>
+          `Droits admin retirés à ${username}.`,
+      },
+      "promote-employee":{
+        confirm:"Transformer cet utilisateur en employé ?",
+        success:username=>
+          `${username} est maintenant employé.`,
+      },
+      "remove-employee":{
+        confirm:"Repasser cet employé en compte client ?",
+        success:username=>
+          `${username} est maintenant client.`,
+      },
+    }
 
-    const message=isPromotion
-      ?"Donner les droits admin à cet utilisateur ?"
-      :"Retirer les droits admin à cet utilisateur ?"
+    const config=actions[action]
 
-    if(!window.confirm(message)){
+    if(!config){
+      setError("Action de rôle inconnue.")
+      return
+    }
+
+    if(!window.confirm(config.confirm)){
       return
     }
 
@@ -1921,9 +2897,7 @@ function UsersRightsTab({currentUser}){
       )
 
       setSuccess(
-        isPromotion
-          ?`Droits admin accordés à ${data.username}.`
-          :`Droits admin retirés à ${data.username}.`
+        config.success(data.username)
       )
     }catch(error){
       setError(formatApiError(error))
@@ -2149,6 +3123,58 @@ function UsersRightsTab({currentUser}){
                         gap:8,
                         flexWrap:"wrap",
                       }}>
+                        {user.role==="CLIENT"&&(
+                          <button
+                            onClick={()=>
+                              updateAdminRights(
+                                user.id,
+                                "promote-employee"
+                              )
+                            }
+                            disabled={busy===user.id}
+                            style={{
+                              fontSize:12,
+                              padding:"4px 10px",
+                              border:"1px solid #b8daff",
+                              borderRadius:4,
+                              background:"#dbeafe",
+                              cursor:"pointer",
+                            }}
+                          >
+                            {
+                              busy===user.id
+                                ?"Modification..."
+                                :"Passer employé"
+                            }
+                          </button>
+                        )}
+
+                        {user.role==="EMPLOYEE"&&(
+                          <button
+                            onClick={()=>
+                              updateAdminRights(
+                                user.id,
+                                "remove-employee"
+                              )
+                            }
+                            disabled={busy===user.id}
+                            style={{
+                              fontSize:12,
+                              padding:"4px 10px",
+                              border:"1px solid #ffeeba",
+                              borderRadius:4,
+                              background:"#fff3cd",
+                              cursor:"pointer",
+                            }}
+                          >
+                            {
+                              busy===user.id
+                                ?"Modification..."
+                                :"Repasser client"
+                            }
+                          </button>
+                        )}
+
                         {isAdmin?(
                           <button
                             onClick={()=>
